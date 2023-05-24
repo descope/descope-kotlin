@@ -1,0 +1,302 @@
+# Descope SDK for Android
+
+The Descope SDK for for Android provides convenient access
+to the Descope user management and authentication APIs for applications
+written for Android. You can read more on the [Descope Website](https://descope.com).
+
+## Setup
+
+Coming soon...
+
+## Quickstart
+
+A Descope `Project ID` is required to initialize the SDK. Find it
+on the [project page](https://app.descope.com/settings/project) in
+the Descope Console.
+
+```kotlin
+import com.descope.Descope
+import com.descope.sdk.DescopeConfig
+
+// Application on create
+override fun onCreate() {
+    Descope.projectId = "<Your-Project-Id>"
+}
+```
+
+Authenticate the user in your application by starting one of the
+authentication methods. For example, let's use OTP via email:
+
+```kotlin
+// sends an OTP code to the given email address
+Descope.otp.signUp(method = DeliveryMethod.Email, loginId = "andy@example.com")
+```
+
+Finish the authentication by verifying the OTP code the user entered:
+
+```kotlin
+// if the user entered the right code the authentication is successful  
+val authResponse = Descope.otp.verify(
+    method = DeliveryMethod.Email,
+    loginId = "andy@example.com",
+    code = code
+)
+
+// we create a DescopeSession object that represents an authenticated user session
+val session = DescopeSession(authResponse)
+
+// the session manager automatically takes care of persisting the session
+// and refreshing it as needed
+Descope.sessionManager.manageSession(session)
+```
+
+On the next application launch check if there's a logged in user to
+decide which screen to show:
+
+```kotlin
+// check if we have a valid session from a previous launch and that it hasn't expired yet 
+if (Descope.sessionManager.session?.refreshToken?.isExpired == true) {
+    // Show main UI
+} else {
+    // Show login UI
+}
+```
+
+Use the active session to authenticate outgoing API requests to the
+application's backend:
+
+```kotlin
+val connection = url.openConnection() as HttpsURLConnection
+connection.setAuthorization(Descope.sessionManager)
+```
+
+## Session Management
+
+The `DescopeSessionManager` class is used to manage an authenticated
+user session for an application.
+
+The session manager takes care of loading and saving the session as well
+as ensuring that it's refreshed when needed. For the default instances of
+the `DescopeSessionManager` class this means using the `EncryptedSharedPreferences`
+for secure storage of the session and refreshing it a short while before it expires.
+
+Once the user completes a sign in flow successfully you should set the
+`DescopeSession` object as the active session of the session manager.
+
+```kotlin
+val authResponse = Descope.otp.verify(DeliverMethod.Email, "andy@example.com", "123456")
+val session = DescopeSession(authResponse)
+Descope.sessionManager.manageSession(session)
+```
+
+The session manager can then be used at any time to ensure the session
+is valid and to authenticate outgoing requests to your backend with a
+bearer token authorization header.
+
+```kotlin
+val connection = url.openConnection() as HttpsURLConnection
+connection.setAuthorization(Descope.sessionManager)
+```
+
+If your backend uses a different authorization mechanism you can of course
+use the session JWT directly instead of the extension function. You can either
+add another extension function on `URLRequest` such as the one above, or you
+can do the following.
+
+```kotlin
+Descope.sessionManager.refreshSessionIfNeeded()
+Descope.sessionManager.session?.sessionJwt?.apply {
+    connection.setRequestProperty("X-Auth-Token", this)
+} ?: throw ServerError.unauthorized
+```
+
+When the application is relaunched the `DescopeSessionManager` loads any
+existing session automatically, so you can check straight away if there's
+an authenticated user.
+
+```kotlin
+// Application class onCreate
+override fun onCreate() {
+    super.onCreate()
+    Descope.projectId = "..."
+    Descope.sessionManager.session?.run {
+        print("User is logged in: $this")
+    }
+}
+```
+
+When the user wants to sign out of the application we revoke the
+active session and clear it from the session manager:
+
+```kotlin
+ Descope.sessionManager.session?.refreshJwt?.run {
+    Descope.auth.logout(this)
+    Descope.sessionManager.clearSession()
+}
+```
+
+You can customize how the `DescopeSessionManager` behaves by using
+your own `storage` and `lifecycle` objects. See the documentation
+for more details.
+
+## Authentication Methods
+
+Here are some examples for how to authenticate users:
+
+### OTP Authentication
+
+Send a user a one-time password (OTP) using your preferred delivery
+method (_email / SMS_). An email address or phone number must be
+provided accordingly.
+
+The user can either `sign up`, `sign in` or `sign up or in`
+
+```kotlin
+// Every user must have a loginId. All other user details are optional:
+Descope.otp.signUp(
+    DeliveryMethod.Email, "andy@example.com", SignUpDetails(
+        name = "Andy Rhoads"
+    )
+)
+```
+
+The user will receive a code using the selected delivery method. Verify
+that code using:
+
+```kotlin
+val descopeSession = Descope.otp.verify(DeliveryMethod.Email, "andy@example.com", "123456")
+```
+
+### Magic Link
+
+Send a user a Magic Link using your preferred delivery method (_email / SMS_).
+The Magic Link will redirect the user to page where the its token needs
+to be verified. This redirection can be configured in code, or globally
+in the [Descope Console](https://app.descope.com/settings/authentication/magiclink)
+
+The user can either `sign up`, `sign in` or `sign up or in`
+
+```kotlin
+// If configured globally, the redirect URI is optional. If provided however, it will be used
+// instead of any global configuration
+Descope.magiclink.signUp(DeliveryMethod.Email, "andy@example.com")
+```
+
+To verify a magic link, your redirect page must call the validation function
+on the token (`t`) parameter (`https://your-redirect-address.com/verify?t=<token>`):
+
+```kotlin
+val descopeSession = Descope.magiclink.verify("<token>")
+```
+
+### OAuth
+
+Users can authenticate using their social logins, using the OAuth protocol.
+Configure your OAuth settings on the [Descope console](https://app.descope.com/settings/authentication/social).
+To start a flow call:
+
+```kotlin
+// Choose an oauth provider out of the supported providers
+// If configured globally, the redirect URL is optional. If provided however, it will be used
+// instead of any global configuration.
+// Redirect the user to the returned URL to start the OAuth redirect chain
+val authURL = Descope.oauth.start(OAuthProvider.Github, redirectURL = "exampleauthschema://my-app.com/handle-oauth")
+```
+
+Take the generated URL and authenticate the user using `Chrome Custom Tabs`
+The user will authenticate with the authentication provider, and will be
+redirected back to the redirect URL, with an appended `code` HTTP URL parameter.
+Exchange it to validate the user:
+
+```kotlin
+// Catch the redirect using a dedicated deep link Activity
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val incomingUri: Uri = intent?.data ?: return
+    val code = incomingUri.getQueryParameter("code")
+
+    GlobalScope.launch {
+        // Exchange code for session
+        val authResponse = Descope.oauth.exchange(code)
+        val session = DescopeSession(authResponse)
+        Descope.sessionManager.manageSession(session)
+    }
+}
+```
+
+### SSO/SAML
+
+Users can authenticate to a specific tenant using SAML or Single Sign On.
+Configure your SSO/SAML settings on the [Descope console](https://app.descope.com/settings/authentication/sso).
+To start a flow call:
+
+```kotlin
+// Choose which tenant to log into
+// If configured globally, the return URL is optional. If provided however, it will be used
+// instead of any global configuration.
+// Redirect the user to the returned URL to start the SSO/SAML redirect chain
+val authURL = Descope.sso.start(emailOrTenantId = "my-tenant-ID", redirectURL = "exampleauthschema://my-app.com/handle-saml")
+```
+
+Take the generated URL and authenticate the user using `Chrome Custom Tabs`
+The user will authenticate with the authentication provider, and will be
+redirected back to the redirect URL, with an appended `code` HTTP URL parameter.
+Exchange it to validate the user:
+
+```kotlin
+// Catch the redirect using a dedicated deep link Activity
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val incomingUri: Uri = intent?.data ?: return
+    val code = incomingUri.getQueryParameter("code")
+
+    GlobalScope.launch {
+        // Exchange code for session
+        val authResponse = Descope.sso.exchange(code)
+        val session = DescopeSession(authResponse)
+        Descope.sessionManager.manageSession(session)
+    }
+}
+```
+
+### TOTP Authentication
+
+The user can authenticate using an authenticator app, such as Google Authenticator.
+Sign up like you would using any other authentication method. The sign up response
+will then contain a QR code `image` that can be displayed to the user to scan using
+their mobile device camera app, or the user can enter the `key` manually or click
+on the link provided by the `provisioningURL`.
+
+Existing users can add TOTP using the `update` function.
+
+```kotlin
+// Every user must have a loginId. All other user information is optional
+val totpResponse = Descope.totp.signUp(loginId = "andy@example.com")
+
+// Use one of the provided options to have the user add their credentials to the authenticator
+// totpResponse.provisioningURL
+// totpResponse.image
+// totpResponse.key
+```
+
+There are 3 different ways to allow the user to save their credentials in their
+authenticator app - either by clicking the provisioning URL, scanning the QR
+image or inserting the key manually. After that, signing in is done using the
+code the app produces.
+
+```kotlin
+val descopeSession = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
+```
+
+## Additional Information
+
+To learn more please see the [Descope Documentation and API reference page](https://docs.descope.com/).
+
+## Contact Us
+
+If you need help you can email [Descope Support](mailto:support@descope.com)
+
+## License
+
+The Descope SDK for Flutter is licensed for use under the terms and conditions
+of the [MIT license Agreement](https://github.com/descope/descope-android/blob/main/LICENSE).
