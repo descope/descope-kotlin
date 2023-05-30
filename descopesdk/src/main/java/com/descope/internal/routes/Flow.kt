@@ -51,7 +51,9 @@ internal class Flow(
             // embed into url parameters
             val uri = Uri.parse(flowUrl).buildUpon()
                 .appendQueryParameter("ra-callback", deepLinkUrl)
-                .appendQueryParameter("ra-challenge", codeChallenge).build()
+                .appendQueryParameter("ra-challenge", codeChallenge)
+                .appendQueryParameter("ra-initiator", "android")
+                .build()
 
             // launch via chrome custom tabs
             launchUri(context, uri)
