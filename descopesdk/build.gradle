@@ -1,6 +1,7 @@
 plugins {
     id "com.android.library"
     id "org.jetbrains.kotlin.android"
+    id "maven-publish"
 }
 
 android {
@@ -28,6 +29,12 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
@@ -41,4 +48,37 @@ dependencies {
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1"
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.json:json:20230227"
+}
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            groupId = "com.descope"
+            artifactId = "descope-kotlin"
+            version = "0.9.0"
+
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
+
+  repositories {
+    maven {
+      name = "OSSRH"
+      url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+      credentials {
+        username = System.getenv("MAVEN_USERNAME")
+        password = System.getenv("MAVEN_PASSWORD")
+      }
+    }
+    maven {
+      name = "GitHubPackages"
+      url = "https://maven.pkg.github.com/descope/descope-kotlin"
+      credentials {
+        username = System.getenv("GITHUB_ACTOR")
+        password = System.getenv("GITHUB_TOKEN")
+      }
+    }
+  }
 }
