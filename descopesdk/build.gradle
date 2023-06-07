@@ -57,7 +57,7 @@ publishing {
         release(MavenPublication) {
             groupId = "com.descope"
             artifactId = "descope-kotlin"
-            version = "0.9.0"
+            version = "0.9.1"
             pom {
                 name = project.name
                 description = project.name
