@@ -35,7 +35,7 @@ Descope.otp.signUp(method = DeliveryMethod.Email, loginId = "andy@example.com")
 Finish the authentication by verifying the OTP code the user entered:
 
 ```kotlin
-// if the user entered the right code the authentication is successful  
+// if the user entered the right code the authentication is successful
 val authResponse = Descope.otp.verify(
     method = DeliveryMethod.Email,
     loginId = "andy@example.com",
@@ -54,7 +54,7 @@ On the next application launch check if there's a logged in user to
 decide which screen to show:
 
 ```kotlin
-// check if we have a valid session from a previous launch and that it hasn't expired yet 
+// check if we have a valid session from a previous launch and that it hasn't expired yet
 if (Descope.sessionManager.session?.refreshToken?.isExpired == true) {
     // Show main UI
 } else {
