@@ -57,7 +57,7 @@ publishing {
         release(MavenPublication) {
             groupId = "com.descope"
             artifactId = "descope-kotlin"
-            version = "0.9.1"
+            version = System.getenv("DESCOPESDK_VERSION")
             pom {
                 name = project.name
                 description = project.name

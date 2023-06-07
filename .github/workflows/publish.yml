@@ -26,3 +26,4 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           PGP_KEY: ${{ secrets.PGP_KEY }}
           PGP_PASSWORD: ${{ secrets.PGP_PASSWORD }}
+          DESCOPESDK_VERSION: ${{ github.ref_name }}
