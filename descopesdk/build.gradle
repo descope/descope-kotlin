@@ -2,6 +2,7 @@ plugins {
     id "com.android.library"
     id "org.jetbrains.kotlin.android"
     id "maven-publish"
+    id "signing"
 }
 
 android {
@@ -27,12 +28,13 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 
     publishing {
         singleVariant("release") {
             withSourcesJar()
+            withJavadocJar()
         }
     }
 }
@@ -56,29 +58,40 @@ publishing {
             groupId = "com.descope"
             artifactId = "descope-kotlin"
             version = "0.9.0"
-
+            pom {
+                name = project.name
+                description = project.name
+                url = 'https://github.com/descope/descope-kotlin'
+                inceptionYear = '2023'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'http://www.opensource.org/licenses/mit-license.php'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'descope'
+                        name = 'Descope Inc'
+                    }
+                }
+                scm {
+                    connection = 'scm:https://github.com/descope/descope-kotlin.git'
+                    developerConnection = 'scm:git@github.com:descope/descope-kotlin.git'
+                    url = 'https://github.com/descope/descope-kotlin'
+                }
+            }
             afterEvaluate {
                 from components.release
             }
+
         }
     }
+}
 
-  repositories {
-    maven {
-      name = "OSSRH"
-      url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-      credentials {
-        username = System.getenv("MAVEN_USERNAME")
-        password = System.getenv("MAVEN_PASSWORD")
-      }
-    }
-    maven {
-      name = "GitHubPackages"
-      url = "https://maven.pkg.github.com/descope/descope-kotlin"
-      credentials {
-        username = System.getenv("GITHUB_ACTOR")
-        password = System.getenv("GITHUB_TOKEN")
-      }
-    }
-  }
+signing {
+    def signingKey = System.getenv("PGP_KEY")
+    def signingPassword = System.getenv("PGP_PASSWORD")
+    useInMemoryPgpKeys(signingKey, signingPassword)
+    sign publishing.publications.release 
 }

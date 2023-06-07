@@ -21,8 +21,9 @@ jobs:
       - name: Publish package
         uses: gradle/gradle-build-action@749f47bda3e44aa060e82d7b3ef7e40d953bd629
         with:
-          arguments: publish
+          arguments: publishToSonatype closeAndReleaseStagingRepository
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_KEY: ${{ secrets.PGP_KEY }}
+          GPG_PASSWORD: ${{ secrets.PGP_PASSWORD }}
