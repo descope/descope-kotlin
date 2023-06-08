@@ -1,0 +1,58 @@
+name: Scan with Detekt
+
+on:
+  # Triggers the workflow on push or pull request events but only for default and protected branches
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+     - cron: '43 3 * * 3'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "scan"
+  scan:
+    name: Scan
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v3
+
+    - name: Setup detekt
+      uses: peter-murray/setup-detekt@v2
+      with:
+        detekt_version: 1.23
+    
+    # Performs static analysis using Detekt
+    - name: Run Detekt
+      continue-on-error: true
+      run: |
+        detekt-cli --version
+        detekt-cli --input ${{ github.workspace }} --report sarif:${{ github.workspace }}/detekt.sarif.json
+
+    # Modifies the SARIF output produced by Detekt so that absolute URIs are relative
+    # This is so we can easily map results onto their source files
+    # This can be removed once relative URI support lands in Detekt: https://git.io/JLBbA
+    - name: Make artifact location URIs relative
+      continue-on-error: true
+      run: |
+        echo "$(
+          jq \
+            --arg github_workspace ${{ github.workspace }} \
+            '. | ( .runs[].results[].locations[].physicalLocation.artifactLocation.uri |= if test($github_workspace) then .[($github_workspace | length | . + 1):] else . end )' \
+            ${{ github.workspace }}/detekt.sarif.json
+        )" > ${{ github.workspace }}/detekt.sarif.json
+
+    # Uploads results to GitHub repository using the upload-sarif action
+    - uses: github/codeql-action/upload-sarif@v2
+      with:
+        # Path to SARIF file relative to the root of the repository
+        sarif_file: ${{ github.workspace }}/detekt.sarif.json
+        checkout_path: ${{ github.workspace }}
