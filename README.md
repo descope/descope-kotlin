@@ -267,7 +267,7 @@ Descope.flow.create(
 ```
 
 When supporting Magic Links the `resume` function must be called. In your authentication Activity
-inside the `onCreate`:
+inside the `onCreate` method:
 
 ```kotlin
 intent?.getStringExtra("descopeFlowUri")?.run {
