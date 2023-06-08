@@ -144,8 +144,8 @@ for more details.
 We can authenticate users by building and running Flows. Flows are built in the Descope 
 [flow editor](https://app.descope.com/flows). The editor allows you to easily
 define both the behavior and the UI that take the user through their
-authentication journey. Read more about it in the 
-[Descope docs](https://docs.descope.com/build/guides/gettingstarted/).
+authentication journey. Read more about it in the  Descope
+[getting started](https://docs.descope.com/build/guides/gettingstarted/) guide.
 
 ### Setup #1: Define and host your flow
 
