@@ -152,7 +152,7 @@ authentication journey. Read more about it in the  Descope
 Before we can run a flow, it must first be defined and hosted. Every project
 comes with predefined flows out of the box. You can customize your flows to suit your needs
 and host it. Follow
-[the guide](https://docs.descope.com/build/guides/gettingstarted/) for more details.
+the [getting started](https://docs.descope.com/build/guides/gettingstarted/) guide for more details.
 
 ### Setup #2: Enable App Links
 
