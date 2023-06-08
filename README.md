@@ -275,8 +275,8 @@ intent?.getStringExtra("descopeFlowUri")?.run {
 }
 ```
 
-The flow will finish using the App Link provided to the `deepLinkUrl` parameter.
-When receiving it call:
+The flow will finish by redirecting to the App Link provided to the `deepLinkUrl` parameter.
+When receiving the App Link pass the URI to the `exchange` method:
 
 ```kotlin
 val authResponse = Descope.flow.currentRunner?.exchange(incomingUri) ?: throw Exception("Flow is not running")
