@@ -222,8 +222,9 @@ class MagicLinkRedirectActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val incomingUri: Uri = intent?.data ?: return // The incoming App link
 
-        // We need to relaunch the Activity that started the flow. It should be a single top activity
-        // so the user won't experience any weird behavior / duplicate chrome tabs
+        // We need to relaunch the Activity that started the flow where the `resume` method needs to be called.
+        // It should be a single top activity so that the user won't 
+        // experience any weird behavior / duplicate chrome tabs
         startActivity(Intent(this@MagicLinkRedirectActivity, AuthActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or  Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("descopeFlowUri", incomingUri.toString()) // Pass the URI to the flow
@@ -236,7 +237,7 @@ class MagicLinkRedirectActivity : AppCompatActivity() {
 Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
 ```
 
-**Add a matching Manifest declaration**
+#### Add a matching Manifest declaration
 ```xml
 <activity
     android:name=".MagicLinkRedirectActivity"
@@ -246,7 +247,7 @@ Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
 
-        <!-- replace with your host, the path can change must must be reflected when running the flow -->
+        <!-- this is exactly the same setup we performed in setup #2, with a different path to differentiate between them -->
         <data android:scheme="https" android:host="<YOUR_HOST_HERE>" android:path="/magiclink" />
     </intent-filter>
 </activity>
