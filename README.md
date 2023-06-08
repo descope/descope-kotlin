@@ -150,7 +150,7 @@ authentication journey. Read more about it in the  Descope
 ### Setup #1: Define and host your flow
 
 Before we can run a flow, it must first be defined and hosted. Every project
-comes with predefined flows out of the box. You can customize your flows to suite your needs
+comes with predefined flows out of the box. You can customize your flows to suit your needs
 and host it. Follow
 [the guide](https://docs.descope.com/build/guides/gettingstarted/) for more details.
 
