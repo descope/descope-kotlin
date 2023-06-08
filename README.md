@@ -210,7 +210,7 @@ class FlowDoneActivity : AppCompatActivity() {
 
 ### (OPTIONAL) Setup #3: Support Magic Link Redirects 
 
-Supporting Magic Link redirects requires a dedicated [App Links](https://developer.android.com/training/app-links#android-app-links).
+Supporting Magic Link authentication in flows requires adding another path entry to the [App Links](https://developer.android.com/training/app-links#android-app-links).
 This is essentially the same as the app link from the [previous setup step](#setup-2-enable-app-links),
 with different handling logic:
 
