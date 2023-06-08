@@ -156,7 +156,7 @@ the [getting started](https://docs.descope.com/build/guides/gettingstarted/) gui
 
 ### Setup #2: Enable App Links
 
-Running a Flow through this SDK requires setting up [App Links](https://developer.android.com/training/app-links#android-app-links).
+Running a flow via the Kotlin SDK requires setting up [App Links](https://developer.android.com/training/app-links#android-app-links).
 This is essential for the SDK to be notified when the user has successfully
 authenticated using a flow. Once you have a domain set up and 
 [verified](https://developer.android.com/training/app-links/verify-android-applinks)
