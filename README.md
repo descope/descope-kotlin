@@ -256,7 +256,7 @@ Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
 
 After completing the prerequisite steps, it is now possible to run a flow.
 The flow will run in a Chrome [Custom Tab](https://developer.chrome.com/docs/android/custom-tabs/).
-Make the Activity running the flow is a `SINGLE_TOP` activity, to avoid any
+Make sure the Activity running the flow is a `SINGLE_TOP` activity, to avoid any
 unexpected UX. Run the flow by creating a `DescopeFlow.Runner`:
 
 ```kotlin
