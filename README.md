@@ -222,7 +222,6 @@ class MagicLinkRedirectActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val incomingUri: Uri = intent?.data ?: return // The incoming App link
 
-        // `exchange` is a suspended function.
         // We need to relaunch the Activity that started the flow. It should be a single top activity
         // so the user won't experience any weird behavior / duplicate chrome tabs
         startActivity(Intent(this@MagicLinkRedirectActivity, AuthActivity::class.java).apply {
