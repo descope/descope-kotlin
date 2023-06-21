@@ -133,4 +133,4 @@ val Descope.name: String
 
 /** The Descope SDK version */
 val Descope.version: String
-    get() = "0.9.0"
+    get() = "0.9.2"
