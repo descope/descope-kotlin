@@ -10,7 +10,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     // OTP
 
     suspend fun otpSignUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?): MaskedAddressServerResponse = post(
-        route = "auth/otp/signup/${method.name}",
+        route = "auth/otp/signup/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -19,7 +19,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun otpSignIn(method: DeliveryMethod, loginId: String): MaskedAddressServerResponse = post(
-        route = "auth/otp/signin/${method.name}",
+        route = "auth/otp/signin/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -27,7 +27,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun otpSignUpIn(method: DeliveryMethod, loginId: String): MaskedAddressServerResponse = post(
-        route = "auth/otp/signup-in/${method.name}",
+        route = "auth/otp/signup-in/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -35,7 +35,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun otpVerify(method: DeliveryMethod, loginId: String, code: String): JwtServerResponse = post(
-        route = "auth/otp/verify/${method.name}",
+        route = "auth/otp/verify/${method.route()}",
         decoder = JwtServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -54,7 +54,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun otpUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String): MaskedAddressServerResponse = post(
-        route = "auth/otp/update/phone/${method.name}",
+        route = "auth/otp/update/phone/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
         body = mapOf(
@@ -150,7 +150,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     // Magic Link
 
     suspend fun magicLinkSignUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?, uri: String?): MaskedAddressServerResponse = post(
-        route = "auth/magiclink/signup/${method.name}",
+        route = "auth/magiclink/signup/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -160,7 +160,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun magicLinkSignIn(method: DeliveryMethod, loginId: String, uri: String?): MaskedAddressServerResponse = post(
-        route = "auth/magiclink/signin/${method.name}",
+        route = "auth/magiclink/signin/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -169,7 +169,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun magicLinkSignUpOrIn(method: DeliveryMethod, loginId: String, uri: String?): MaskedAddressServerResponse = post(
-        route = "auth/magiclink/signup-in/${method.name}",
+        route = "auth/magiclink/signup-in/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -189,7 +189,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun magicLinkUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String): MaskedAddressServerResponse = post(
-        route = "auth/magiclink/update/phone/${method.name}",
+        route = "auth/magiclink/update/phone/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
         body = mapOf(
@@ -349,6 +349,8 @@ private fun SignUpDetails.toMap() = mapOf(
     "phone" to phone,
     "name" to name,
 )
+
+private fun DeliveryMethod.route() = this.name.lowercase()
 
 // Utilities
 
