@@ -125,7 +125,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
 
     suspend fun passwordReplace(loginId: String, oldPassword: String, newPassword: String) = post(
         route = "auth/password/replace",
-        decoder = emptyResponse,
+        decoder = JwtServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
             "oldPassword" to oldPassword,

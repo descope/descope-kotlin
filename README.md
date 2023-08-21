@@ -438,6 +438,70 @@ code the app produces.
 val descopeSession = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
 ```
 
+### Password Authentication
+
+Authenticate users using a password.
+
+#### Sign Up with Password
+
+To create a new user that can later sign in with a password:
+
+```kotlin
+val descopeSession = Descope.password.signUp(
+    "andy@example.com",
+    "securePassword123!",
+    SignUpDetails(
+        name = "Andy Rhoads"
+    )
+)
+```
+
+#### Sign In with Password
+
+Authenticate an existing user using a password:
+
+```kotlin
+val descopeSession = Descope.password.signIn(
+    "andy@example.com",
+    "securePassword123!"
+)
+```
+
+#### Update Password
+
+If you need to update a user's password:
+
+```kotlin
+Descope.password.update(
+    "andy@example.com",
+    "newSecurePassword456!",
+    "user-refresh-jwt"
+)
+```
+
+#### Replace Password
+
+To replace a user's password by providing their current password:
+
+```kotlin
+val descopeSession = Descope.password.replace(
+    "andy@example.com",
+    "securePassword123!",
+    "newSecurePassword456!"
+)
+```
+
+#### Send Password Reset Email
+
+Initiate a password reset by sending an email:
+
+```kotlin
+Descope.password.sendReset(
+    "andy@example.com",
+    "exampleauthschema://my-app.com/handle-reset"
+)
+```
+
 ## Additional Information
 
 To learn more please see the [Descope Documentation and API reference page](https://docs.descope.com/).
