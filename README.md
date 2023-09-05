@@ -314,7 +314,7 @@ The user will receive a code using the selected delivery method. Verify
 that code using:
 
 ```kotlin
-val descopeSession = Descope.otp.verify(DeliveryMethod.Email, "andy@example.com", "123456")
+val authResponse = Descope.otp.verify(DeliveryMethod.Email, "andy@example.com", "123456")
 ```
 
 ### Magic Link
@@ -336,7 +336,7 @@ To verify a magic link, your redirect page must call the validation function
 on the token (`t`) parameter (`https://your-redirect-address.com/verify?t=<token>`):
 
 ```kotlin
-val descopeSession = Descope.magiclink.verify("<token>")
+val authResponse = Descope.magiclink.verify("<token>")
 ```
 
 ### OAuth
@@ -435,7 +435,71 @@ image or inserting the key manually. After that, signing in is done using the
 code the app produces.
 
 ```kotlin
-val descopeSession = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
+val authResponse = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
+```
+
+### Password Authentication
+
+Authenticate users using a password.
+
+#### Sign Up with Password
+
+To create a new user that can later sign in with a password:
+
+```kotlin
+val authResponse = Descope.password.signUp(
+    "andy@example.com",
+    "securePassword123!",
+    SignUpDetails(
+        name = "Andy Rhoads"
+    )
+)
+```
+
+#### Sign In with Password
+
+Authenticate an existing user using a password:
+
+```kotlin
+val authResponse = Descope.password.signIn(
+    "andy@example.com",
+    "securePassword123!"
+)
+```
+
+#### Update Password
+
+If you need to update a user's password:
+
+```kotlin
+Descope.password.update(
+    "andy@example.com",
+    "newSecurePassword456!",
+    "user-refresh-jwt"
+)
+```
+
+#### Replace Password
+
+To replace a user's password by providing their current password:
+
+```kotlin
+val authResponse = Descope.password.replace(
+    "andy@example.com",
+    "securePassword123!",
+    "newSecurePassword456!"
+)
+```
+
+#### Send Password Reset Email
+
+Initiate a password reset by sending an email:
+
+```kotlin
+Descope.password.sendReset(
+    "andy@example.com",
+    "exampleauthschema://my-app.com/handle-reset"
+)
 ```
 
 ## Additional Information

@@ -644,11 +644,12 @@ interface DescopePassword {
      * @param loginId the identifier of the user to authenticate.
      * @param oldPassword the old (current) password.
      * @param newPassword the new password to set.
+     * @return an [AuthenticationResponse] upon successful replacement and verification.
      */
-    suspend fun replace(loginId: String, oldPassword: String, newPassword: String)
+    suspend fun replace(loginId: String, oldPassword: String, newPassword: String): AuthenticationResponse
 
     /** @see replace */
-    fun replace(loginId: String, oldPassword: String, newPassword: String, callback: (Result<Unit>) -> Unit)
+    fun replace(loginId: String, oldPassword: String, newPassword: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Sends a password reset email to the user.

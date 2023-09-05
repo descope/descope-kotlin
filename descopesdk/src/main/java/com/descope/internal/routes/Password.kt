@@ -31,10 +31,10 @@ internal class Password(private val client: DescopeClient) : DescopePassword {
         update(loginId, newPassword, refreshJwt)
     }
 
-    override suspend fun replace(loginId: String, oldPassword: String, newPassword: String) =
-        client.passwordReplace(loginId, oldPassword, newPassword)
+    override suspend fun replace(loginId: String, oldPassword: String, newPassword: String): AuthenticationResponse =
+        client.passwordReplace(loginId, oldPassword, newPassword).convert()
 
-    override fun replace(loginId: String, oldPassword: String, newPassword: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+    override fun replace(loginId: String, oldPassword: String, newPassword: String, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
         replace(loginId, oldPassword, newPassword)
     }
 
