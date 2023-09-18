@@ -350,7 +350,7 @@ To start a flow call:
 // If configured globally, the redirect URL is optional. If provided however, it will be used
 // instead of any global configuration.
 // Redirect the user to the returned URL to start the OAuth redirect chain
-val authURL = Descope.oauth.start(OAuthProvider.Github, redirectURL = "exampleauthschema://my-app.com/handle-oauth")
+val authURL = Descope.oauth.start(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
 ```
 
 Take the generated URL and authenticate the user using `Chrome Custom Tabs`
@@ -385,7 +385,7 @@ To start a flow call:
 // If configured globally, the return URL is optional. If provided however, it will be used
 // instead of any global configuration.
 // Redirect the user to the returned URL to start the SSO/SAML redirect chain
-val authURL = Descope.sso.start(emailOrTenantId = "my-tenant-ID", redirectURL = "exampleauthschema://my-app.com/handle-saml")
+val authURL = Descope.sso.start(emailOrTenantId = "my-tenant-ID", redirectUrl = "exampleauthschema://my-app.com/handle-saml")
 ```
 
 Take the generated URL and authenticate the user using `Chrome Custom Tabs`

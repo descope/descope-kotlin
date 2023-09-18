@@ -32,11 +32,10 @@ object Descope {
      *
      * - **Note:** This is a shortcut for setting the [Descope.config] property.
      */
-    var projectId: String = ""
+    var projectId: String
         get() = config.projectId
         set(value) {
             config = DescopeConfig(projectId = value)
-            field = value
         }
 
     /**
@@ -133,4 +132,4 @@ val Descope.name: String
 
 /** The Descope SDK version */
 val Descope.version: String
-    get() = "0.9.2"
+    get() = "0.9.3"

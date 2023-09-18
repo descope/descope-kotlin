@@ -499,6 +499,12 @@ interface DescopeOAuth {
      * This function returns a URL to redirect to in order to
      * authenticate the user against the chosen [provider].
      *
+     *     // use one of the built in constants for the OAuth provider
+     *     val authUrl = Descope.oauth.start(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     *     // or pass a string with the name of a custom provider
+     *     val authUrl = Descope.oauth.start(OAuthProvider("myprovider"), redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
      * - **Important:** Make sure a default OAuth redirect URL is configured
      * in the Descope console, or provided by this call via [redirectUrl]. It should
      * redirect back to this app using a deep link. See examples for more information.

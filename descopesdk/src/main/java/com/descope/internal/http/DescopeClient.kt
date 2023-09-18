@@ -1,9 +1,11 @@
 package com.descope.internal.http
 
+import com.descope.Descope
 import com.descope.sdk.DescopeConfig
 import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
 import com.descope.types.SignUpDetails
+import com.descope.version
 
 internal class DescopeClient(private val config: DescopeConfig) : HttpClient(config.baseUrl) {
 
@@ -332,7 +334,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     override val defaultHeaders: Map<String, String> = mapOf(
         "Authorization" to "Bearer ${config.projectId}",
         "x-descope-sdk-name" to "android",
-        "x-descope-sdk-version" to "0.1.0",
+        "x-descope-sdk-version" to Descope.version,
     )
 
     // Internal
