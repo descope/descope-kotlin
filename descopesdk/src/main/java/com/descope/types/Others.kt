@@ -10,13 +10,17 @@ enum class DeliveryMethod {
 }
 
 /** The provider to use in an OAuth flow. */
-enum class OAuthProvider {
-    Facebook,
-    Github,
-    Google,
-    Microsoft,
-    Gitlab,
-    Apple,
+data class OAuthProvider(val name: String) {
+    companion object {
+        val Facebook = OAuthProvider("facebook")
+        val Github = OAuthProvider("github")
+        val Google = OAuthProvider("google")
+        val Microsoft = OAuthProvider("microsoft")
+        val Gitlab = OAuthProvider("gitlab")
+        val Apple = OAuthProvider("apple")
+        val Slack = OAuthProvider("slack")
+        val Discord = OAuthProvider("discord")
+    }
 }
 
 // Classes
