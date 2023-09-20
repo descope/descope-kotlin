@@ -6,7 +6,11 @@ written for Android. You can read more on the [Descope Website](https://descope.
 
 ## Setup
 
-Coming soon...
+Add the following to your `build.gradle` dependencies:
+
+```groovy
+implementation 'com.descope:descope-kotlin:0.9.3'
+```
 
 ## Quickstart
 

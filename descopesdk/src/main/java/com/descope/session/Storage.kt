@@ -14,7 +14,7 @@ import org.json.JSONObject
 
 
 /**
- * This protocol can be used to customize how a [DescopeSessionManager] object
+ * This interface can be used to customize how a [DescopeSessionManager] object
  * stores the active [DescopeSession] between application launches.
  */
 interface DescopeSessionStorage {
@@ -43,9 +43,6 @@ interface DescopeSessionStorage {
 
 /**
  * The default implementation of the [DescopeSessionStorage] interface.
- *
- * The `SessionStorage` class ensures that the [DescopeSession] is kept in
- * a secure manner in the device's keychain.
  *
  * By default, the `SessionStorage` persists the [DescopeSession] securely using
  * [EncryptedSharedPreferences]. This another layer of precaution over the fact

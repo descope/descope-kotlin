@@ -27,7 +27,7 @@ interface DescopeSessionLifecycle {
 }
 
 /**
- * The default implementation of the `DescopeSessionLifecycle` protocol.
+ * The default implementation of the `DescopeSessionLifecycle` interface.
  *
  * The `SessionLifecycle` class periodically checks if the session needs to be
  * refreshed (every 30 seconds by default). The [refreshSessionIfNeeded] function

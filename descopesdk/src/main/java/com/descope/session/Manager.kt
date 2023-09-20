@@ -107,10 +107,10 @@ class DescopeSessionManager(
 
     /**
      * Clears any active [DescopeSession] from this manager and removes it
-     * from the keychain.
+     * from the storage.
      *
      * You should call this function as part of a logout flow in the host application.
-     * The `session` property is set to `nil` and the session won't be reloaded in
+     * The `session` property is set to `null` and the session won't be reloaded in
      * subsequent application launches.
      *
      * - **Important:** The default [DescopeSessionStorage] only keeps at most
@@ -170,7 +170,7 @@ class DescopeSessionManager(
      *
      * This function accepts a [DescopeUser] value as a parameter which is returned by
      * calls to `Descope.auth.me`. The manager saves the updated session to the
-     * keychain before returning.
+     * storage before returning.
      *
      *     val userResponse = Descope.auth.me(session.refreshJwt)
      *     Descope.sessionManager.updateUser(userResponse)

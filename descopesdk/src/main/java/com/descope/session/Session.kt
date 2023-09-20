@@ -130,7 +130,7 @@ fun DescopeSession.roles(tenant: String? = null): List<String> = refreshToken.ro
 /**
  * Updates the underlying JWTs with those from a `RefreshResponse`.
  *
- *     if session.sessionToken.isExpired {
+ *     if (session.sessionToken.isExpired) {
  *         val refreshResponse = Descope.auth.refreshSession(session.refreshJwt)
  *         session.updateTokens(refreshResponse)
  *     }
