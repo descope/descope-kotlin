@@ -4,7 +4,7 @@ import android.net.Uri
 import com.descope.session.DescopeSession
 
 /**
- * The `DescopeUser` struct represents an existing user in Descope.
+ * The `DescopeUser` data class represents an existing user in Descope.
  *
  * After a user is signed in with any authentication method the [DescopeSession] object
  * keeps a `DescopeUser` value in its [DescopeSession.user] property so the user's details are always
@@ -42,15 +42,15 @@ import com.descope.session.DescopeSession
  * @property name the user's full name.
  * @property picture the user's profile picture.
  * @property email the user's email address.
- * If this is non-nil and the `isVerifiedEmail` flag is `true` then this email address
+ * If this is non-null and the `isVerifiedEmail` flag is `true` then this email address
  * can be used to do email based authentications such as magic link, OTP, etc.
  * @property isVerifiedEmail whether the email address has been verified to be a valid authentication method
- * for this user. If `email` is `nil` then this is always `false`.
+ * for this user. If `email` is `null` then this is always `false`.
  * @property phone the user's phone number.
- * If this is non-nil and the `isVerifiedPhone` flag is `true` then this phone number
+ * If this is non-null and the `isVerifiedPhone` flag is `true` then this phone number
  * can be used to do phone based authentications such as OTP.
  * @property isVerifiedPhone whether the phone number has been verified to be a valid authentication method
- * for this user. If `phone` is `nil` then this is always `false`.
+ * for this user. If `phone` is `null` then this is always `false`.
  */
 data class DescopeUser(
     val userId: String,

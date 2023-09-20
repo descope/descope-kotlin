@@ -118,7 +118,7 @@ object Descope {
     val password: DescopePassword
         get() = sdk.password
 
-    // The underlying `DescopeSDK` object used by the `Descope` singleton.
+    // The underlying `DescopeSdk` object used by the `Descope` singleton.
     private val sdk: DescopeSdk by lazy {
         DescopeSdk(config = config)
     }
