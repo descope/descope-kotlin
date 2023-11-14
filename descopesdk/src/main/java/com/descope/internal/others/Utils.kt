@@ -12,6 +12,37 @@ internal fun JSONObject.stringOrEmptyAsNull(key: String): String? = try {
     null
 }
 
+internal fun JSONObject.toMap(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>()
+    keys().forEach { key ->
+        map[key] = when(val obj = get(key)) {
+            is JSONObject -> obj.toMap()
+            is JSONArray -> obj.toList()
+            else -> obj
+        }
+    }
+    return map.toMap()
+}
+
+internal fun JSONArray.toList(): List<Any> {
+    val list = mutableListOf<Any>()
+    for (i in 0 until length()) {
+        list.add(when(val obj = get(i)) {
+            is JSONObject -> obj.toMap()
+            is JSONArray -> obj.toList()
+            else -> obj
+        })
+    }
+    return list
+}
+
+internal fun JSONObject.optionalMap(key: String): Map<String, Any> = try {
+    val obj = getJSONObject(key)
+    obj.toMap()
+} catch (ignored: JSONException) {
+    emptyMap()
+}
+
 internal fun JSONArray.toStringList(): List<String> {
     val list = mutableListOf<String>()
     for (i in 0 until length()) {
@@ -20,7 +51,26 @@ internal fun JSONArray.toStringList(): List<String> {
     return list
 }
 
-internal fun List<String>.toJsonArray(): JSONArray = JSONArray().apply { this@toJsonArray.forEach { put(it) } }
+internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
+    this@toJsonArray.forEach {
+        when (it) {
+            is Map<*, *> -> put(it.toJsonObject())
+            is List<*> -> put(it.toJsonArray())
+            else -> put(it)
+        }
+    }
+}
+
+internal fun Map<*, *>.toJsonObject(): JSONObject = JSONObject().apply {
+    forEach {
+        val key = it.key as String
+        when (val value = it.value) {
+            is Map<*, *> -> put(key, value.toJsonObject())
+            is List<*> -> put(key, value.toJsonArray())
+            else -> put(key, it.value)
+        }
+    }
+}
 
 // General
 

@@ -24,6 +24,7 @@ internal fun UserResponse.convert(): DescopeUser = DescopeUser(
     isVerifiedEmail = verifiedEmail,
     phone = phone,
     isVerifiedPhone = verifiedPhone,
+    customAttributes = customAttributes,
 )
 
 internal fun JwtServerResponse.convert(): AuthenticationResponse {
