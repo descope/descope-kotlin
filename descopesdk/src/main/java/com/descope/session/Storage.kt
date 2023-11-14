@@ -5,8 +5,10 @@ import android.net.Uri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.descope.Descope
+import com.descope.internal.others.optionalMap
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonArray
+import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.toStringList
 import com.descope.internal.others.tryOrNull
 import com.descope.types.DescopeUser
@@ -185,6 +187,7 @@ private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
         isVerifiedEmail = optBoolean("isVerifiedEmail"),
         phone = stringOrEmptyAsNull("phone"),
         isVerifiedPhone = optBoolean("isVerifiedPhone"),
+        customAttributes = optionalMap("customAttributes")
     )
 }
 
@@ -198,6 +201,7 @@ private fun DescopeUser.toJson() = JSONObject().apply {
     put("isVerifiedEmail", isVerifiedEmail)
     put("phone", phone)
     put("isVerifiedPhone", isVerifiedPhone)
+    put("customAttributes", customAttributes.toJsonObject())
 }
 
 

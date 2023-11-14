@@ -51,6 +51,8 @@ import com.descope.session.DescopeSession
  * can be used to do phone based authentications such as OTP.
  * @property isVerifiedPhone whether the phone number has been verified to be a valid authentication method
  * for this user. If `phone` is `null` then this is always `false`.
+ * @property customAttributes a mapping of any custom attributes associated with this user.
+ * User custom attributes are managed via the Descope console.
  */
 data class DescopeUser(
     val userId: String,
@@ -62,4 +64,5 @@ data class DescopeUser(
     val isVerifiedEmail: Boolean,
     val phone: String?,
     val isVerifiedPhone: Boolean,
+    val customAttributes: Map<String, Any>
 )

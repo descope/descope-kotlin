@@ -1,5 +1,6 @@
 package com.descope.internal.http
 
+import com.descope.internal.others.optionalMap
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toStringList
@@ -33,6 +34,7 @@ internal data class UserResponse(
     val phone: String?,
     val verifiedPhone: Boolean,
     val createdTime: Long,
+    val customAttributes: Map<String, Any>,
 ) {
     companion object {
         fun fromJson(json: String) = fromJson(JSONObject(json))
@@ -48,6 +50,7 @@ internal data class UserResponse(
                 phone = stringOrEmptyAsNull("phone"),
                 verifiedPhone = optBoolean("verifiedPhone"),
                 createdTime = getLong("createdTime").secToMs(),
+                customAttributes = optionalMap("customAttributes"),
             )
         }
     }
