@@ -1,6 +1,12 @@
 package com.descope.internal.http
 
 import android.net.Uri
+import com.descope.internal.others.with
+import com.descope.sdk.DescopeLogger
+import com.descope.sdk.DescopeLogger.Level.Debug
+import com.descope.sdk.DescopeLogger.Level.Error
+import com.descope.sdk.DescopeLogger.Level.Info
+import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -9,6 +15,7 @@ import javax.net.ssl.HttpsURLConnection
 
 internal open class HttpClient(
     private val baseUrl: String,
+    private val logger: DescopeLogger?,
 ) {
 
     // Convenience functions
@@ -33,6 +40,8 @@ internal open class HttpClient(
     open val basePath = "/"
 
     open val defaultHeaders: Map<String, String> = emptyMap()
+    
+    open fun exceptionFromResponse(response: String): Exception? = null
 
     // Internal
 
@@ -45,6 +54,7 @@ internal open class HttpClient(
         params: Map<String, String?>,
     ): T = withContext(Dispatchers.IO) {
         val url = makeUrl(route, params)
+        logger?.log(Info, "Starting network call", url)
 
         val connection = url.openConnection() as HttpsURLConnection
         try {
@@ -55,12 +65,13 @@ internal open class HttpClient(
 
             // Send body if needed
             body?.run {
+                logger?.log(Debug, "Sending request body", this)
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.doOutput = true
                 // Send the request
                 connection.outputStream.bufferedWriter().use {
                     it.write(JSONObject().apply {
-                        filterValues { value ->  value != null }
+                        filterValues { value -> value != null }
                             .forEach { entry -> put(entry.key, entry.value) }
                     }.toString())
                     it.flush()
@@ -71,12 +82,25 @@ internal open class HttpClient(
             val responseCode = connection.responseCode
             if (responseCode == HttpsURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
+                logger?.log(Debug, "Received response body", response)
                 decoder(response)
             } else {
-                // TODO: handle error responses and network errors
-                throw Exception("Network error")
+                val response = connection.errorStream.bufferedReader().use { it.readText() }
+                exceptionFromResponse(response)?.run {
+                    logger?.log(Info, "Network call failed with server error", url, responseCode, this)
+                    throw this
+                }
+                logger?.log(Info, "Network call failed with server error", url, responseCode)
+                throw exceptionFromResponseCode(responseCode) ?: Exception("Network error")
             }
+        } catch (e: Exception) {
+            if (e !is DescopeException) {
+                logger?.log(Error, "Network call failed with network error", url, e)
+                throw DescopeException.networkError.with(cause = e)
+            }
+            throw e
         } finally {
+            logger?.log(Info, "Network call finished", url)
             connection.disconnect()
         }
     }

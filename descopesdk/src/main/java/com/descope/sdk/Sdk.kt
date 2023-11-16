@@ -1,9 +1,9 @@
 package com.descope.sdk
 
-import com.descope.internal.routes.Flow
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
+import com.descope.internal.routes.Flow
 import com.descope.internal.routes.MagicLink
 import com.descope.internal.routes.OAuth
 import com.descope.internal.routes.Otp
@@ -59,5 +59,15 @@ class DescopeSdk(val config: DescopeConfig) {
         val manager = DescopeSessionManager(storage, lifecycle)
         this.manager = manager
         return manager
+    }
+
+    // SDK information
+
+    companion object {
+        /** The Descope SDK name */
+        const val name = "DescopeAndroid"
+
+        /** The Descope SDK version */
+        const val version = "0.9.3"
     }
 }

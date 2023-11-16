@@ -1,13 +1,12 @@
 package com.descope.internal.http
 
-import com.descope.Descope
 import com.descope.sdk.DescopeConfig
+import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
 import com.descope.types.SignUpDetails
-import com.descope.version
 
-internal class DescopeClient(private val config: DescopeConfig) : HttpClient(config.baseUrl) {
+internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger) {
 
     // OTP
 
@@ -261,7 +260,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     // OAuth
 
     suspend fun oauthStart(provider: OAuthProvider, redirectUrl: String?): OAuthServerResponse = post(
-        route="auth/oauth/authorize",
+        route = "auth/oauth/authorize",
         decoder = OAuthServerResponse::fromJson,
         params = mapOf(
             "provider" to provider.name,
@@ -270,7 +269,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun oauthExchange(code: String): JwtServerResponse = post(
-        route="auth/oauth/exchange",
+        route = "auth/oauth/exchange",
         decoder = JwtServerResponse::fromJson,
         body = mapOf(
             "code" to code,
@@ -280,7 +279,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     // SSO
 
     suspend fun ssoStart(emailOrTenantId: String, redirectUrl: String?): SsoServerResponse = post(
-        route="auth/saml/authorize",
+        route = "auth/saml/authorize",
         decoder = SsoServerResponse::fromJson,
         params = mapOf(
             "tenant" to emailOrTenantId,
@@ -289,7 +288,7 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     )
 
     suspend fun ssoExchange(code: String): JwtServerResponse = post(
-        route="auth/saml/exchange",
+        route = "auth/saml/exchange",
         decoder = JwtServerResponse::fromJson,
         body = mapOf(
             "code" to code,
@@ -334,8 +333,10 @@ internal class DescopeClient(private val config: DescopeConfig) : HttpClient(con
     override val defaultHeaders: Map<String, String> = mapOf(
         "Authorization" to "Bearer ${config.projectId}",
         "x-descope-sdk-name" to "android",
-        "x-descope-sdk-version" to Descope.version,
+        "x-descope-sdk-version" to DescopeSdk.version,
     )
+
+    override fun exceptionFromResponse(response: String): Exception? = parseServerError(response)
 
     // Internal
 
