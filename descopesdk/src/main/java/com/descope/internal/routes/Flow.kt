@@ -4,8 +4,12 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.others.with
 import com.descope.sdk.DescopeFlow
+import com.descope.sdk.DescopeLogger
+import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
+import com.descope.types.DescopeException
 import com.descope.types.Result
 import java.security.MessageDigest
 import kotlin.io.encoding.Base64
@@ -14,8 +18,8 @@ import kotlin.random.Random
 
 @OptIn(ExperimentalEncodingApi::class)
 internal class Flow(
-    private val client: DescopeClient
-) : DescopeFlow {
+    override val client: DescopeClient
+) : Route, DescopeFlow {
 
     override var currentRunner: DescopeFlow.Runner? = null
         private set
@@ -34,6 +38,7 @@ internal class Flow(
         private lateinit var codeVerifier: String
 
         override fun start(context: Context) {
+            log(Info, "Starting flow authentication", flowUrl)
             // create some random bytes
             val randomBytes = ByteArray(32)
             Random.nextBytes(randomBytes)
@@ -72,10 +77,11 @@ internal class Flow(
 
         override suspend fun exchange(incomingUri: Uri): AuthenticationResponse {
             // make sure start has been called
-            if (!this::codeVerifier.isInitialized) throw Exception("`start(context)` must be called before exchange")
+            if (!this::codeVerifier.isInitialized) throw DescopeException.flowFailed.with(desc = "`start(context)` must be called before exchange")
 
             // get the `code` url param from the incoming uri and exchange it
-            val authorizationCode = incomingUri.getQueryParameter("code") ?: throw Exception("No code parameter on incoming URI")
+            val authorizationCode = incomingUri.getQueryParameter("code") ?: throw DescopeException.flowFailed.with(desc = "No code parameter on incoming URI")
+            log(Info, "Exchanging flow authorization code for session", authorizationCode)
             if (currentRunner === this) currentRunner = null
             return client.flowExchange(authorizationCode, codeVerifier).convert()
         }
@@ -85,7 +91,7 @@ internal class Flow(
         }
 
     }
-
+    
 }
 
 private fun launchUri(context: Context, uri: Uri) {

@@ -2,8 +2,10 @@ package com.descope.session
 
 import androidx.annotation.VisibleForTesting
 import com.descope.internal.others.secToMs
+import com.descope.internal.others.toMap
 import com.descope.internal.others.tryOrNull
-import org.json.JSONArray
+import com.descope.internal.others.with
+import com.descope.types.DescopeException
 import org.json.JSONObject
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -86,7 +88,7 @@ internal class Token(
             claims = map.filter { Claim.isCustom(it.key) }
             allClaims = map
         } catch (e: Exception) {
-            throw IllegalArgumentException("Error decoding token", e) // TODO: replace with DescopeError
+            throw DescopeException.tokenError.with(cause = e)
         }
     }
 
@@ -114,17 +116,39 @@ internal class Token(
         }
 
     private inline fun <reified T> getValueForTenant(tenant: String, key: String): T {
-        val foundTenant = getTenants()[tenant]
-            ?: throw IllegalArgumentException("Missing tenant") // TODO: replace with DescopeError
+        val foundTenant = getTenants()[tenant] ?: throw TokenException.MissingTenant(tenant)
         if (foundTenant is Map<*, *>) {
             foundTenant[key]?.run {
                 if (this is T) return this
             }
         }
-        throw IllegalArgumentException("Invalid tenant") // TODO: replace with DescopeError
+        throw TokenException.InvalidTenant(tenant)
     }
 
     private fun getTenants(): Map<String, Any> = getClaim(Claim.Tenants, allClaims)
+}
+
+// Error
+
+private sealed class TokenException : Exception() {
+    class InvalidFormat : TokenException()
+    class InvalidEncoding : TokenException()
+    class InvalidData : TokenException()
+    class MissingClaim(val claim: String) : TokenException()
+    class InvalidClaim(val claim: String) : TokenException()
+    class MissingTenant(val tenant: String) : TokenException()
+    class InvalidTenant(val tenant: String) : TokenException()
+
+    override val message: String?
+        get() = when (this) {
+            is InvalidFormat -> "Invalid token format"
+            is InvalidEncoding -> "Invalid token encoding"
+            is InvalidData -> "Invalid token data"
+            is MissingClaim -> "Missing $claim claim in token"
+            is InvalidClaim -> "Invalid $claim claim in token"
+            is MissingTenant -> "Tenant $tenant not found in token"
+            is InvalidTenant -> "Invalid data for tenant $tenant in token"
+        }
 }
 
 // Claims
@@ -148,8 +172,8 @@ private inline fun <reified T> getClaim(claim: Claim, map: Map<String, Any>): T 
     getClaim(claim.key, map)
 
 private inline fun <reified T> getClaim(claim: String, map: Map<String, Any>): T {
-    val obj = map[claim] ?: throw IllegalArgumentException("Missing claim") // TODO: replace with DescopeError
-    return obj as? T ?: throw IllegalArgumentException("Invalid claim") // TODO: replace with DescopeError
+    val obj = map[claim] ?: throw TokenException.MissingClaim(claim)
+    return obj as? T ?: throw TokenException.InvalidClaim(claim)
 }
 
 // JWT Decoding
@@ -157,46 +181,21 @@ private inline fun <reified T> getClaim(claim: String, map: Map<String, Any>): T
 @OptIn(ExperimentalEncodingApi::class)
 private fun decodeFragment(string: String): Map<String, Any> {
     val data = Base64.UrlSafe.decode(string)
-    val json = JSONObject(String(data))
-    return json.toMap()
+    try {
+        val json = JSONObject(String(data))
+        return json.toMap()
+    } catch (_: Exception) {
+        throw TokenException.InvalidData()
+    }
 }
 
 @VisibleForTesting
 fun decodeJwt(jwt: String): Map<String, Any> {
     val fragments = jwt.split(".")
-    if (fragments.size != 3) throw IllegalArgumentException("Invalid format") // TODO: replace with DescopeError
+    if (fragments.size != 3) throw TokenException.InvalidEncoding()
     return decodeFragment(fragments[1])
 }
 
 private fun decodeIssuer(issuer: String): String =
     issuer.split("/").lastOrNull()
-        ?: throw IllegalArgumentException("Invalid format") // TODO: replace with DescopeError
-
-// JSON Transformations
-
-private fun JSONObject.toMap(): Map<String, Any> {
-    val map = mutableMapOf<String, Any>()
-    val iterator = keys()
-    while (iterator.hasNext()) {
-        val key = iterator.next()
-        map[key] = when (val value = get(key)) {
-            is JSONArray -> value.toList()
-            is JSONObject -> value.toMap()
-            else -> value
-        }
-    }
-    return map
-}
-
-private fun JSONArray.toList(): List<Any> {
-    val list = mutableListOf<Any>()
-    for (i in 0 until this.length()) {
-        val value = when (val value = this[i]) {
-            is JSONArray -> value.toList()
-            is JSONObject -> value.toMap()
-            else -> value
-        }
-        list.add(value)
-    }
-    return list
-}
+        ?: throw TokenException.InvalidFormat()

@@ -123,13 +123,3 @@ object Descope {
         DescopeSdk(config = config)
     }
 }
-
-// SDK information
-
-/** The Descope SDK name */
-val Descope.name: String
-    get() = "DescopeAndroid"
-
-/** The Descope SDK version */
-val Descope.version: String
-    get() = "0.9.3"
