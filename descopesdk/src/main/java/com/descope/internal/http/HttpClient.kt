@@ -10,6 +10,9 @@ import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.HttpCookie
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
@@ -22,14 +25,14 @@ internal open class HttpClient(
 
     suspend fun <T> get(
         route: String,
-        decoder: (String) -> T,
+        decoder: (String, List<HttpCookie>) -> T,
         headers: Map<String, String> = emptyMap(),
         params: Map<String, String?> = emptyMap(),
     ) = call(route, "GET", decoder, headers = headers, params = params)
 
     suspend fun <T> post(
         route: String,
-        decoder: (String) -> T,
+        decoder: (String, List<HttpCookie>) -> T,
         body: Map<String, Any?> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         params: Map<String, String?> = emptyMap(),
@@ -40,7 +43,7 @@ internal open class HttpClient(
     open val basePath = "/"
 
     open val defaultHeaders: Map<String, String> = emptyMap()
-    
+
     open fun exceptionFromResponse(response: String): Exception? = null
 
     // Internal
@@ -48,7 +51,7 @@ internal open class HttpClient(
     private suspend fun <T> call(
         route: String,
         method: String,
-        decoder: (String) -> T,
+        decoder: (String, List<HttpCookie>) -> T,
         body: Map<String, Any?>? = null,
         headers: Map<String, String>,
         params: Map<String, String?>,
@@ -56,6 +59,8 @@ internal open class HttpClient(
         val url = makeUrl(route, params)
         logger?.log(Info, "Starting network call", url)
 
+        val cookieManager = CookieManager()
+        CookieHandler.setDefault(cookieManager)
         val connection = url.openConnection() as HttpsURLConnection
         try {
             connection.requestMethod = method
@@ -83,7 +88,7 @@ internal open class HttpClient(
             if (responseCode == HttpsURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 logger?.log(Debug, "Received response body", response)
-                decoder(response)
+                decoder(response, cookieManager.cookieStore.cookies)
             } else {
                 val response = connection.errorStream.bufferedReader().use { it.readText() }
                 exceptionFromResponse(response)?.run {

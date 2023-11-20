@@ -5,18 +5,33 @@ import com.descope.internal.others.secToMs
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toStringList
 import org.json.JSONObject
+import java.net.HttpCookie
+
+private const val SESSION_COOKIE_NAME = "DS"
+private const val REFRESH_COOKIE_NAME = "DSR"
 
 internal data class JwtServerResponse(
-    val sessionJwt: String,
+    val sessionJwt: String?,
     val refreshJwt: String?,
     val user: UserResponse?,
     val firstSeen: Boolean,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            var sessionJwt: String? = null
+            var refreshJwt: String? = null
+
+            // check cookies for tokens
+            cookies.forEach {
+                when (it.name) {
+                    SESSION_COOKIE_NAME -> sessionJwt = it.value
+                    REFRESH_COOKIE_NAME -> refreshJwt = it.value
+                }
+            }
+
             JwtServerResponse(
-                sessionJwt = getString("sessionJwt"),
-                refreshJwt = stringOrEmptyAsNull("refreshJwt"),
+                sessionJwt = stringOrEmptyAsNull("sessionJwt") ?: sessionJwt,
+                refreshJwt = stringOrEmptyAsNull("refreshJwt") ?: refreshJwt,
                 user = optJSONObject("user")?.run { UserResponse.fromJson(this) },
                 firstSeen = optBoolean("firstSeen"),
             )
@@ -37,7 +52,8 @@ internal data class UserResponse(
     val customAttributes: Map<String, Any>,
 ) {
     companion object {
-        fun fromJson(json: String) = fromJson(JSONObject(json))
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = fromJson(JSONObject(json))
 
         fun fromJson(json: JSONObject) = json.run {
             UserResponse(
@@ -61,7 +77,8 @@ internal data class MaskedAddressServerResponse(
     val maskedPhone: String? = null,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             MaskedAddressServerResponse(
                 maskedEmail = stringOrEmptyAsNull("maskedEmail"),
                 maskedPhone = stringOrEmptyAsNull("maskedPhone"),
@@ -78,7 +95,8 @@ internal data class PasswordPolicyServerResponse(
     val nonAlphanumeric: Boolean,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             PasswordPolicyServerResponse(
                 minLength = getInt("minLength"),
                 lowercase = optBoolean("lowercase"),
@@ -96,7 +114,8 @@ internal data class EnchantedLinkServerResponse(
     val maskedEmail: String,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             EnchantedLinkServerResponse(
                 linkId = getString("linkId"),
                 pendingRef = getString("pendingRef"),
@@ -112,7 +131,8 @@ internal data class TotpServerResponse(
     val key: String,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             TotpServerResponse(
                 provisioningUrl = getString("provisioningUrl"),
                 image = getString("image").toByteArray(),
@@ -146,7 +166,8 @@ internal data class OAuthServerResponse(
     val url: String,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             OAuthServerResponse(
                 url = getString("url")
             )
@@ -158,7 +179,8 @@ internal data class SsoServerResponse(
     val url: String,
 ) {
     companion object {
-        fun fromJson(json: String) = JSONObject(json).run {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             SsoServerResponse(
                 url = getString("url")
             )
