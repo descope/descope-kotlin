@@ -10,8 +10,6 @@ import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.CookieHandler
-import java.net.CookieManager
 import java.net.HttpCookie
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -59,8 +57,6 @@ internal open class HttpClient(
         val url = makeUrl(route, params)
         logger?.log(Info, "Starting network call", url)
 
-        val cookieManager = CookieManager()
-        CookieHandler.setDefault(cookieManager)
         val connection = url.openConnection() as HttpsURLConnection
         try {
             connection.requestMethod = method
@@ -88,7 +84,7 @@ internal open class HttpClient(
             if (responseCode == HttpsURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 logger?.log(Debug, "Received response body", response)
-                decoder(response, cookieManager.cookieStore.cookies)
+                decoder(response, connection.cookies)
             } else {
                 val response = connection.errorStream.bufferedReader().use { it.readText() }
                 exceptionFromResponse(response)?.run {
@@ -122,3 +118,16 @@ internal open class HttpClient(
         return URL(urlString)
     }
 }
+
+private val HttpsURLConnection.cookies: List<HttpCookie>
+    get() {
+        val cookies = mutableListOf<HttpCookie>()
+        headerFields.keys.find { it?.lowercase() == "set-cookie" }?.let { key ->
+            headerFields[key]?.forEach {
+                try {
+                    cookies.addAll(HttpCookie.parse(it))
+                } catch (ignored: Exception) {}
+            }
+        }
+        return cookies.toList()
+    }
