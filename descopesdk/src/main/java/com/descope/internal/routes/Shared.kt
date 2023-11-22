@@ -40,6 +40,7 @@ internal fun UserResponse.convert(): DescopeUser = DescopeUser(
 )
 
 internal fun JwtServerResponse.convert(): AuthenticationResponse {
+    val sessionJwt = sessionJwt ?: throw DescopeException.decodeError.with(message = "Missing session JWT")
     val refreshJwt = refreshJwt ?: throw DescopeException.decodeError.with(message = "Missing refresh JWT")
     val user = user ?: throw DescopeException.decodeError.with(message = "Missing user details")
     return AuthenticationResponse(
@@ -50,10 +51,13 @@ internal fun JwtServerResponse.convert(): AuthenticationResponse {
     )
 }
 
-internal fun JwtServerResponse.toRefreshResponse(): RefreshResponse = RefreshResponse(
-    refreshToken = refreshJwt?.run { Token(this) },
-    sessionToken = Token(sessionJwt),
-)
+internal fun JwtServerResponse.toRefreshResponse(): RefreshResponse {
+    val sessionJwt = sessionJwt ?: throw DescopeException.decodeError.with(message = "Missing session JWT")
+    return RefreshResponse(
+        refreshToken = refreshJwt?.run { Token(this) },
+        sessionToken = Token(sessionJwt),
+    )
+}
 
 internal fun MaskedAddressServerResponse.convert(method: DeliveryMethod) = when (method) {
     DeliveryMethod.Email -> maskedEmail ?: throw DescopeException.decodeError.with(message = "masked email not received")

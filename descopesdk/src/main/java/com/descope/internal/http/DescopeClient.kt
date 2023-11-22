@@ -5,6 +5,7 @@ import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
 import com.descope.types.SignUpDetails
+import java.net.HttpCookie
 
 internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger) {
 
@@ -357,4 +358,4 @@ private fun DeliveryMethod.route() = this.name.lowercase()
 
 // Utilities
 
-private val emptyResponse: (String) -> Unit = {}
+private val emptyResponse: (String, List<HttpCookie>) -> Unit = {_, _ ->}
