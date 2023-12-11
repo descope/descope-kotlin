@@ -11,9 +11,11 @@ import com.descope.internal.others.toJsonArray
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.toStringList
 import com.descope.internal.others.tryOrNull
+import com.descope.sdk.DescopeLogger
+import com.descope.sdk.DescopeLogger.Level.Debug
+import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.types.DescopeUser
 import org.json.JSONObject
-
 
 /**
  * This interface can be used to customize how a [DescopeSessionManager] object
@@ -64,18 +66,20 @@ interface DescopeSessionStorage {
  * that uses a different backing store.
  *
  * @property projectId the Descope projectId
+ * @param logger an optional [DescopeLogger] for logging during development
  * @param store an optional implementation of [SessionStorage.Store]
  */
-class SessionStorage(private val projectId: String, store: Store? = null) : DescopeSessionStorage {
+class SessionStorage(private val projectId: String, logger: DescopeLogger? = null, store: Store? = null) : DescopeSessionStorage {
 
     private val store: Store
     private var lastValue: Value? = null
 
     init {
+        val context = Descope.provideApplicationContext?.invoke()
         this.store = when {
             store != null -> store
-            else -> Descope.provideApplicationContext?.run { EncryptedSharedPrefs(projectId, invoke()) }
-                ?: Store.none
+            context != null -> createEncryptedStore(context, projectId, logger)
+            else -> Store.none
         }
     }
 
@@ -92,7 +96,7 @@ class SessionStorage(private val projectId: String, store: Store? = null) : Desc
 
     override fun loadSession(): DescopeSession? =
         store.loadItem(projectId)?.run {
-            val value = tryOrNull { Value.deserialize(this) } ?: return null // TODO: maybe print an error here?
+            val value = tryOrNull { Value.deserialize(this) } ?: return null
             lastValue = value
             DescopeSession(
                 sessionJwt = value.sessionJwt,
@@ -204,4 +208,19 @@ private fun DescopeUser.toJson() = JSONObject().apply {
     put("customAttributes", customAttributes.toJsonObject())
 }
 
-
+private fun createEncryptedStore(context: Context, projectId: String, logger: DescopeLogger?): SessionStorage.Store {
+    try {
+        val storage = EncryptedSharedPrefs(projectId, context)
+        logger?.log(Debug, "Encrypted storage initialized successfully")
+        return storage
+    } catch (e: Exception) {
+        try {
+            logger?.log(Error, "Encrypted storage key unusable")
+            context.deleteSharedPreferences(projectId)
+            return EncryptedSharedPrefs(projectId, context)
+        } catch (e: Exception) {
+            logger?.log(Error, "Unable to initialize encrypted storage", e)
+            return SessionStorage.Store.none
+        }
+    }
+}
