@@ -352,6 +352,9 @@ private fun SignUpDetails.toMap() = mapOf(
     "email" to email,
     "phone" to phone,
     "name" to name,
+    "givenName" to givenName,
+    "middleName" to middleName,
+    "familyName" to familyName,
 )
 
 private fun DeliveryMethod.route() = this.name.lowercase()

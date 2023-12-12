@@ -53,6 +53,9 @@ import com.descope.session.DescopeSession
  * for this user. If `phone` is `null` then this is always `false`.
  * @property customAttributes a mapping of any custom attributes associated with this user.
  * User custom attributes are managed via the Descope console.
+ * @property givenName optional user's given name.
+ * @property middleName optional user's middle name.
+ * @property familyName optional user's family name.
  */
 data class DescopeUser(
     val userId: String,
@@ -64,5 +67,8 @@ data class DescopeUser(
     val isVerifiedEmail: Boolean,
     val phone: String?,
     val isVerifiedPhone: Boolean,
-    val customAttributes: Map<String, Any>
+    val customAttributes: Map<String, Any>,
+    val givenName: String?,
+    val middleName: String?,
+    val familyName: String?,
 )

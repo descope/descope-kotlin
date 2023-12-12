@@ -1,6 +1,7 @@
 package com.descope.internal.http
 
 import android.net.Uri
+import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Debug
@@ -9,7 +10,6 @@ import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.net.HttpCookie
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -71,10 +71,11 @@ internal open class HttpClient(
                 connection.doOutput = true
                 // Send the request
                 connection.outputStream.bufferedWriter().use {
-                    it.write(JSONObject().apply {
+                    it.write(
                         filterValues { value -> value != null }
-                            .forEach { entry -> put(entry.key, entry.value) }
-                    }.toString())
+                            .toJsonObject()
+                            .toString()
+                    )
                     it.flush()
                 }
             }
