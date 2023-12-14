@@ -50,6 +50,9 @@ internal data class UserResponse(
     val verifiedPhone: Boolean,
     val createdTime: Long,
     val customAttributes: Map<String, Any>,
+    val givenName: String?,
+    val middleName: String?,
+    val familyName: String?,
 ) {
     companion object {
         @Suppress("UNUSED_PARAMETER")
@@ -67,6 +70,9 @@ internal data class UserResponse(
                 verifiedPhone = optBoolean("verifiedPhone"),
                 createdTime = getLong("createdTime").secToMs(),
                 customAttributes = optionalMap("customAttributes"),
+                givenName = stringOrEmptyAsNull("givenName"),
+                middleName = stringOrEmptyAsNull("middleName"),
+                familyName = stringOrEmptyAsNull("familyName"),
             )
         }
     }

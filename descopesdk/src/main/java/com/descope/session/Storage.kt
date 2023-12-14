@@ -191,7 +191,10 @@ private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
         isVerifiedEmail = optBoolean("isVerifiedEmail"),
         phone = stringOrEmptyAsNull("phone"),
         isVerifiedPhone = optBoolean("isVerifiedPhone"),
-        customAttributes = optionalMap("customAttributes")
+        customAttributes = optionalMap("customAttributes"),
+        givenName = stringOrEmptyAsNull("givenName"),
+        middleName = stringOrEmptyAsNull("middleName"),
+        familyName = stringOrEmptyAsNull("familyName"),
     )
 }
 
@@ -206,6 +209,9 @@ private fun DescopeUser.toJson() = JSONObject().apply {
     put("phone", phone)
     put("isVerifiedPhone", isVerifiedPhone)
     put("customAttributes", customAttributes.toJsonObject())
+    put("givenName", givenName)
+    put("middleName", middleName)
+    put("familyName", familyName)
 }
 
 private fun createEncryptedStore(context: Context, projectId: String, logger: DescopeLogger?): SessionStorage.Store {

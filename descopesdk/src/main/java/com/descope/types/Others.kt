@@ -31,9 +31,15 @@ data class OAuthProvider(val name: String) {
  * @property name the user's name
  * @property email the user's email
  * @property phone the user's phone
+ * @property givenName the user's given name
+ * @property middleName the user's middle name
+ * @property familyName the user's family name
  */
 data class SignUpDetails (
     val name: String? = null,
     val email: String? = null,
     val phone: String? = null,
+    val givenName: String? = null,
+    val middleName: String? = null,
+    val familyName: String? = null,
 )

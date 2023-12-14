@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 internal interface Route {
     val client: DescopeClient
-    
+
     fun log(level: DescopeLogger.Level, message: String, vararg values: Any) {
         client.config.logger?.log(level, message, *values)
     }
@@ -37,6 +37,9 @@ internal fun UserResponse.convert(): DescopeUser = DescopeUser(
     phone = phone,
     isVerifiedPhone = verifiedPhone,
     customAttributes = customAttributes,
+    givenName = givenName,
+    middleName = middleName,
+    familyName = familyName,
 )
 
 internal fun JwtServerResponse.convert(): AuthenticationResponse {
