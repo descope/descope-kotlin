@@ -15,7 +15,7 @@ internal class Sso(private val client: DescopeClient): DescopeSso {
     }
 
     override suspend fun exchange(code: String): AuthenticationResponse =
-        client.oauthExchange(code).convert()
+        client.ssoExchange(code).convert()
 
     override fun exchange(code: String, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
         exchange(code)

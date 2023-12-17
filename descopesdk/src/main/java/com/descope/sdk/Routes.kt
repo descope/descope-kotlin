@@ -532,6 +532,38 @@ interface DescopeOAuth {
     /** @see exchange */
     fun exchange(code: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
+    /**
+     * Authenticates the user using the native Sign in with Google dialog.
+     *
+     * This API enables a more streamlined user experience than the equivalent browser
+     * based OAuth authentication, when using the `Google` provider or a custom provider
+     * that's configured for Google. The authentication presents a native dialog that lets
+     * the user sign in with the Google account they're already using on their device.
+     *
+     * If you haven't already configured your app to support Sign in with Google you'll
+     * probably need to set up your [Google APIs console project](https://developers.google.com/identity/one-tap/android/get-started#api-console)
+     * for this. You should also configure an OAuth provider for Google in the in the [Descope console](https://app.descope.com/settings/authentication/social),
+     * with its `Grant Type` set to `Implicit`. Also note that the `Client ID` and
+     * `Client Secret` should be set to the values of your `Web application` OAuth client,
+     * rather than those from the `Android` OAuth client.
+     * 
+     * For more details about configuring your app see the [Credential Manager documentation](https://developer.android.com/training/sign-in/credential-manager).
+     *
+     * Note: This is an asynchronous operation that performs network requests before and
+     * after displaying the modal authentication view. It is thus recommended to switch the
+     * user interface to a loading state before calling this function, otherwise the user
+     * might accidentally interact with the app when the authentication view is not
+     * being displayed.
+     *
+     * @param context the Activity context used to launch any UI needed.
+     * @param provider the provider the user wishes to authenticate with, this will usually
+     * either be `Google` or the name of a custom provider that's configured for Google.
+     * @return an [AuthenticationResponse] upon successful authentication.
+     */
+    suspend fun native(context: Context, provider: OAuthProvider): AuthenticationResponse
+
+    /** @see native */
+    fun native(context: Context, provider: OAuthProvider, callback: (Result<AuthenticationResponse>) -> Unit)
 }
 
 /**
@@ -610,12 +642,9 @@ interface DescopePassword {
     /**
      * Authenticates an existing user using a password.
      *
-     * Matches the provided [loginId] and [password].
-     * Returns an [AuthenticationResponse] upon successful authentication.
-     *
      * @param loginId the identifier of the user to authenticate.
      * @param password the password to verify.
-     * @return an [AuthenticationResponse] upon successful verification.
+     * @return an [AuthenticationResponse] upon successful authentication.
      */
     suspend fun signIn(loginId: String, password: String): AuthenticationResponse
 

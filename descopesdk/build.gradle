@@ -45,6 +45,9 @@ dependencies {
     api "androidx.lifecycle:lifecycle-process:2.6.2"
     api "androidx.security:security-crypto:1.0.0"
     api "androidx.browser:browser:1.7.0"
+    api "androidx.credentials:credentials:1.2.0"
+    api "androidx.credentials:credentials-play-services-auth:1.2.0"
+    api "com.google.android.libraries.identity.googleid:googleid:1.1.0"
 
     // Test Dependencies
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3"

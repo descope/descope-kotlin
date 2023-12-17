@@ -260,7 +260,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // OAuth
 
-    suspend fun oauthStart(provider: OAuthProvider, redirectUrl: String?): OAuthServerResponse = post(
+    suspend fun oauthWebStart(provider: OAuthProvider, redirectUrl: String?): OAuthServerResponse = post(
         route = "auth/oauth/authorize",
         decoder = OAuthServerResponse::fromJson,
         params = mapOf(
@@ -269,11 +269,29 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun oauthExchange(code: String): JwtServerResponse = post(
+    suspend fun oauthWebExchange(code: String): JwtServerResponse = post(
         route = "auth/oauth/exchange",
         decoder = JwtServerResponse::fromJson,
         body = mapOf(
             "code" to code,
+        ),
+    )
+
+    suspend fun oauthNativeStart(provider: OAuthProvider): OAuthNativeStartServerResponse = post(
+        route = "auth/oauth/native/start",
+        decoder = OAuthNativeStartServerResponse::fromJson,
+        body = mapOf(
+            "provider" to provider.name,
+        ),
+    )
+
+    suspend fun oauthNativeFinish(provider: OAuthProvider, stateId: String, identityToken: String): JwtServerResponse = post(
+        route = "auth/oauth/native/finish",
+        decoder = JwtServerResponse::fromJson,
+        body = mapOf(
+            "provider" to provider.name,
+            "stateId" to stateId,
+            "idToken" to identityToken,
         ),
     )
 
