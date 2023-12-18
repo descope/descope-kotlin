@@ -6,6 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.with
@@ -66,6 +67,8 @@ internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
         return try {
             val credentialManager = CredentialManager.create(context)
             credentialManager.getCredential(context, request)
+        } catch (e: GetCredentialCancellationException) {
+            throw DescopeException.oauthNativeCancelled
         } catch (e: GetCredentialException) {
             throw DescopeException.oauthNativeFailed.with(cause = e)
         }
