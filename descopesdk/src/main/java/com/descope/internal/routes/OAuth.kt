@@ -39,7 +39,7 @@ internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
         val startResponse = client.oauthNativeStart(provider)
         
         if (!startResponse.implicit) {
-            throw DescopeException.oauthNativeFailed.with(message = "OAuth provider cannot require implicit authentication")
+            throw DescopeException.oauthNativeFailed.with(message = "OAuth provider grant type must be set to implicit")
         }
         
         val authorization = performAuthorization(context, startResponse.clientId, startResponse.nonce)
