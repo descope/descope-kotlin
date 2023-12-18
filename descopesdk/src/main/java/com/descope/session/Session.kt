@@ -1,5 +1,6 @@
 package com.descope.session
 
+import android.text.format.DateFormat
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeUser
 import com.descope.types.RefreshResponse
@@ -87,6 +88,15 @@ class DescopeSession(sessionToken: DescopeToken, refreshToken: DescopeToken, use
                 user == session.user
     }
 
+    override fun toString(): String {
+        var expires = "expires=Never"
+        refreshToken.expiresAt?.let {
+            val label = if (refreshToken.isExpired) "expired" else "expires"
+            val date = DateFormat.format("yyyy-MM-dd HH:mm:ss", it)
+            expires = "$label=$date"
+        }
+        return "DescopeSession(userId=${user.userId}, $expires)"
+    }
 }
 
 // Convenience accessors for getting values from the underlying JWTs.
