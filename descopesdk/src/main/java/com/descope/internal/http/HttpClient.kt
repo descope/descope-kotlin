@@ -71,11 +71,7 @@ internal open class HttpClient(
                 connection.doOutput = true
                 // Send the request
                 connection.outputStream.bufferedWriter().use {
-                    it.write(
-                        filterValues { value -> value != null }
-                            .toJsonObject()
-                            .toString()
-                    )
+                    it.write(toJsonObject().toString())
                     it.flush()
                 }
             }

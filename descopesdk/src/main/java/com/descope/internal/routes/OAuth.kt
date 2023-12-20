@@ -18,14 +18,15 @@ import com.descope.types.Result
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.descope.types.SignInOptions
 
 internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
 
-    override suspend fun start(provider: OAuthProvider, redirectUrl: String?): String =
-        client.oauthWebStart(provider, redirectUrl).url
+    override suspend fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        client.oauthWebStart(provider, redirectUrl, options).url
 
-    override fun start(provider: OAuthProvider, redirectUrl: String?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        start(provider, redirectUrl)
+    override fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        start(provider, redirectUrl, options)
     }
 
     override suspend fun exchange(code: String): AuthenticationResponse =
@@ -35,8 +36,8 @@ internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
         exchange(code)
     }
     
-    override suspend fun native(context: Context, provider: OAuthProvider): AuthenticationResponse {
-        val startResponse = client.oauthNativeStart(provider)
+    override suspend fun native(context: Context, provider: OAuthProvider, options: List<SignInOptions>?): AuthenticationResponse {
+        val startResponse = client.oauthNativeStart(provider, options)
         
         if (!startResponse.implicit) {
             throw DescopeException.oauthNativeFailed.with(message = "OAuth provider grant type must be set to implicit")
@@ -47,8 +48,8 @@ internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
         return client.oauthNativeFinish(provider, startResponse.stateId, identityToken).convert()
     }
 
-    override fun native(context: Context, provider: OAuthProvider, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
-        native(context, provider)
+    override fun native(context: Context, provider: OAuthProvider, options: List<SignInOptions>?, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
+        native(context, provider, options)
     }
     
     private suspend fun performAuthorization(context: Context, clientId: String, nonce: String?): GetCredentialResponse {

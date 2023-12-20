@@ -3,13 +3,13 @@ package com.descope.internal.routes
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.EnchantedLinkServerResponse
 import com.descope.sdk.DescopeEnchantedLink
-import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.EnchantedLinkResponse
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import kotlinx.coroutines.delay
 
@@ -24,18 +24,18 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
         signUp(loginId, details, uri)
     }
 
-    override suspend fun signIn(loginId: String, uri: String?): EnchantedLinkResponse =
-        client.enchantedLinkSignIn(loginId, uri).convert()
+    override suspend fun signIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignIn(loginId, uri, options).convert()
 
-    override fun signIn(loginId: String, uri: String?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        signIn(loginId, uri)
+    override fun signIn(loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
+        signIn(loginId, uri, options)
     }
 
-    override suspend fun signUpOrIn(loginId: String, uri: String?): EnchantedLinkResponse =
-        client.enchantedLinkSignUpOrIn(loginId, uri).convert()
+    override suspend fun signUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignUpOrIn(loginId, uri, options).convert()
 
-    override fun signUpOrIn(loginId: String, uri: String?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        signUpOrIn(loginId, uri)
+    override fun signUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
+        signUpOrIn(loginId, uri, options)
     }
 
     override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String): EnchantedLinkResponse =
