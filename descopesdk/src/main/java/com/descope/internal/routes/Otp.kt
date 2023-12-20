@@ -5,6 +5,7 @@ import com.descope.sdk.DescopeOtp
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 
 internal class Otp(private val client: DescopeClient) : DescopeOtp {
@@ -16,18 +17,18 @@ internal class Otp(private val client: DescopeClient) : DescopeOtp {
         signUp(method, loginId, details)
     }
 
-    override suspend fun signIn(method: DeliveryMethod, loginId: String): String =
-        client.otpSignIn(method, loginId).convert(method)
+    override suspend fun signIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?): String =
+        client.otpSignIn(method, loginId, options).convert(method)
 
-    override fun signIn(method: DeliveryMethod, loginId: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        signIn(method, loginId)
+    override fun signIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signIn(method, loginId, options)
     }
 
-    override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String): String =
-        client.otpSignUpIn(method, loginId).convert(method)
+    override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?): String =
+        client.otpSignUpIn(method, loginId, options).convert(method)
 
-    override fun signUpOrIn(method: DeliveryMethod, loginId: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        signUpOrIn(method, loginId)
+    override fun signUpOrIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signUpOrIn(method, loginId, options)
     }
 
     override suspend fun verify(method: DeliveryMethod, loginId: String, code: String): AuthenticationResponse =

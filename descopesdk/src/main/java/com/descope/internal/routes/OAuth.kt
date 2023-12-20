@@ -5,14 +5,15 @@ import com.descope.sdk.DescopeOAuth
 import com.descope.types.AuthenticationResponse
 import com.descope.types.OAuthProvider
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 
 internal class OAuth(private val client: DescopeClient): DescopeOAuth {
 
-    override suspend fun start(provider: OAuthProvider, redirectUrl: String?): String =
-        client.oauthStart(provider, redirectUrl).url
+    override suspend fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        client.oauthStart(provider, redirectUrl, options).url
 
-    override fun start(provider: OAuthProvider, redirectUrl: String?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        start(provider, redirectUrl)
+    override fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        start(provider, redirectUrl, options)
     }
 
     override suspend fun exchange(code: String): AuthenticationResponse =
