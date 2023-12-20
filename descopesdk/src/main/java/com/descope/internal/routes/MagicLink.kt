@@ -5,6 +5,7 @@ import com.descope.sdk.DescopeMagicLink
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 
 internal class MagicLink(private val client: DescopeClient): DescopeMagicLink {
@@ -16,18 +17,18 @@ internal class MagicLink(private val client: DescopeClient): DescopeMagicLink {
         signUp(method, loginId, details, uri)
     }
 
-    override suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String?): String =
-        client.magicLinkSignIn(method, loginId, uri).convert(method)
+    override suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): String =
+        client.magicLinkSignIn(method, loginId, uri, options).convert(method)
 
-    override fun signIn(method: DeliveryMethod, loginId: String, uri: String?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        signIn(method, loginId, uri)
+    override fun signIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signIn(method, loginId, uri, options)
     }
 
-    override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?): String =
-        client.magicLinkSignUpOrIn(method, loginId, uri).convert(method)
+    override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): String =
+        client.magicLinkSignUpOrIn(method, loginId, uri, options).convert(method)
 
-    override fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        signUpOrIn(method, loginId, uri)
+    override fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signUpOrIn(method, loginId, uri, options)
     }
 
     override suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String): String =

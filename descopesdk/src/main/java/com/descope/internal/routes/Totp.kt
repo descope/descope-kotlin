@@ -5,6 +5,7 @@ import com.descope.internal.http.TotpServerResponse
 import com.descope.sdk.DescopeTotp
 import com.descope.types.AuthenticationResponse
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.TotpResponse
 
@@ -24,11 +25,11 @@ internal class Totp(private val client: DescopeClient) : DescopeTotp {
         update(loginId, refreshJwt)
     }
 
-    override suspend fun verify(loginId: String, code: String): AuthenticationResponse =
-        client.totpVerify(loginId, code).convert()
+    override suspend fun verify(loginId: String, code: String, options: List<SignInOptions>?): AuthenticationResponse =
+        client.totpVerify(loginId, code, options).convert()
 
-    override fun verify(loginId: String, code: String, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
-        verify(loginId, code)
+    override fun verify(loginId: String, code: String, options: List<SignInOptions>?, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
+        verify(loginId, code, options)
     }
 
 }

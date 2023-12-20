@@ -4,6 +4,7 @@ import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
+import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import java.net.HttpCookie
 
@@ -20,19 +21,23 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun otpSignIn(method: DeliveryMethod, loginId: String): MaskedAddressServerResponse = post(
+    suspend fun otpSignIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?): MaskedAddressServerResponse = post(
         route = "auth/otp/signin/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
-    suspend fun otpSignUpIn(method: DeliveryMethod, loginId: String): MaskedAddressServerResponse = post(
+    suspend fun otpSignUpIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>?): MaskedAddressServerResponse = post(
         route = "auth/otp/signup-in/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -85,12 +90,14 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun totpVerify(loginId: String, code: String): JwtServerResponse = post(
+    suspend fun totpVerify(loginId: String, code: String, options: List<SignInOptions>?): JwtServerResponse = post(
         route = "auth/totp/verify",
         decoder = JwtServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "code" to code,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -161,21 +168,25 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun magicLinkSignIn(method: DeliveryMethod, loginId: String, uri: String?): MaskedAddressServerResponse = post(
+    suspend fun magicLinkSignIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): MaskedAddressServerResponse = post(
         route = "auth/magiclink/signin/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "uri" to uri,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
-    suspend fun magicLinkSignUpOrIn(method: DeliveryMethod, loginId: String, uri: String?): MaskedAddressServerResponse = post(
+    suspend fun magicLinkSignUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): MaskedAddressServerResponse = post(
         route = "auth/magiclink/signup-in/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "uri" to uri,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -190,7 +201,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun magicLinkUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String): MaskedAddressServerResponse = post(
+    suspend fun magicLinkUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String): MaskedAddressServerResponse = post(
         route = "auth/magiclink/update/phone/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
@@ -211,7 +222,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // Enchanted Link
 
-    suspend fun enchantedLinkSignUp(loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkServerResponse = post(
+    suspend fun enchantedLinkSignUp(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkServerResponse = post(
         route = "auth/enchantedlink/signup/email",
         decoder = EnchantedLinkServerResponse::fromJson,
         body = mapOf(
@@ -221,21 +232,25 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun enchantedLinkSignIn(loginId: String, uri: String? = null): EnchantedLinkServerResponse = post(
+    suspend fun enchantedLinkSignIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
         route = "auth/enchantedlink/signin/email",
         decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "uri" to uri,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
-    suspend fun enchantedLinkSignUpOrIn(loginId: String, uri: String? = null): EnchantedLinkServerResponse = post(
+    suspend fun enchantedLinkSignUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
         route = "auth/enchantedlink/signup-in/email",
         decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "uri" to uri,
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -260,12 +275,16 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // OAuth
 
-    suspend fun oauthStart(provider: OAuthProvider, redirectUrl: String?): OAuthServerResponse = post(
+    suspend fun oauthStart(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): OAuthServerResponse = post(
         route = "auth/oauth/authorize",
         decoder = OAuthServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         params = mapOf(
             "provider" to provider.name,
             "redirectURL" to redirectUrl,
+        ),
+        body = mapOf(
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -279,12 +298,16 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // SSO
 
-    suspend fun ssoStart(emailOrTenantId: String, redirectUrl: String?): SsoServerResponse = post(
+    suspend fun ssoStart(emailOrTenantId: String, redirectUrl: String?, options: List<SignInOptions>?): SsoServerResponse = post(
         route = "auth/saml/authorize",
         decoder = SsoServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
         params = mapOf(
             "tenant" to emailOrTenantId,
             "redirectURL" to redirectUrl,
+        ),
+        body = mapOf(
+            "loginOptions" to options?.toMap(),
         ),
     )
 
@@ -341,9 +364,9 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // Internal
 
-    private fun authorization(value: String) = mapOf(
-        "Authorization" to "Bearer ${config.projectId}:$value"
-    )
+    private fun authorization(value: String?) =
+        if (value != null) mapOf("Authorization" to "Bearer ${config.projectId}:$value")
+        else emptyMap()
 }
 
 // Extensions
@@ -357,8 +380,29 @@ private fun SignUpDetails.toMap() = mapOf(
     "familyName" to familyName,
 )
 
+private val List<SignInOptions>.refreshJwt: String?
+    get() {
+        forEach {
+            if (it is SignInOptions.Mfa) return it.refreshJwt
+            if (it is SignInOptions.StepUp) return it.refreshJwt
+        }
+        return null
+    }
+
+private fun List<SignInOptions>.toMap(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>()
+    forEach {
+        when (it) {
+            is SignInOptions.CustomClaims -> map["customClaims"] = it.claims
+            is SignInOptions.Mfa -> map["mfa"] = true
+            is SignInOptions.StepUp -> map["stepup"] = true
+        }
+    }
+    return map.toMap()
+}
+
 private fun DeliveryMethod.route() = this.name.lowercase()
 
 // Utilities
 
-private val emptyResponse: (String, List<HttpCookie>) -> Unit = {_, _ ->}
+private val emptyResponse: (String, List<HttpCookie>) -> Unit = { _, _ -> }

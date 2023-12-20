@@ -53,10 +53,10 @@ internal fun JSONArray.toStringList(): List<String> {
 
 internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
     this@toJsonArray.forEach {
-        when (it) {
-            is Map<*, *> -> put(it.toJsonObject())
-            is List<*> -> put(it.toJsonArray())
-            else -> put(it)
+        when {
+            it is Map<*, *> -> put(it.toJsonObject())
+            it is List<*> -> put(it.toJsonArray())
+            it != null -> put(it)
         }
     }
 }
@@ -64,10 +64,11 @@ internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
 internal fun Map<*, *>.toJsonObject(): JSONObject = JSONObject().apply {
     forEach {
         val key = it.key as String
-        when (val value = it.value) {
-            is Map<*, *> -> put(key, value.toJsonObject())
-            is List<*> -> put(key, value.toJsonArray())
-            else -> put(key, it.value)
+        val value = it.value
+        when {
+            value is Map<*, *> -> put(key, value.toJsonObject())
+            value is List<*> -> put(key, value.toJsonArray())
+            value != null -> put(key, value)
         }
     }
 }
