@@ -1,5 +1,6 @@
 package com.descope.session
 
+import android.text.format.DateFormat
 import androidx.annotation.VisibleForTesting
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.toMap
@@ -126,6 +127,16 @@ internal class Token(
     }
 
     private fun getTenants(): Map<String, Any> = getClaim(Claim.Tenants, allClaims)
+
+    override fun toString(): String {
+        var expires = "expires=Never"
+        expiresAt?.let {
+            val label = if (isExpired) "expired" else "expires"
+            val date = DateFormat.format("yyyy-MM-dd HH:mm:ss", it)
+            expires = "$label=$date"
+        }
+        return "DescopeToken(id=${id}, $expires)"
+    }
 }
 
 // Error

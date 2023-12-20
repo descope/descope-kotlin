@@ -106,6 +106,9 @@ class DescopeException(
 
         val flowFailed = DescopeException(code = "K100001", desc = "Flow failed to run")
 
+        val oauthNativeFailed = DescopeException(code = "S110001", desc = "Sign in with Google failed")
+        val oauthNativeCancelled = DescopeException(code = "S110002", desc = "Sign in with Google cancelled")
+
         // Internal
 
         // These errors are not expected to happen in common usage and there shouldn't be

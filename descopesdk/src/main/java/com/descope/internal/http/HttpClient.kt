@@ -84,11 +84,12 @@ internal open class HttpClient(
                 decoder(response, connection.cookies)
             } else {
                 val response = connection.errorStream.bufferedReader().use { it.readText() }
+                logger?.log(Debug, "Received error body", response)
                 exceptionFromResponse(response)?.run {
-                    logger?.log(Info, "Network call failed with server error", url, responseCode, this)
+                    logger?.log(Error, "Network call failed with server error", url, responseCode, this)
                     throw this
                 }
-                logger?.log(Info, "Network call failed with server error", url, responseCode)
+                logger?.log(Error, "Network call failed with server error", url, responseCode)
                 throw exceptionFromResponseCode(responseCode) ?: Exception("Network error")
             }
         } catch (e: Exception) {

@@ -181,6 +181,25 @@ internal data class OAuthServerResponse(
     }
 }
 
+internal data class OAuthNativeStartServerResponse(
+    var clientId: String,
+    var stateId: String,
+    var nonce: String?,
+    var implicit: Boolean
+) {
+    companion object {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            OAuthNativeStartServerResponse(
+                clientId = getString("clientId"),
+                stateId = getString("stateId"),
+                nonce = stringOrEmptyAsNull("nonce"),
+                implicit = getBoolean("implicit"),
+            )
+        }
+    }
+}
+
 internal data class SsoServerResponse(
     val url: String,
 ) {
