@@ -7,6 +7,7 @@ import com.descope.types.DeliveryMethod
 import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
+import com.descope.types.UpdateOptions
 
 internal class MagicLink(private val client: DescopeClient): DescopeMagicLink {
 
@@ -31,18 +32,18 @@ internal class MagicLink(private val client: DescopeClient): DescopeMagicLink {
         signUpOrIn(method, loginId, uri, options)
     }
 
-    override suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String): String =
-        client.magicLinkUpdateEmail(email, loginId, uri, refreshJwt).convert(DeliveryMethod.Email)
+    override suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?): String =
+        client.magicLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert(DeliveryMethod.Email)
 
-    override fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        updateEmail(email, loginId, uri, refreshJwt)
+    override fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        updateEmail(email, loginId, uri, refreshJwt, options)
     }
 
-    override suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String): String =
-        client.magicLinkUpdatePhone(phone, method, loginId, uri, refreshJwt).convert(method)
+    override suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): String =
+        client.magicLinkUpdatePhone(phone, method, loginId, uri, refreshJwt, options).convert(method)
 
-    override fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        updatePhone(phone, method, loginId, uri, refreshJwt)
+    override fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        updatePhone(phone, method, loginId, uri, refreshJwt, options)
     }
 
     override suspend fun verify(token: String): AuthenticationResponse = client.magicLinkVerify(token).convert()

@@ -14,6 +14,7 @@ import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.TotpResponse
 import com.descope.types.SignUpDetails
+import com.descope.types.UpdateOptions
 
 
 /**
@@ -143,12 +144,15 @@ interface DescopeOtp {
      * @param email the email address to add to the user.
      * @param loginId the identifier of the user to authenticate.
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     * @param options Whether to add the new email address as a loginId for the updated user, and
+     * in that case, if another user already has the same email address as a loginId how to
+     * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked email address the OTP was sent to.
      */
-    suspend fun updateEmail(email: String, loginId: String, refreshJwt: String): String
+    suspend fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions? = null): String
 
     /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, refreshJwt: String, callback: (Result<String>) -> Unit)
+    fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding a phone number.
@@ -164,12 +168,15 @@ interface DescopeOtp {
      * @param method the delivery method to send the code through.
      * @param loginId the identifier of the user to authenticate.
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     * @param options Whether to add the new phone number as a loginId for the updated user, and
+     * in that case, if another user already has the same phone number as a loginId how to
+     * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked phone number the OTP was sent to.
      */
-    suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String): String
+    suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions? = null): String
 
     /** @see updatePhone */
-    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, callback: (Result<String>) -> Unit)
+    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 }
 
 /**
@@ -308,12 +315,15 @@ interface DescopeMagicLink {
      * @param loginId the identifier of the user to update.
      * @param uri the magic link URI. If null, the default URI in Descope console will be used.
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     * @param options Whether to add the new email address as a loginId for the updated user, and
+     * in that case, if another user already has the same email address as a loginId how to
+     * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked email address the magic link was sent to.
      */
-    suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String): String
+    suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions? = null): String
 
     /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, callback: (Result<String>) -> Unit)
+    fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding a [phone] number.
@@ -328,12 +338,15 @@ interface DescopeMagicLink {
      * @param loginId the identifier of the user to authenticate.
      * @param uri the default magic link URI to use, if not configured.
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     * @param options Whether to add the new phone number as a loginId for the updated user, and
+     * in that case, if another user already has the same phone number as a loginId how to
+     * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked phone number the OTP was sent to.
      */
-    suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String): String
+    suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): String
 
     /** @see updatePhone */
-    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String, callback: (Result<String>) -> Unit)
+    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Verifies a magic link [token].
@@ -435,12 +448,15 @@ interface DescopeEnchantedLink {
      * @param loginId the identifier of the user to update.
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     * @param options Whether to add the new email address as a loginId for the updated user, and
+     * in that case, if another user already has the same email address as a loginId how to
+     * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked email address the magic link was sent to.
      */
-    suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String): EnchantedLinkResponse
+    suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): EnchantedLinkResponse
 
     /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, callback: (Result<EnchantedLinkResponse>) -> Unit)
+    fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<EnchantedLinkResponse>) -> Unit)
 
     /**
      * Checks if an enchanted link authentication has been verified by the user.
@@ -488,6 +504,7 @@ interface DescopeEnchantedLink {
     /** @see pollForSession */
     fun pollForSession(pendingRef: String, timeoutMilliseconds: Long? = null, callback: (Result<AuthenticationResponse>) -> Unit)
 }
+
 /**
  * Authenticate a user using an OAuth provider.
  *

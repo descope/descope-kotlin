@@ -7,6 +7,7 @@ import com.descope.types.DeliveryMethod
 import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
+import com.descope.types.UpdateOptions
 
 internal class Otp(private val client: DescopeClient) : DescopeOtp {
 
@@ -38,18 +39,18 @@ internal class Otp(private val client: DescopeClient) : DescopeOtp {
         verify(method, loginId, code)
     }
 
-    override suspend fun updateEmail(email: String, loginId: String, refreshJwt: String): String =
-        client.otpUpdateEmail(email, loginId, refreshJwt).convert(DeliveryMethod.Email)
+    override suspend fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions?): String =
+        client.otpUpdateEmail(email, loginId, refreshJwt, options).convert(DeliveryMethod.Email)
 
-    override fun updateEmail(email: String, loginId: String, refreshJwt: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        updateEmail(email, loginId, refreshJwt)
+    override fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        updateEmail(email, loginId, refreshJwt, options)
     }
 
-    override suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String): String =
-        client.otpUpdatePhone(phone, method, loginId, refreshJwt).convert(method)
+    override suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions?): String =
+        client.otpUpdatePhone(phone, method, loginId, refreshJwt, options).convert(method)
 
-    override fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        updatePhone(phone, method, loginId, refreshJwt)
+    override fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        updatePhone(phone, method, loginId, refreshJwt, options)
     }
 }
 
