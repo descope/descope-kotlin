@@ -15,10 +15,10 @@ import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.OAuthProvider
 import com.descope.types.Result
+import com.descope.types.SignInOptions
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import com.descope.types.SignInOptions
 
 internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
 

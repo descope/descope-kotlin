@@ -106,8 +106,12 @@ class DescopeException(
 
         val flowFailed = DescopeException(code = "K100001", desc = "Flow failed to run")
 
-        val oauthNativeFailed = DescopeException(code = "S110001", desc = "Sign in with Google failed")
-        val oauthNativeCancelled = DescopeException(code = "S110002", desc = "Sign in with Google cancelled")
+        val passkeyFailed = DescopeException(code = "S110001", desc = "Passkey authentication failed")
+        val passkeyCancelled = DescopeException(code = "S110002", desc = "Passkey authentication cancelled")
+        val passkeyNoPasskeys = DescopeException(code = "S110003", desc = "No passkeys found")
+
+        val oauthNativeFailed = DescopeException(code = "S120001", desc = "Sign in with Google failed")
+        val oauthNativeCancelled = DescopeException(code = "S120002", desc = "Sign in with Google cancelled")
 
         // Internal
 

@@ -643,6 +643,25 @@ interface DescopeSso {
 }
 
 /**
+ * Authenticate users using passkeys.
+ *
+ * The authentication operations in this interface are all suspending functions that
+ * perform network requests before and after displaying the modal authentication view.
+ * It is thus recommended to switch the user interface to a loading state before calling
+ * this function, otherwise the user might accidentally interact with the app when the
+ * authentication view is not being displayed.
+ */
+interface DescopePasskey {
+    suspend fun signUp(context: Context, loginId: String, details: SignUpDetails?): AuthenticationResponse
+
+    suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
+
+    suspend fun signUpOrIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
+
+    suspend fun add(context: Context, loginId: String, refreshJwt: String)
+}
+
+/**
  * Authenticate users using a password.
  */
 interface DescopePassword {

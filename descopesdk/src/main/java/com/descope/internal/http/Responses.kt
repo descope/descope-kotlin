@@ -200,6 +200,23 @@ internal data class OAuthNativeStartServerResponse(
     }
 }
 
+internal data class PasskeyStartResponseServerResponse(
+    var transactionId: String,
+    var options: String,
+    var create: Boolean
+) {
+    companion object {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            PasskeyStartResponseServerResponse(
+                transactionId = getString("transactionId"),
+                options = getString("options"),
+                create = getBoolean("create"),
+            )
+        }
+    }
+}
+
 internal data class SsoServerResponse(
     val url: String,
 ) {
