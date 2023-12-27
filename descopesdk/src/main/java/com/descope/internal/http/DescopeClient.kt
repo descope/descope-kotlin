@@ -6,6 +6,7 @@ import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
+import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
 internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger) {
@@ -50,23 +51,27 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun otpUpdateEmail(email: String, loginId: String, refreshJwt: String): MaskedAddressServerResponse = post(
+    suspend fun otpUpdateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
         route = "auth/otp/update/email",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "email" to email,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
     )
 
-    suspend fun otpUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String): MaskedAddressServerResponse = post(
+    suspend fun otpUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
         route = "auth/otp/update/phone/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
         body = mapOf(
             "loginId" to loginId,
             "phone" to phone,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
     )
 
@@ -190,7 +195,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun magicLinkUpdateEmail(email: String, loginId: String, uri: String, refreshJwt: String): MaskedAddressServerResponse = post(
+    suspend fun magicLinkUpdateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
         route = "auth/magiclink/update/email",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
@@ -198,10 +203,12 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "loginId" to loginId,
             "email" to email,
             "uri" to uri,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
     )
 
-    suspend fun magicLinkUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String): MaskedAddressServerResponse = post(
+    suspend fun magicLinkUpdatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
         route = "auth/magiclink/update/phone/${method.route()}",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),
@@ -209,6 +216,8 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "loginId" to loginId,
             "phone" to phone,
             "uri" to uri,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
     )
 
@@ -254,7 +263,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun enchantedLinkUpdateEmail(email: String, loginId: String, uri: String?, refreshJwt: String): EnchantedLinkServerResponse = post(
+    suspend fun enchantedLinkUpdateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkServerResponse = post(
         route = "auth/enchantedlink/update/email",
         decoder = EnchantedLinkServerResponse::fromJson,
         headers = authorization(refreshJwt),
@@ -262,6 +271,8 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "loginId" to loginId,
             "email" to email,
             "uri" to uri,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
     )
 

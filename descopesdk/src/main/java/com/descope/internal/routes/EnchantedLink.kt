@@ -11,6 +11,7 @@ import com.descope.types.EnchantedLinkResponse
 import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
+import com.descope.types.UpdateOptions
 import kotlinx.coroutines.delay
 
 private const val DEFAULT_POLL_DURATION: Long = 2 /* mins */ * 60 /* secs */ * 1000 /* ms */
@@ -38,11 +39,11 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
         signUpOrIn(loginId, uri, options)
     }
 
-    override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String): EnchantedLinkResponse =
-        client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt).convert()
+    override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
+        client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert()
 
-    override fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        updateEmail(email, loginId, uri, refreshJwt)
+    override fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
+        updateEmail(email, loginId, uri, refreshJwt, options)
     }
 
     override suspend fun checkForSession(pendingRef: String): AuthenticationResponse =
