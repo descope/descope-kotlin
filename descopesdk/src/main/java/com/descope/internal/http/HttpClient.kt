@@ -7,6 +7,7 @@ import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Debug
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
+import com.descope.sdk.DescopeNetworkClient
 import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,7 +18,14 @@ import javax.net.ssl.HttpsURLConnection
 internal open class HttpClient(
     private val baseUrl: String,
     private val logger: DescopeLogger?,
+    client: DescopeNetworkClient?,
 ) {
+
+    private val networkClient: DescopeNetworkClient
+
+    init {
+        networkClient = client ?: defaultNetworkClient(logger)
+    }
 
     // Convenience functions
 
@@ -55,42 +63,26 @@ internal open class HttpClient(
         params: Map<String, String?>,
     ): T = withContext(Dispatchers.IO) {
         val url = makeUrl(route, params)
-        logger?.log(Info, "Starting network call", url)
+        val combinedHeaders = mutableMapOf<String, String>().apply {
+            putAll(defaultHeaders)
+            putAll(headers)
+        }
 
-        val connection = url.openConnection() as HttpsURLConnection
         try {
-            connection.requestMethod = method
-            connection.setRequestProperty("Accept", "application/json")
-            defaultHeaders.forEach { connection.setRequestProperty(it.key, it.value) }
-            headers.forEach { connection.setRequestProperty(it.key, it.value) }
-
-            // Send body if needed
-            body?.run {
-                logger?.log(Debug, "Sending request body", this)
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.doOutput = true
-                // Send the request
-                connection.outputStream.bufferedWriter().use {
-                    it.write(toJsonObject().toString())
-                    it.flush()
-                }
-            }
-
-            // Return response
-            val responseCode = connection.responseCode
-            if (responseCode == HttpsURLConnection.HTTP_OK) {
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
-                logger?.log(Debug, "Received response body", response)
-                decoder(response, connection.cookies)
+            logger?.log(Info, "Starting network call", url)
+            val response = networkClient.sendRequest(url, method, body, combinedHeaders)
+            if (response.code == HttpsURLConnection.HTTP_OK) {
+                decoder(response.body, response.headers.cookies)
             } else {
-                val response = connection.errorStream.bufferedReader().use { it.readText() }
-                logger?.log(Debug, "Received error body", response)
-                exceptionFromResponse(response)?.run {
-                    logger?.log(Error, "Network call failed with server error", url, responseCode, this)
+                exceptionFromResponse(response.body)?.run {
+                    logger?.log(Error, "Network call failed with server error", url, response.code, this)
                     throw this
                 }
-                logger?.log(Error, "Network call failed with server error", url, responseCode)
-                throw exceptionFromResponseCode(responseCode) ?: Exception("Network error")
+                exceptionFromResponseCode(response.code)?.run {
+                    logger?.log(Error, "Network call failed with server error", url, response.code)
+                    throw this
+                }
+                throw Exception("Network error")
             }
         } catch (e: Exception) {
             if (e !is DescopeException) {
@@ -98,9 +90,6 @@ internal open class HttpClient(
                 throw DescopeException.networkError.with(cause = e)
             }
             throw e
-        } finally {
-            logger?.log(Info, "Network call finished", url)
-            connection.disconnect()
         }
     }
 
@@ -117,11 +106,11 @@ internal open class HttpClient(
     }
 }
 
-private val HttpsURLConnection.cookies: List<HttpCookie>
+private val Map<String, List<String>>.cookies: List<HttpCookie>
     get() {
         val cookies = mutableListOf<HttpCookie>()
-        headerFields.keys.find { it?.lowercase() == "set-cookie" }?.let { key ->
-            headerFields[key]?.forEach {
+        keys.find { it.lowercase() == "set-cookie" }?.let { key ->
+            this[key]?.forEach {
                 try {
                     cookies.addAll(HttpCookie.parse(it))
                 } catch (ignored: Exception) {}
@@ -129,3 +118,42 @@ private val HttpsURLConnection.cookies: List<HttpCookie>
         }
         return cookies.toList()
     }
+
+private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetworkClient {
+    override suspend fun sendRequest(url: URL, method: String, body: Map<String, Any?>?, headers: Map<String, String>): DescopeNetworkClient.Response {
+        val connection = url.openConnection() as HttpsURLConnection
+        try {
+            connection.requestMethod = method
+            connection.setRequestProperty("Accept", "application/json")
+            headers.forEach { connection.setRequestProperty(it.key, it.value) }
+
+            // Send body if needed
+            body?.run {
+                logger?.log(Debug, "Sending request body", this)
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.doOutput = true
+                // Send the request
+                connection.outputStream.bufferedWriter().use {
+                    it.write(toJsonObject().toString())
+                    it.flush()
+                }
+            }
+
+            // Return response
+            val responseCode = connection.responseCode
+            val responseBody = if (responseCode == HttpsURLConnection.HTTP_OK) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                connection.errorStream.bufferedReader().use { it.readText() }
+            }
+            val responseHeaders = connection.headerFields.filterKeys {
+                !it.isNullOrEmpty() // inexplicably, the keys can be null
+            }
+            logger?.log(Debug, "Received response", responseCode, responseBody, responseHeaders)
+            return DescopeNetworkClient.Response(code = responseCode, body = responseBody, headers = responseHeaders)
+        } finally {
+            logger?.log(Info, "Network call finished", url)
+            connection.disconnect()
+        }
+    }
+}

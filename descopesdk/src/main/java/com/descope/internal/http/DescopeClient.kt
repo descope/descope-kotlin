@@ -9,7 +9,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
-internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger) {
+internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger, config.networkClient) {
 
     // OTP
 

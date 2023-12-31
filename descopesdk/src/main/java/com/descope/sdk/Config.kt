@@ -1,21 +1,30 @@
 package com.descope.sdk
 
+import java.net.URL
+
 /** The default base URL for the Descope API. */
 const val DEFAULT_BASE_URL = "https://api.descope.com"
 
 /**
  * The configuration of the Descope SDK.
  *
- * @property projectId the id of the Descope project.
- * @property baseUrl the base URL of the Descope server.
- * @property logger an option logger to use to log messages in the Descope SDK.
- * _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
+ * @property projectId The ID of the Descope project.
+ * @property baseUrl The base URL of the Descope server.
+ * @property logger An optional logger to use for logging messages in the Descope SDK.
+ * - _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
  * the `RELEASE` versions of your application._
+ * @property networkClient An optional object to override how HTTP requests are performed.
+ *  - The default value of this property is always `null`, and the SDK uses its own
+ *  internal network client to perform HTTP requests.
+ *  - This property can be useful to test code that uses the Descope SDK without any
+ *  network requests actually taking place. In most other cases there shouldn't be
+ *  any need to use it.
  */
 data class DescopeConfig(
     val projectId: String,
     val baseUrl: String = DEFAULT_BASE_URL,
     val logger: DescopeLogger? = null,
+    val networkClient: DescopeNetworkClient? = null,
 ) {
 
     companion object {
@@ -67,4 +76,38 @@ open class DescopeLogger(private val level: Level = Level.Debug) {
             output(level, message, *values)
         }
     }
+}
+
+/**
+ * The [DescopeNetworkClient] interface can be used to override how HTTP requests
+ * are performed by the SDK when calling the Descope server.
+ *
+ * If you want to provide your own client for testing or other purposes, implement the
+ * [sendRequest] function and either return some value or throw an exception.
+ */
+interface DescopeNetworkClient {
+    /**
+     * Send a request and expect an response string and a list of headers to be returned asynchronously
+     * or an exception to be thrown
+     *
+     * @param url The request URL
+     * @param method An upper case string representing the HTTP request method, e.g. "GET", "POST", etc
+     * @param body An optional request body
+     * @param headers The request headers
+     * @return The response code, body and headers via the [Response] object
+     */
+    suspend fun sendRequest(url: URL, method: String, body: Map<String, Any?>?, headers: Map<String, String>): Response
+
+    /**
+     * A network response
+     *
+     * @property code The response HTTP code
+     * @property body The response body as a string
+     * @property headers All response headers mapped by header name to a list of its values
+     */
+    class Response(
+        val code: Int,
+        val body: String,
+        val headers: Map<String, List<String>>
+    )
 }
