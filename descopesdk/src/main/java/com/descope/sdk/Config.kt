@@ -10,7 +10,7 @@ const val DEFAULT_BASE_URL = "https://api.descope.com"
  *
  * @property projectId The ID of the Descope project.
  * @property baseUrl The base URL of the Descope server.
- * @property logger An option logger to use to log messages in the Descope SDK.
+ * @property logger An optional logger to use for logging messages in the Descope SDK.
  * - _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
  * the `RELEASE` versions of your application._
  * @property networkClient An optional object to override how HTTP requests are performed.
