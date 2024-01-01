@@ -66,9 +66,9 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
 
     private suspend fun performRegister(context: Context, options: String): String {
         val publicKey = convertOptions(options)
-        val request = CreatePublicKeyCredentialRequest(publicKey)
+        val request = CreatePublicKeyCredentialRequest(publicKey, preferImmediatelyAvailableCredentials = true)
 
-        return try {
+        try {
             val credentialManager = CredentialManager.create(context)
             val result = credentialManager.createCredential(context, request) as CreatePublicKeyCredentialResponse
             return result.registrationResponseJson
@@ -92,15 +92,15 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
         val option = GetPublicKeyCredentialOption(publicKey)
         val request = GetCredentialRequest(listOf(option))
 
-        return try {
+        try {
             val credentialManager = CredentialManager.create(context)
             val result = credentialManager.getCredential(context, request)
             val credential = result.credential as PublicKeyCredential
             return credential.authenticationResponseJson
-        } catch (e: NoCredentialException) {
-            throw DescopeException.passkeyNoPasskeys.with(cause = e)
         } catch (e: GetCredentialCancellationException) {
             throw DescopeException.passkeyCancelled
+        } catch (e: NoCredentialException) {
+            throw DescopeException.passkeyNoPasskeys.with(cause = e)
         } catch (e: GetPublicKeyCredentialDomException) {
             throw DescopeException.passkeyFailed.with(message = "Error signing assertion", cause = e)
         } catch (e: GetCredentialInterruptedException) {
@@ -118,7 +118,7 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
 private fun convertOptions(options: String): String {
     val root = try { JSONObject(options) } catch (e: Exception) { throw DescopeException.decodeError.with(message = "Invalid passkey options") }
     val publicKey = try { root.getString("publicKey") } catch (e: Exception) { throw DescopeException.decodeError.with(message = "Malformed passkey options") }
-    return publicKey.toString()
+    return publicKey
 }
 
 private fun getPackageOrigin(context: Context): String {

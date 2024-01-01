@@ -652,7 +652,7 @@ interface DescopeSso {
  * authentication view is not being displayed.
  */
 interface DescopePasskey {
-    suspend fun signUp(context: Context, loginId: String, details: SignUpDetails?): AuthenticationResponse
+    suspend fun signUp(context: Context, loginId: String, details: SignUpDetails? = null): AuthenticationResponse
 
     suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
 

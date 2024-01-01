@@ -108,9 +108,9 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // MARK: - Passkey
     
-    suspend fun passkeySignUpStart(loginId: String, details: SignUpDetails?, origin: String): PasskeyStartResponseServerResponse = post(
+    suspend fun passkeySignUpStart(loginId: String, details: SignUpDetails?, origin: String): PasskeyStartServerResponse = post(
         route = "auth/webauthn/signup/start",
-        decoder = PasskeyStartResponseServerResponse::fromJson,
+        decoder = PasskeyStartServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
             "user" to details?.toMap(),
@@ -127,9 +127,9 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun passkeySignInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartResponseServerResponse = post(
+    suspend fun passkeySignInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartServerResponse = post(
         route = "auth/webauthn/signin/start",
-        decoder = PasskeyStartResponseServerResponse::fromJson,
+        decoder = PasskeyStartServerResponse::fromJson,
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
@@ -147,9 +147,9 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun passkeySignUpInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartResponseServerResponse = post(
+    suspend fun passkeySignUpInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartServerResponse = post(
         route = "auth/webauthn/signup-in/start",
-        decoder = PasskeyStartResponseServerResponse::fromJson,
+        decoder = PasskeyStartServerResponse::fromJson,
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
@@ -158,9 +158,9 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun passkeyAddStart(loginId: String, origin: String, refreshJwt: String): PasskeyStartResponseServerResponse = post(
+    suspend fun passkeyAddStart(loginId: String, origin: String, refreshJwt: String): PasskeyStartServerResponse = post(
         route = "auth/webauthn/update/start",
-        decoder = PasskeyStartResponseServerResponse::fromJson,
+        decoder = PasskeyStartServerResponse::fromJson,
         headers = authorization(refreshJwt),
         body = mapOf(
             "loginId" to loginId,
