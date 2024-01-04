@@ -774,8 +774,10 @@ interface DescopeFlow {
      *
      * @property flowUrl the URL where the flow is hosted.
      * @property deepLinkUrl a deep link back to the app that will handle the exchange.
+     * @property backupCustomScheme a backup custom scheme deep link for Opera browser users,
+     * which blocks app links by default.
      */
-    fun create(flowUrl: String, deepLinkUrl: String): Runner
+    fun create(flowUrl: String, deepLinkUrl: String, backupCustomScheme: String? = null): Runner
 
     /**
      * A helper interface that encapsulates a single flow run.

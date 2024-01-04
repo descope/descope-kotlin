@@ -6,7 +6,6 @@ import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeFlow
-import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
@@ -24,8 +23,8 @@ internal class Flow(
     override var currentRunner: DescopeFlow.Runner? = null
         private set
 
-    override fun create(flowUrl: String, deepLinkUrl: String): DescopeFlow.Runner {
-        val runner = FlowRunner(flowUrl, deepLinkUrl)
+    override fun create(flowUrl: String, deepLinkUrl: String, backupCustomScheme: String?): DescopeFlow.Runner {
+        val runner = FlowRunner(flowUrl, deepLinkUrl, backupCustomScheme)
         currentRunner = runner
         return runner
     }
@@ -33,6 +32,7 @@ internal class Flow(
     inner class FlowRunner(
         private val flowUrl: String,
         private val deepLinkUrl: String,
+        private val backupCustomScheme: String?,
     ) : DescopeFlow.Runner {
 
         private lateinit var codeVerifier: String
@@ -54,11 +54,14 @@ internal class Flow(
             val codeChallenge = Base64.UrlSafe.encode(hashed)
 
             // embed into url parameters
-            val uri = Uri.parse(flowUrl).buildUpon()
+            val uriBuilder = Uri.parse(flowUrl).buildUpon()
                 .appendQueryParameter("ra-callback", deepLinkUrl)
                 .appendQueryParameter("ra-challenge", codeChallenge)
                 .appendQueryParameter("ra-initiator", "android")
-                .build()
+            backupCustomScheme?.let {
+                uriBuilder.appendQueryParameter("ra-backup-callback", it)
+            }
+            val uri = uriBuilder.build()
 
             // launch via chrome custom tabs
             launchUri(context, uri)
@@ -91,7 +94,7 @@ internal class Flow(
         }
 
     }
-    
+
 }
 
 private fun launchUri(context: Context, uri: Uri) {
