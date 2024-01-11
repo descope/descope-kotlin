@@ -217,6 +217,16 @@ class FlowDoneActivity : AppCompatActivity() {
         <!-- replace with your host, the path can change must must be reflected when running the flow -->
         <data android:scheme="https" android:host="<YOUR_HOST_HERE>" android:path="/done" />
     </intent-filter>
+
+    <!-- Optional: App Links are blocked by default on Opera Browsers. Add a custom scheme for that use case specifically -->
+    <intent-filter android:autoVerify="true"> <!-- autoVerify required for app links -->
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+
+        <!-- replace with something unique. this will only be used as a backup for Opera users. -->
+        <data android:scheme="myapp" android:host="auth"  />
+    </intent-filter>
 </activity>
 ```
 
@@ -276,6 +286,7 @@ unexpected UX. Run the flow by creating a `DescopeFlow.Runner`:
 Descope.flow.create(
     flowUrl = "<URL_FOR_FLOW_IN_SETUP_#1>",
     deepLinkUrl = "<URL_FOR_APP_LINK_IN_SETUP_#2>",
+    backupCustomScheme = "<OPTIONAL_CUSTOM_SCHEME_FROM_SETUP_#2>"
 ).start(this@MainActivity)
 ```
 
