@@ -12,8 +12,8 @@ import com.descope.types.PasswordPolicy
 import com.descope.types.RefreshResponse
 import com.descope.types.Result
 import com.descope.types.SignInOptions
-import com.descope.types.TotpResponse
 import com.descope.types.SignUpDetails
+import com.descope.types.TotpResponse
 import com.descope.types.UpdateOptions
 
 
