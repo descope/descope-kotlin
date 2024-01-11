@@ -84,6 +84,14 @@ as ensuring that it's refreshed when needed. For the default instances of
 the `DescopeSessionManager` class this means using the `EncryptedSharedPreferences`
 for secure storage of the session and refreshing it a short while before it expires.
 
+**Important**: If you're planning on using the default session storage, make sure to provide
+the application context when initializing `Descope` with a project ID / config:
+
+```kotlin
+Descope.config = DescopeConfig(projectId = "<PROJECT-ID>", baseUrl = "https://my.custom.domain")
+Descope.provideApplicationContext = { applicationContext }
+```
+
 Once the user completes a sign in flow successfully you should set the
 `DescopeSession` object as the active session of the session manager.
 
@@ -411,6 +419,29 @@ override fun onCreate(savedInstanceState: Bundle?) {
         Descope.sessionManager.manageSession(session)
     }
 }
+```
+
+### Passkey
+
+Users can authenticate by creating or using a [passkey](https://fidoalliance.org/passkeys/).
+Configure your Passkey/WebAuthn settings on the [Descope console](https://app.descope.com/settings/authentication/webauthn).
+Make sure it is enabled and that the top level domain is configured correctly.
+After that, go through the [Add support for Digital Asset Links](https://developer.android.com/training/sign-in/passkeys#add-support-dal)
+setup, as described in the official Google docs, and complete the asset links and manifest preparations.
+
+**Note:** These authentication operations are all suspending functions that
+perform network requests before and after displaying the modal authentication view.
+It is thus recommended to switch the user interface to a loading state before calling
+this function, otherwise the user might accidentally interact with the app when the
+authentication view is not being displayed.
+
+```kotlin
+// Enter loading state...
+
+val authResponse = Descope.passkey.signUpOrIn(this@MyActivity, loginId)
+Descope.sessionManager.manageSession(DescopeSession(authResponse))
+
+// Exit loading state...
 ```
 
 ### TOTP Authentication
