@@ -1,8 +1,19 @@
 package com.descope.internal.others
 
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+
+// Base64
+
+internal fun String.decodeBase64(): ByteArray {
+    return Base64.decode(this, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
+}
+
+internal fun ByteArray.toBase64(): String {
+    return Base64.encodeToString(this, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
+}
 
 // JSON
 

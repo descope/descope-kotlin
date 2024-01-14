@@ -131,6 +131,7 @@ internal data class EnchantedLinkServerResponse(
     }
 }
 
+@Suppress("ArrayInDataClass")
 internal data class TotpServerResponse(
     val provisioningUrl: String,
     val image: ByteArray,
@@ -145,26 +146,6 @@ internal data class TotpServerResponse(
                 key = getString("key"),
             )
         }
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as TotpServerResponse
-
-        if (provisioningUrl != other.provisioningUrl) return false
-        if (!image.contentEquals(other.image)) return false
-        if (key != other.key) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = provisioningUrl.hashCode()
-        result = 31 * result + image.contentHashCode()
-        result = 31 * result + key.hashCode()
-        return result
     }
 }
 
@@ -195,6 +176,23 @@ internal data class OAuthNativeStartServerResponse(
                 stateId = getString("stateId"),
                 nonce = stringOrEmptyAsNull("nonce"),
                 implicit = getBoolean("implicit"),
+            )
+        }
+    }
+}
+
+internal data class PasskeyStartServerResponse(
+    var transactionId: String,
+    var options: String,
+    var create: Boolean
+) {
+    companion object {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            PasskeyStartServerResponse(
+                transactionId = getString("transactionId"),
+                options = getString("options"),
+                create = getBoolean("create"),
             )
         }
     }

@@ -2,14 +2,13 @@ package com.descope.session
 
 import android.text.format.DateFormat
 import androidx.annotation.VisibleForTesting
+import com.descope.internal.others.decodeBase64
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.toMap
 import com.descope.internal.others.tryOrNull
 import com.descope.internal.others.with
 import com.descope.types.DescopeException
 import org.json.JSONObject
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * A `DescopeToken` is a utility wrapper around a single JWT value.
@@ -189,9 +188,8 @@ private inline fun <reified T> getClaim(claim: String, map: Map<String, Any>): T
 
 // JWT Decoding
 
-@OptIn(ExperimentalEncodingApi::class)
 private fun decodeFragment(string: String): Map<String, Any> {
-    val data = Base64.UrlSafe.decode(string)
+    val data = string.decodeBase64()
     try {
         val json = JSONObject(String(data))
         return json.toMap()

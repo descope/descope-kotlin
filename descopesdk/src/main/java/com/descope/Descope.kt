@@ -8,6 +8,7 @@ import com.descope.sdk.DescopeFlow
 import com.descope.sdk.DescopeMagicLink
 import com.descope.sdk.DescopeOAuth
 import com.descope.sdk.DescopeOtp
+import com.descope.sdk.DescopePasskey
 import com.descope.sdk.DescopePassword
 import com.descope.sdk.DescopeSdk
 import com.descope.sdk.DescopeSso
@@ -113,6 +114,10 @@ object Descope {
     /** Authentication with SSO. */
     val sso: DescopeSso
         get() = sdk.sso
+
+    /** Authentication with passkeys. */
+    val passkey: DescopePasskey
+        get() = sdk.passkey
 
     /** Authentication with passwords. */
     val password: DescopePassword

@@ -106,6 +106,77 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
+    // MARK: - Passkey
+    
+    suspend fun passkeySignUpStart(loginId: String, details: SignUpDetails?, origin: String): PasskeyStartServerResponse = post(
+        route = "auth/webauthn/signup/start",
+        decoder = PasskeyStartServerResponse::fromJson,
+        body = mapOf(
+            "loginId" to loginId,
+            "user" to details?.toMap(),
+            "origin" to origin,
+        ),
+    )
+
+    suspend fun passkeySignUpFinish(transactionId: String, response: String): JwtServerResponse = post(
+        route = "auth/webauthn/signup/finish",
+        decoder = JwtServerResponse::fromJson,
+        body = mapOf(
+            "transactionId" to transactionId,
+            "response" to response,
+        ),
+    )
+
+    suspend fun passkeySignInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartServerResponse = post(
+        route = "auth/webauthn/signin/start",
+        decoder = PasskeyStartServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "origin" to origin,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
+    suspend fun passkeySignInFinish(transactionId: String, response: String): JwtServerResponse = post(
+        route = "auth/webauthn/signin/finish",
+        decoder = JwtServerResponse::fromJson,
+        body = mapOf(
+            "transactionId" to transactionId,
+            "response" to response,
+        ),
+    )
+
+    suspend fun passkeySignUpInStart(loginId: String, origin: String, options: List<SignInOptions>?): PasskeyStartServerResponse = post(
+        route = "auth/webauthn/signup-in/start",
+        decoder = PasskeyStartServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "origin" to origin,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
+    suspend fun passkeyAddStart(loginId: String, origin: String, refreshJwt: String): PasskeyStartServerResponse = post(
+        route = "auth/webauthn/update/start",
+        decoder = PasskeyStartServerResponse::fromJson,
+        headers = authorization(refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "origin" to origin,
+        ),
+    )
+
+    suspend fun passkeyAddFinish(transactionId: String, response: String) = post(
+        route = "auth/webauthn/update/finish",
+        decoder = emptyResponse,
+        body = mapOf(
+            "transactionId" to transactionId,
+            "response" to response,
+        ),
+    )
+    
     // Password
 
     suspend fun passwordSignUp(loginId: String, password: String, details: SignUpDetails?): JwtServerResponse = post(

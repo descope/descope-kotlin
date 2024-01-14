@@ -12,8 +12,8 @@ import com.descope.types.PasswordPolicy
 import com.descope.types.RefreshResponse
 import com.descope.types.Result
 import com.descope.types.SignInOptions
-import com.descope.types.TotpResponse
 import com.descope.types.SignUpDetails
+import com.descope.types.TotpResponse
 import com.descope.types.UpdateOptions
 
 
@@ -640,6 +640,63 @@ interface DescopeSso {
     /** @see exchange */
     fun exchange(code: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
+}
+
+/**
+ * Authenticate users using passkeys.
+ *
+ * The authentication operations in this interface are all suspending functions that
+ * perform network requests before and after displaying the modal authentication view.
+ * It is thus recommended to switch the user interface to a loading state before calling
+ * this function, otherwise the user might accidentally interact with the app when the
+ * authentication view is not being displayed.
+ * 
+ * - **Important**: Before authentication via passkeys is possible, some set up is required.
+ * Please follow the [Add support for Digital Asset Links](https://developer.android.com/training/sign-in/passkeys#add-support-dal)
+ * setup, as described in the official Google docs.
+ */
+interface DescopePasskey {
+    /**
+     * Authenticates a new user by creating a new passkey.
+     *
+     * @param context The Android context being run - should be an Activity context.
+     * @param loginId What identifies the user when logging in.
+     * @param details Optional details about the user signing up.
+     * @return An [AuthenticationResponse] value upon successful authentication.
+     */
+    suspend fun signUp(context: Context, loginId: String, details: SignUpDetails? = null): AuthenticationResponse
+
+    /**
+     * Authenticates an existing user by prompting for an existing passkey.
+     *
+     * @param context The Android context being run - should be an Activity context.
+     * @param loginId What identifies the user when logging in.
+     * @param options Additional behaviors to perform during authentication.
+     * @return An [AuthenticationResponse] value upon successful authentication.
+     */
+    suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
+
+    /**
+     * Authenticates an existing user if one exists or creates a new one.
+     * 
+     * A new passkey will be created if the user doesn't already exist, otherwise a passkey
+     * must be available on their device to authenticate with.
+     *
+     * @param context The Android context being run - should be an Activity context
+     * @param loginId What identifies the user when logging in
+     * @param options Additional behaviors to perform during authentication.
+     * @return An [AuthenticationResponse] value upon successful authentication.
+     */
+    suspend fun signUpOrIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
+
+    /**
+     * Updates an existing user by adding a new passkey as an authentication method.
+     *
+     * @param context The Android context being run - should be an Activity context
+     * @param loginId What identifies the user when logging in
+     * @param refreshJwt The `refreshJwt` from an active [DescopeSession].
+     */
+    suspend fun add(context: Context, loginId: String, refreshJwt: String)
 }
 
 /**

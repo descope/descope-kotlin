@@ -7,6 +7,7 @@ import com.descope.internal.routes.Flow
 import com.descope.internal.routes.MagicLink
 import com.descope.internal.routes.OAuth
 import com.descope.internal.routes.Otp
+import com.descope.internal.routes.Passkey
 import com.descope.internal.routes.Password
 import com.descope.internal.routes.Sso
 import com.descope.internal.routes.Totp
@@ -23,6 +24,7 @@ class DescopeSdk(val config: DescopeConfig) {
     val enchantedLink: DescopeEnchantedLink
     val oauth: DescopeOAuth
     val sso: DescopeSso
+    val passkey: DescopePasskey
     val password: DescopePassword
     val flow: DescopeFlow
 
@@ -45,6 +47,7 @@ class DescopeSdk(val config: DescopeConfig) {
         enchantedLink = EnchantedLink(client)
         oauth = OAuth(client)
         sso = Sso(client)
+        passkey = Passkey(client)
         password = Password(client)
         flow = Flow(client)
     }
