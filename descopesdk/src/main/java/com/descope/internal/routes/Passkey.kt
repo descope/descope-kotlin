@@ -153,7 +153,7 @@ private fun prepareAssertionResponse(resultCode: Int, intent: Intent?): String {
             put("clientDataJson", response.clientDataJSON.toBase64())
             put("authenticatorData", response.authenticatorData.toBase64())
             put("signature", response.signature.toBase64())
-            put("userHandle", response.userHandle?.toBase64() ?: "")
+            response.userHandle?.let { put("userHandle", it.toBase64()) }
         })
     }.toString()
 }
