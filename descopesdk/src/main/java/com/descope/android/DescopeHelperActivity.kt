@@ -7,6 +7,7 @@ import android.os.Bundle
 import com.descope.internal.others.activityHelper
 
 const val PENDING_INTENT_KEY = "pendingIntent"
+const val REQUEST_CODE = 4327
 
 class DescopeHelperActivity : Activity() {
     private var resultPending = false
@@ -26,7 +27,7 @@ class DescopeHelperActivity : Activity() {
         }
 
         resultPending = true
-        startIntentSenderForResult(pendingIntent.intentSender, 4327, null, 0, 0, 0, null)
+        startIntentSenderForResult(pendingIntent.intentSender, REQUEST_CODE, null, 0, 0, 0, null)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
