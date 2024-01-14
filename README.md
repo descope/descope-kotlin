@@ -88,7 +88,7 @@ for secure storage of the session and refreshing it a short while before it expi
 the application context when initializing `Descope` with a project ID / config:
 
 ```kotlin
-Descope.config = DescopeConfig(projectId = "<PROJECT-ID>", baseUrl = "https://my.custom.domain")
+Descope.config = DescopeConfig(projectId = "<PROJECT-ID>")
 Descope.provideApplicationContext = { applicationContext }
 ```
 
