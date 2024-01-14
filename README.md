@@ -440,11 +440,11 @@ Make sure it is enabled and that the top level domain is configured correctly.
 After that, go through the [Add support for Digital Asset Links](https://developer.android.com/training/sign-in/passkeys#add-support-dal)
 setup, as described in the official Google docs, and complete the asset links and manifest preparations.
 
-**Note:** These authentication operations are all suspending functions that
-perform network requests before and after displaying the modal authentication view.
-It is thus recommended to switch the user interface to a loading state before calling
-this function, otherwise the user might accidentally interact with the app when the
-authentication view is not being displayed.
+**Note:** The passkey operations are all suspending functions that perform
+network requests before and after displaying the modal authentication view.
+It is thus recommended to switch the user interface to a loading state before
+calling them, otherwise the user might accidentally interact with the app when
+the authentication view is not being displayed.
 
 ```kotlin
 // Enter loading state...
