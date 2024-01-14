@@ -450,7 +450,8 @@ the authentication view is not being displayed.
 // Enter loading state...
 
 val authResponse = Descope.passkey.signUpOrIn(this@MyActivity, loginId)
-Descope.sessionManager.manageSession(DescopeSession(authResponse))
+val session = DescopeSession(authResponse)
+Descope.sessionManager.manageSession(session)
 
 // Exit loading state...
 ```
