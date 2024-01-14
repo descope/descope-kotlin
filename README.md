@@ -432,7 +432,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 }
 ```
 
-### Passkey
+### Passkeys
 
 Users can authenticate by creating or using a [passkey](https://fidoalliance.org/passkeys/).
 Configure your Passkey/WebAuthn settings on the [Descope console](https://app.descope.com/settings/authentication/webauthn).
