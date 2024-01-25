@@ -539,10 +539,10 @@ interface DescopeOAuth {
      * @param options additional behaviors to perform during authentication.
      * @return a URL that starts the OAuth redirect chain
      */
-    suspend fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>? = null): String
+    suspend fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
 
     /** @see start */
-    fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
+    fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Completes an OAuth redirect chain.

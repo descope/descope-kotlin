@@ -365,9 +365,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "provider" to provider.name,
             "redirectURL" to redirectUrl,
         ),
-        body = mapOf(
-            "loginOptions" to options?.toMap(),
-        ),
+        body = options?.toMap() ?: emptyMap(),
     )
 
     suspend fun oauthWebExchange(code: String): JwtServerResponse = post(
@@ -408,9 +406,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "tenant" to emailOrTenantId,
             "redirectURL" to redirectUrl,
         ),
-        body = mapOf(
-            "loginOptions" to options?.toMap(),
-        ),
+        body = options?.toMap() ?: emptyMap(),
     )
 
     suspend fun ssoExchange(code: String): JwtServerResponse = post(
