@@ -428,12 +428,13 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
     
-    suspend fun flowPrime(flowId: String, refreshJwt: String): FlowPrimeResponse = post(
+    suspend fun flowPrime(codeChallenge: String, flowId: String, refreshJwt: String): Unit = post(
         route = "flow/prime",
-        decoder = FlowPrimeResponse::fromJson,
+        decoder = emptyResponse,
         headers = authorization(refreshJwt),
         body = mapOf(
             "flowId" to flowId,
+            "codeChallenge" to codeChallenge,
         ),
     )
 

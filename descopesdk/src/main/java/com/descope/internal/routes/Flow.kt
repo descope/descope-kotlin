@@ -37,28 +37,15 @@ internal class Flow(
 
         override fun start(context: Context) {
             log(Info, "Starting flow authentication", flowUrl)
-            // create some random bytes
-            val randomBytes = ByteArray(32)
-            Random.nextBytes(randomBytes)
-
-            // codeVerifier == base64(randomBytes)
-            codeVerifier = randomBytes.toBase64()
-
-            // hash bytes using sha256
-            val md = MessageDigest.getInstance("SHA-256")
-            val hashed = md.digest(randomBytes)
-
-            // codeChallenge == base64(sha256(randomBytes))
-            val codeChallenge = hashed.toBase64()
-
+            val codeChallenge = initVerifierAndChallenge()
             startFlowViaBrowser(codeChallenge, context)
         }
 
         override suspend fun start(context: Context, flowId: String, refreshJwt: String) {
-            val primeResponse = client.flowPrime(flowId, refreshJwt)
-            // use server generated verifier and challenge
-            codeVerifier = primeResponse.codeVerifier
-            startFlowViaBrowser(primeResponse.codeChallenge, context)
+            log(Info, "Starting authenticated flow", flowUrl)
+            val codeChallenge = initVerifierAndChallenge()
+            client.flowPrime(codeChallenge, flowId, refreshJwt)
+            startFlowViaBrowser(codeChallenge, context)
         }
 
         override fun start(context: Context, flowId: String, refreshJwt: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
@@ -93,6 +80,22 @@ internal class Flow(
         
         // Internal
 
+        private fun initVerifierAndChallenge(): String {
+            // create some random bytes
+            val randomBytes = ByteArray(32)
+            Random.nextBytes(randomBytes)
+
+            // codeVerifier == base64(randomBytes)
+            codeVerifier = randomBytes.toBase64()
+
+            // hash bytes using sha256
+            val md = MessageDigest.getInstance("SHA-256")
+            val hashed = md.digest(randomBytes)
+
+            // codeChallenge == base64(sha256(randomBytes))
+            return hashed.toBase64()
+        }
+        
         private fun startFlowViaBrowser(codeChallenge: String, context: Context) {
             val uriBuilder = Uri.parse(flowUrl).buildUpon()
                 .appendQueryParameter("ra-callback", deepLinkUrl)

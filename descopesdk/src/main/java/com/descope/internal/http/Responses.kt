@@ -210,18 +210,3 @@ internal data class SsoServerResponse(
         }
     }
 }
-
-internal data class FlowPrimeResponse(
-    val codeVerifier: String,
-    val codeChallenge: String,
-) {
-    companion object {
-        @Suppress("UNUSED_PARAMETER")
-        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
-            FlowPrimeResponse(
-                codeVerifier = getString("codeVerifier"),
-                codeChallenge = getString("codeChallenge"),
-            )
-        }
-    }
-}
