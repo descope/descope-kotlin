@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.others.toBase64
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeFlow
 import com.descope.sdk.DescopeLogger.Level.Info
@@ -11,11 +12,8 @@ import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.Result
 import java.security.MessageDigest
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
-@OptIn(ExperimentalEncodingApi::class)
 internal class Flow(
     override val client: DescopeClient
 ) : Route, DescopeFlow {
@@ -44,27 +42,27 @@ internal class Flow(
             Random.nextBytes(randomBytes)
 
             // codeVerifier == base64(randomBytes)
-            codeVerifier = Base64.UrlSafe.encode(randomBytes)
+            codeVerifier = randomBytes.toBase64()
 
             // hash bytes using sha256
             val md = MessageDigest.getInstance("SHA-256")
             val hashed = md.digest(randomBytes)
 
             // codeChallenge == base64(sha256(randomBytes))
-            val codeChallenge = Base64.UrlSafe.encode(hashed)
+            val codeChallenge = hashed.toBase64()
 
-            // embed into url parameters
-            val uriBuilder = Uri.parse(flowUrl).buildUpon()
-                .appendQueryParameter("ra-callback", deepLinkUrl)
-                .appendQueryParameter("ra-challenge", codeChallenge)
-                .appendQueryParameter("ra-initiator", "android")
-            backupCustomScheme?.let {
-                uriBuilder.appendQueryParameter("ra-backup-callback", it)
-            }
-            val uri = uriBuilder.build()
+            startFlowViaBrowser(codeChallenge, context)
+        }
 
-            // launch via chrome custom tabs
-            launchUri(context, uri)
+        override suspend fun start(context: Context, flowId: String, refreshJwt: String) {
+            val primeResponse = client.flowPrime(flowId, refreshJwt)
+            // use server generated verifier and challenge
+            codeVerifier = primeResponse.codeVerifier
+            startFlowViaBrowser(primeResponse.codeChallenge, context)
+        }
+
+        override fun start(context: Context, flowId: String, refreshJwt: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+            start(context, flowId, refreshJwt)
         }
 
         override fun resume(context: Context, incomingUriString: String) {
@@ -91,6 +89,22 @@ internal class Flow(
 
         override fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
             exchange(incomingUri)
+        }
+        
+        // Internal
+
+        private fun startFlowViaBrowser(codeChallenge: String, context: Context) {
+            val uriBuilder = Uri.parse(flowUrl).buildUpon()
+                .appendQueryParameter("ra-callback", deepLinkUrl)
+                .appendQueryParameter("ra-challenge", codeChallenge)
+                .appendQueryParameter("ra-initiator", "android")
+            backupCustomScheme?.let {
+                uriBuilder.appendQueryParameter("ra-backup-callback", it)
+            }
+            val uri = uriBuilder.build()
+
+            // launch via chrome custom tabs
+            launchUri(context, uri)
         }
 
     }

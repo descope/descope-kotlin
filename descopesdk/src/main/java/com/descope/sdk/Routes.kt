@@ -855,6 +855,25 @@ interface DescopeFlow {
         fun start(context: Context)
 
         /**
+         * Start a flow for a currently authenticated user from the current [context].
+         * 
+         * Use this version of start if the user has an **active session**.
+         * Note: This is an asynchronous operation that performs network requests before and
+         * opening the browser. It is thus recommended to switch the
+         * user interface to a loading state before calling this function, otherwise the user
+         * might accidentally interact with the app when the authentication view is not
+         * being displayed.
+         *
+         * @param context the context launching the authentication flow.
+         * @param flowId the ID of the flow to run
+         * @param refreshJwt the refreshJwt from an active [DescopeSession]. 
+         */
+        suspend fun start(context: Context, flowId: String, refreshJwt: String)
+
+        /** @see start (async version) */
+        fun start(context: Context, flowId: String, refreshJwt: String, callback: (Result<Unit>) -> Unit)
+
+        /**
          * Resumes an ongoing flow after a redirect back to the app.
          * This is required for *Magic Link only* at this stage.
          *

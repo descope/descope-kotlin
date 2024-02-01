@@ -283,19 +283,27 @@ Make sure the Activity running the flow is a `SINGLE_TOP` activity, to avoid any
 unexpected UX. Run the flow by creating a `DescopeFlow.Runner`:
 
 ```kotlin
-Descope.flow.create(
+val runner = Descope.flow.create(
     flowUrl = "<URL_FOR_FLOW_IN_SETUP_#1>",
     deepLinkUrl = "<URL_FOR_APP_LINK_IN_SETUP_#2>",
     backupCustomScheme = "<OPTIONAL_CUSTOM_SCHEME_FROM_SETUP_#2>"
-).start(this@MainActivity)
+)
+
+// Starting an authentication flow
+runner.start(this@MainActivity)
+
+// Starting a flow for an authenticated user
+Descope.sessionManager.session?.run {
+    runner.start(this@MainActivity, "flow-id", refreshJwt)
+}
 ```
 
 When supporting Magic Links the `resume` function must be called. In your authentication Activity
 inside the `onCreate` method:
 
 ```kotlin
-intent?.getStringExtra("descopeFlowUri")?.run {
-    Descope.flow.currentRunner?.resume(this@AuthActivity, this)
+intent?.data?.let { incomingUri ->
+    Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
 }
 ```
 
