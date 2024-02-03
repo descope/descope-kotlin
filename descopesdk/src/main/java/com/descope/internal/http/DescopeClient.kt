@@ -427,6 +427,16 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "codeVerifier" to codeVerifier,
         ),
     )
+    
+    suspend fun flowPrime(codeChallenge: String, flowId: String, refreshJwt: String): Unit = post(
+        route = "flow/prime",
+        decoder = emptyResponse,
+        headers = authorization(refreshJwt),
+        body = mapOf(
+            "flowId" to flowId,
+            "codeChallenge" to codeChallenge,
+        ),
+    )
 
     // Others
 

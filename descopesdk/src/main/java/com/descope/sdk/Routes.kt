@@ -847,12 +847,27 @@ interface DescopeFlow {
      * flow runner.
      */
     interface Runner {
+        /** Optional authentication info to allow running flows for authenticated users */
+        var flowAuthentication: Authentication?
+        
         /**
          * Start a user authentication flow from the current [context].
+         * 
+         * If the user has an **active session** and this [Runner] was provided with [Authentication],
+         * this flow will run with the user logged in.
+         * 
+         * Note: This is an asynchronous operation that might perform network requests before
+         * opening the browser. It is thus recommended to switch the
+         * user interface to a loading state before calling this function, otherwise the user
+         * might accidentally interact with the app when the authentication view is not
+         * being displayed.
          *
          * @param context the context launching the authentication flow.
          */
-        fun start(context: Context)
+        suspend fun start(context: Context)
+
+        /** @see start */
+        fun start(context: Context, callback: (Result<Unit>) -> Unit)
 
         /**
          * Resumes an ongoing flow after a redirect back to the app.
@@ -881,4 +896,12 @@ interface DescopeFlow {
         /** @see exchange */
         fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit)
     }
+
+    /**
+     * Provide authentication info if the flow is being run by an already
+     * authenticated user.
+     * @param flowId the flow ID about to be run.
+     * @param refreshJwt the refresh JWT from and active descope session
+     */
+    data class Authentication(val flowId: String, val refreshJwt: String)
 }

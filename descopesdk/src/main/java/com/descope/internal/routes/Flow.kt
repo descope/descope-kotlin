@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.others.toBase64
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeFlow
 import com.descope.sdk.DescopeLogger.Level.Info
@@ -11,11 +12,8 @@ import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.Result
 import java.security.MessageDigest
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 
-@OptIn(ExperimentalEncodingApi::class)
 internal class Flow(
     override val client: DescopeClient
 ) : Route, DescopeFlow {
@@ -37,34 +35,17 @@ internal class Flow(
 
         private lateinit var codeVerifier: String
 
-        override fun start(context: Context) {
-            log(Info, "Starting flow authentication", flowUrl)
-            // create some random bytes
-            val randomBytes = ByteArray(32)
-            Random.nextBytes(randomBytes)
+        override var flowAuthentication: DescopeFlow.Authentication? = null
+        
+        override suspend fun start(context: Context) {
+            log(Info, "Starting flow", flowUrl)
+            val codeChallenge = initVerifierAndChallenge()
+            flowAuthentication?.run { client.flowPrime(codeChallenge, flowId, refreshJwt) }
+            startFlowViaBrowser(codeChallenge, context)
+        }
 
-            // codeVerifier == base64(randomBytes)
-            codeVerifier = Base64.UrlSafe.encode(randomBytes)
-
-            // hash bytes using sha256
-            val md = MessageDigest.getInstance("SHA-256")
-            val hashed = md.digest(randomBytes)
-
-            // codeChallenge == base64(sha256(randomBytes))
-            val codeChallenge = Base64.UrlSafe.encode(hashed)
-
-            // embed into url parameters
-            val uriBuilder = Uri.parse(flowUrl).buildUpon()
-                .appendQueryParameter("ra-callback", deepLinkUrl)
-                .appendQueryParameter("ra-challenge", codeChallenge)
-                .appendQueryParameter("ra-initiator", "android")
-            backupCustomScheme?.let {
-                uriBuilder.appendQueryParameter("ra-backup-callback", it)
-            }
-            val uri = uriBuilder.build()
-
-            // launch via chrome custom tabs
-            launchUri(context, uri)
+        override fun start(context: Context, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+            start(context)
         }
 
         override fun resume(context: Context, incomingUriString: String) {
@@ -91,6 +72,38 @@ internal class Flow(
 
         override fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
             exchange(incomingUri)
+        }
+        
+        // Internal
+
+        private fun initVerifierAndChallenge(): String {
+            // create some random bytes
+            val randomBytes = ByteArray(32)
+            Random.nextBytes(randomBytes)
+
+            // codeVerifier == base64(randomBytes)
+            codeVerifier = randomBytes.toBase64()
+
+            // hash bytes using sha256
+            val md = MessageDigest.getInstance("SHA-256")
+            val hashed = md.digest(randomBytes)
+
+            // codeChallenge == base64(sha256(randomBytes))
+            return hashed.toBase64()
+        }
+        
+        private fun startFlowViaBrowser(codeChallenge: String, context: Context) {
+            val uriBuilder = Uri.parse(flowUrl).buildUpon()
+                .appendQueryParameter("ra-callback", deepLinkUrl)
+                .appendQueryParameter("ra-challenge", codeChallenge)
+                .appendQueryParameter("ra-initiator", "android")
+            backupCustomScheme?.let {
+                uriBuilder.appendQueryParameter("ra-backup-callback", it)
+            }
+            val uri = uriBuilder.build()
+
+            // launch via chrome custom tabs
+            launchUri(context, uri)
         }
 
     }
