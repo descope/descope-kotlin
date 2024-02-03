@@ -35,21 +35,17 @@ internal class Flow(
 
         private lateinit var codeVerifier: String
 
-        override fun start(context: Context) {
-            log(Info, "Starting flow authentication", flowUrl)
+        override var flowAuthentication: DescopeFlow.Authentication? = null
+        
+        override suspend fun start(context: Context) {
+            log(Info, "Starting flow", flowUrl)
             val codeChallenge = initVerifierAndChallenge()
+            flowAuthentication?.run { client.flowPrime(codeChallenge, flowId, refreshJwt) }
             startFlowViaBrowser(codeChallenge, context)
         }
 
-        override suspend fun start(context: Context, flowId: String, refreshJwt: String) {
-            log(Info, "Starting authenticated flow", flowUrl)
-            val codeChallenge = initVerifierAndChallenge()
-            client.flowPrime(codeChallenge, flowId, refreshJwt)
-            startFlowViaBrowser(codeChallenge, context)
-        }
-
-        override fun start(context: Context, flowId: String, refreshJwt: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
-            start(context, flowId, refreshJwt)
+        override fun start(context: Context, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+            start(context)
         }
 
         override fun resume(context: Context, incomingUriString: String) {

@@ -289,13 +289,13 @@ val runner = Descope.flow.create(
     backupCustomScheme = "<OPTIONAL_CUSTOM_SCHEME_FROM_SETUP_#2>"
 )
 
+// When starting a flow for an authenticated user, provide the authentication info
+Descope.sessionManager.session?.run {
+    runner.flowAuthentication("flow-id", refreshJwt)
+}
+
 // Starting an authentication flow
 runner.start(this@MainActivity)
-
-// Starting a flow for an authenticated user
-Descope.sessionManager.session?.run {
-    runner.start(this@MainActivity, "flow-id", refreshJwt)
-}
 ```
 
 When supporting Magic Links the `resume` function must be called. In your authentication Activity
