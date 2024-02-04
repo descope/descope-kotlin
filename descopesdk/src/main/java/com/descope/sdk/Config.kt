@@ -2,14 +2,11 @@ package com.descope.sdk
 
 import java.net.URL
 
-/** The default base URL for the Descope API. */
-const val DEFAULT_BASE_URL = "https://api.descope.com"
-
 /**
  * The configuration of the Descope SDK.
  *
  * @property projectId The ID of the Descope project.
- * @property baseUrl The base URL of the Descope server.
+ * @property baseUrl An optional override for the base URL of the Descope server.
  * @property logger An optional logger to use for logging messages in the Descope SDK.
  * - _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
  * the `RELEASE` versions of your application._
@@ -22,7 +19,7 @@ const val DEFAULT_BASE_URL = "https://api.descope.com"
  */
 data class DescopeConfig(
     val projectId: String,
-    val baseUrl: String = DEFAULT_BASE_URL,
+    val baseUrl: String? = null,
     val logger: DescopeLogger? = null,
     val networkClient: DescopeNetworkClient? = null,
 ) {

@@ -1,6 +1,5 @@
-package com.descope.session
+package com.descope.internal.others
 
-import com.descope.internal.others.toMap
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
