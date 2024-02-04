@@ -9,7 +9,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
-internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl, config.logger, config.networkClient) {
+internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
 
     // OTP
 
@@ -475,6 +475,15 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
     private fun authorization(value: String?) =
         if (value != null) mapOf("Authorization" to "Bearer ${config.projectId}:$value")
         else emptyMap()
+}
+
+internal fun baseUrlForProjectId(projectId: String): String {
+    val prefix = "https://api"
+    val suffix = "descope.com"
+    return if (projectId.length >= 32) {
+        val region = projectId.substring(1..4)
+        "$prefix.$region.$suffix"
+    } else "$prefix.$suffix" 
 }
 
 // Extensions

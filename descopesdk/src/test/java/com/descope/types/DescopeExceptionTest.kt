@@ -1,14 +1,12 @@
-package com.descope.session
+package com.descope.types
 
 import com.descope.internal.http.parseServerError
-import com.descope.types.DescopeException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Test
 
 class DescopeExceptionTest {
-
 
     @Test
     fun error_comparison() {
@@ -24,4 +22,5 @@ class DescopeExceptionTest {
             else -> fail("wrong when clause")
         }
     }
+    
 }
