@@ -291,7 +291,7 @@ val runner = Descope.flow.create(
 
 // When starting a flow for an authenticated user, provide the authentication info
 Descope.sessionManager.session?.run {
-    runner.flowAuthentication("flow-id", refreshJwt)
+    runner.flowAuthentication = DescopeFlow.Authentication("flow-id", refreshJwt)
 }
 
 // Starting an authentication flow
