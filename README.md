@@ -20,11 +20,20 @@ the Descope Console.
 
 ```kotlin
 import com.descope.Descope
-import com.descope.sdk.DescopeConfig
 
 // Application on create
 override fun onCreate() {
-    Descope.projectId = "<Your-Project-Id>"
+    Descope.setup(this, projectId = "<Your-Project-Id>")
+
+    // Optionally, you can configure your SDK to your needs
+    Descope.setup(this, projectId = "<Your-Project-Id>") {
+        // set a custom base URL (needs to be set up in the Descope console)
+        baseUrl = "https://my.app.com"
+        // enable the logger
+        if (BuildConfig.DEBUG) {
+            logger = DescopeLogger()
+        }
+    }
 }
 ```
 
@@ -130,7 +139,7 @@ an authenticated user.
 // Application class onCreate
 override fun onCreate() {
     super.onCreate()
-    Descope.projectId = "..."
+    Descope.setup(this, projectId = "<Your-Project-Id>")
     Descope.sessionManager.session?.run {
         print("User is logged in: $this")
     }

@@ -47,7 +47,7 @@ import java.net.URLConnection
  *     // Application class onCreate
  *     override fun onCreate() {
  *       super.onCreate()
- *         Descope.projectId = "..."
+ *         Descope.setup(this, projectId = "<Your-Project-Id>")
  *         Descope.sessionManager.session?.run {
  *             print("User is logged in: $this")
  *         }

@@ -65,22 +65,18 @@ interface DescopeSessionStorage {
  * instance of that class to the constructor to create a [SessionStorage] object
  * that uses a different backing store.
  *
+ * @param context the application context
  * @property projectId the Descope projectId
  * @param logger an optional [DescopeLogger] for logging during development
  * @param store an optional implementation of [SessionStorage.Store]
  */
-class SessionStorage(private val projectId: String, logger: DescopeLogger? = null, store: Store? = null) : DescopeSessionStorage {
+class SessionStorage(context: Context, private val projectId: String, logger: DescopeLogger? = null, store: Store? = null) : DescopeSessionStorage {
 
     private val store: Store
     private var lastValue: Value? = null
 
     init {
-        val context = Descope.provideApplicationContext?.invoke()
-        this.store = when {
-            store != null -> store
-            context != null -> createEncryptedStore(context, projectId, logger)
-            else -> Store.none
-        }
+        this.store = store ?: createEncryptedStore(context, projectId, logger)
     }
 
     override fun saveSession(session: DescopeSession) {
