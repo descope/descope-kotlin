@@ -46,7 +46,7 @@ import java.net.URLConnection
  *
  *     // Application class onCreate
  *     override fun onCreate() {
- *       super.onCreate()
+ *         super.onCreate()
  *         Descope.setup(this, projectId = "<Your-Project-Id>")
  *         Descope.sessionManager.session?.run {
  *             print("User is logged in: $this")
@@ -57,8 +57,8 @@ import java.net.URLConnection
  * session and clear it from the session manager:
  *
  *     Descope.sessionManager.session?.refreshJwt?.run {
- *       Descope.auth.logout(this)
- *       Descope.sessionManager.clearSession()
+ *         Descope.auth.logout(this)
+ *         Descope.sessionManager.clearSession()
  *     }
  *
  * You can customize how the `DescopeSessionManager` behaves by using your own
