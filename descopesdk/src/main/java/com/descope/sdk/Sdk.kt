@@ -1,5 +1,7 @@
 package com.descope.sdk
 
+import android.content.Context
+import android.os.Looper
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
@@ -15,8 +17,9 @@ import com.descope.session.DescopeSessionManager
 import com.descope.session.SessionLifecycle
 import com.descope.session.SessionStorage
 
-class DescopeSdk(val config: DescopeConfig) {
+class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.() -> Unit) {
 
+    var sessionManager: DescopeSessionManager
     val auth: DescopeAuth
     val otp: DescopeOtp
     val totp: DescopeTotp
@@ -28,17 +31,14 @@ class DescopeSdk(val config: DescopeConfig) {
     val password: DescopePassword
     val flow: DescopeFlow
 
-    var sessionManager: DescopeSessionManager
-        // defer initialization to allow setting a custom manager without loading the current state
-        get() = manager ?: initDefaultManager()
-        set(value) {
-            manager = value
-        }
-
-    constructor(projectId: String) : this(DescopeConfig(projectId))
-
     init {
-        assert(config.projectId != "") { "The projectId value must not be an empty string" }
+        if (Looper.getMainLooper().thread != Thread.currentThread()) {
+            throw IllegalStateException("Descope SDK must be initialized on the main thread")
+        }
+        // init config
+        val config = DescopeConfig(projectId = projectId)
+        configure(config)
+        // init auth methods
         val client = DescopeClient(config)
         auth = Auth(client)
         otp = Otp(client)
@@ -50,18 +50,16 @@ class DescopeSdk(val config: DescopeConfig) {
         passkey = Passkey(client)
         password = Password(client)
         flow = Flow(client)
+        // init session manager
+        sessionManager = initDefaultManager(context, config)
     }
 
     // Internal
 
-    private var manager: DescopeSessionManager? = null
-
-    private fun initDefaultManager(): DescopeSessionManager {
-        val storage = SessionStorage(config.projectId, config.logger)
+    private fun initDefaultManager(context: Context, config: DescopeConfig): DescopeSessionManager {
+        val storage = SessionStorage(context.applicationContext, config.projectId, config.logger)
         val lifecycle = SessionLifecycle(auth)
-        val manager = DescopeSessionManager(storage, lifecycle)
-        this.manager = manager
-        return manager
+        return DescopeSessionManager(storage, lifecycle)
     }
 
     // SDK information

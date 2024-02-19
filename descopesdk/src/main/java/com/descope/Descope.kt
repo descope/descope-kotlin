@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+
 package com.descope
 
 import android.content.Context
@@ -15,7 +17,6 @@ import com.descope.sdk.DescopeSso
 import com.descope.sdk.DescopeTotp
 import com.descope.session.DescopeSession
 import com.descope.session.DescopeSessionManager
-import com.descope.session.SessionStorage
 
 /**
  * Provides functions for working with the Descope API.
@@ -23,38 +24,37 @@ import com.descope.session.SessionStorage
  * This singleton object is provided as a convenience that should be suitable for most
  * app architectures. If you prefer a different approach you can also create an instance
  * of the [DescopeSdk] class instead.
+ * 
+ * - **Important**: Make sure to call the [setup] function when initializing your application.
  */
 object Descope {
     /**
-     * The projectId of your Descope project.
+     * The setup of the `Descope` singleton.
+     * 
+     * Call this function when initializing you application.
+     * **This function must be called before the [Descope] object can be used**
      *
-     * You will most likely want to set this value in your application's initialization code,
-     * and in most cases you only need to set this to work with the `Descope` singleton.
+     * For example:
      *
-     * - **Note:** This is a shortcut for setting the [Descope.config] property.
+     *     Descope.setup(applicationContext, projectId = "DESCOPE_PROJECT_ID") {
+     *         baseUrl = "https://my.app.com"
+     *         if (BuildConfig.DEBUG) {
+     *             logger = DescopeLogger()
+     *         }
+     *     }
+     *      
+     * @param context The application context
+     * @param projectId The Descope project ID
+     * @param configure An optional closure that allows to finely configure the Descope SDK
      */
-    var projectId: String
-        get() = config.projectId
-        set(value) {
-            config = DescopeConfig(projectId = value)
-        }
-
-    /**
-     * The configuration of the `Descope` singleton.
-     *
-     * Set this property **instead** of [Descope.projectId] in your application's initialization code
-     * if you require additional configuration.
-     *
-     * - **Important:** To prevent accidental misuse only one of `config` and `projectId` can
-     *     be set, and they can only be set once. If this isn't appropriate for your use
-     *     case you can also use the [DescopeSdk] class directly instead.
-     */
-    var config: DescopeConfig = DescopeConfig.initial
-        set(value) {
-            assert(config.projectId == "") { "The config property must not be set more than once" }
-            field = value
-        }
-
+    fun setup(
+        context: Context,
+        projectId: String,
+        configure: DescopeConfig.() -> Unit = {},
+    ) {
+        sdk = DescopeSdk(context, projectId, configure)
+    }
+    
     /**
      *  Manages the storage and lifetime of a [DescopeSession].
      *
@@ -72,14 +72,6 @@ object Descope {
         set(value) {
             sdk.sessionManager = value
         }
-
-    /**
-     * Provide Descope with the application context if you're using
-     * [DescopeSessionManager] for automatic session management, and
-     * want to enable the default secure persistence layer. Alternatively
-     * you can provide your own [SessionStorage.Store]
-     */
-    var provideApplicationContext: (() -> Context)? = null
 
     // Authentication functions that call the Descope API.
 
@@ -124,7 +116,5 @@ object Descope {
         get() = sdk.password
 
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
-    private val sdk: DescopeSdk by lazy {
-        DescopeSdk(config = config)
-    }
+    private lateinit var sdk: DescopeSdk
 }

@@ -1,33 +1,31 @@
 package com.descope.sdk
 
+import com.descope.session.DescopeSessionManager
 import java.net.URL
 
 /**
  * The configuration of the Descope SDK.
  *
  * @property projectId The ID of the Descope project.
- * @property baseUrl An optional override for the base URL of the Descope server.
- * @property logger An optional logger to use for logging messages in the Descope SDK.
- * - _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
- * the `RELEASE` versions of your application._
- * @property networkClient An optional object to override how HTTP requests are performed.
- *  - The default value of this property is always `null`, and the SDK uses its own
- *  internal network client to perform HTTP requests.
- *  - This property can be useful to test code that uses the Descope SDK without any
- *  network requests actually taking place. In most other cases there shouldn't be
- *  any need to use it.
  */
-data class DescopeConfig(
-    val projectId: String,
-    val baseUrl: String? = null,
-    val logger: DescopeLogger? = null,
-    val networkClient: DescopeNetworkClient? = null,
-) {
-
-    companion object {
-        val initial = DescopeConfig("")
-    }
-
+class DescopeConfig(val projectId: String) {
+    /** An optional override for the base URL of the Descope server. */
+    var baseUrl: String? = null
+    /**
+     * An optional logger to use for logging messages in the Descope SDK.
+     * - _**IMPORTANT**: Logging is intended for `DEBUG` only. Do not enable logs when building
+     * the `RELEASE` versions of your application._
+     */
+    var logger: DescopeLogger? = null
+    /**
+     * An optional object to override how HTTP requests are performed.
+     *  - The default value of this property is always `null`, and the SDK uses its own
+     *  internal network client to perform HTTP requests.
+     *  - This property can be useful to test code that uses the Descope SDK without any
+     *  network requests actually taking place. In most other cases there shouldn't be
+     *  any need to use it.
+     */
+    var networkClient: DescopeNetworkClient? = null
 }
 
 /** 
