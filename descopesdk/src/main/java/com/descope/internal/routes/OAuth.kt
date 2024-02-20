@@ -9,6 +9,7 @@ import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.http.OAuthMethod
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeOAuth
 import com.descope.types.AuthenticationResponse
@@ -22,13 +23,27 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 
 internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
 
-    override suspend fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
-        client.oauthWebStart(provider, redirectUrl, options).url
+    override suspend fun signUp(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        client.oauthWebStart(provider, redirectUrl, options, OAuthMethod.SignUp).url
 
-    override fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
-        start(provider, redirectUrl, options)
+    override fun signUp(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signUp(provider, redirectUrl, options)
+    }
+    
+    override suspend fun signIn(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        client.oauthWebStart(provider, redirectUrl, options, OAuthMethod.SignIn).url
+
+    override fun signIn(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signIn(provider, redirectUrl, options)
     }
 
+    override suspend fun signUpOrIn(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        client.oauthWebStart(provider, redirectUrl, options, OAuthMethod.SignUpOrIn).url
+
+    override fun signUpOrIn(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+        signUpOrIn(provider, redirectUrl, options)
+    }
+    
     override suspend fun exchange(code: String): AuthenticationResponse =
         client.oauthWebExchange(code).convert()
 
@@ -91,4 +106,14 @@ internal class OAuth(override val client: DescopeClient):  Route, DescopeOAuth {
 
         return result.idToken
     }
+    
+    // Deprecated
+
+    @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options)"))
+    override suspend fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
+        signUpOrIn(provider, redirectUrl, options)
+
+    @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options, callback)"))
+    override fun start(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, callback: (Result<String>) -> Unit) = 
+        signUpOrIn(provider, redirectUrl, options, callback)
 }
