@@ -357,8 +357,8 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
 
     // OAuth
 
-    suspend fun oauthWebStart(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): OAuthServerResponse = post(
-        route = "auth/oauth/authorize",
+    suspend fun oauthWebStart(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, oAuthMethod: OAuthMethod): OAuthServerResponse = post(
+        route = "auth/oauth/authorize${oAuthMethod.routeSuffix}",
         decoder = OAuthServerResponse::fromJson,
         headers = authorization(options?.refreshJwt),
         params = mapOf(
@@ -484,6 +484,14 @@ internal fun baseUrlForProjectId(projectId: String): String {
         val region = projectId.substring(1..4)
         "$prefix.$region.$suffix"
     } else "$prefix.$suffix" 
+}
+
+// Internal Classes
+
+enum class OAuthMethod(val routeSuffix: String) {
+    SignUp("/signup"),
+    SignIn("/signin"),
+    SignUpOrIn("")
 }
 
 // Extensions

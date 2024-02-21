@@ -519,6 +519,85 @@ interface DescopeEnchantedLink {
 interface DescopeOAuth {
 
     /**
+     * Authenticates a new user using an OAuth redirect chain.
+     *
+     * This function returns a URL to redirect to in order to
+     * authenticate the user against the chosen [provider].
+     *
+     *     // use one of the built in constants for the OAuth provider
+     *     val authUrl = Descope.oauth.signUp(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     *     // or pass a string with the name of a custom provider
+     *     val authUrl = Descope.oauth.signUp(OAuthProvider("myprovider"), redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     * - **Important:** Make sure a default OAuth redirect URL is configured
+     * in the Descope console, or provided by this call via [redirectUrl]. It should
+     * redirect back to this app using a deep link. See examples for more information.
+     *
+     * @param provider which provider to authenticate against
+     * @param redirectUrl optional redirect URL. If null, the default redirect URL in Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @return a URL that starts the OAuth redirect chain
+     */
+    suspend fun signUp(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
+
+    /** @see signUp */
+    fun signUp(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
+
+    /**
+     * Authenticates an existing user using an OAuth redirect chain.
+     *
+     * This function returns a URL to redirect to in order to
+     * authenticate the user against the chosen [provider].
+     *
+     *     // use one of the built in constants for the OAuth provider
+     *     val authUrl = Descope.oauth.signIn(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     *     // or pass a string with the name of a custom provider
+     *     val authUrl = Descope.oauth.signIn(OAuthProvider("myprovider"), redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     * - **Important:** Make sure a default OAuth redirect URL is configured
+     * in the Descope console, or provided by this call via [redirectUrl]. It should
+     * redirect back to this app using a deep link. See examples for more information.
+     *
+     * @param provider which provider to authenticate against
+     * @param redirectUrl optional redirect URL. If null, the default redirect URL in Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @return a URL that starts the OAuth redirect chain
+     */
+    suspend fun signIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
+
+    /** @see signIn */
+    fun signIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
+
+    /**
+     * Authenticates an existing user if one exists, or create a new user using an
+     * OAuth redirect chain.
+     *
+     * This function returns a URL to redirect to in order to
+     * authenticate the user against the chosen [provider].
+     *
+     *     // use one of the built in constants for the OAuth provider
+     *     val authUrl = Descope.oauth.signUpOrIn(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     *     // or pass a string with the name of a custom provider
+     *     val authUrl = Descope.oauth.signUpOrIn(OAuthProvider("myprovider"), redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+     *
+     * - **Important:** Make sure a default OAuth redirect URL is configured
+     * in the Descope console, or provided by this call via [redirectUrl]. It should
+     * redirect back to this app using a deep link. See examples for more information.
+     *
+     * @param provider which provider to authenticate against
+     * @param redirectUrl optional redirect URL. If null, the default redirect URL in Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @return a URL that starts the OAuth redirect chain
+     */
+    suspend fun signUpOrIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
+
+    /** @see signUpOrIn */
+    fun signUpOrIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
+    
+    /**
      * Starts an OAuth redirect chain to authenticate a user.
      *
      * This function returns a URL to redirect to in order to
@@ -539,9 +618,11 @@ interface DescopeOAuth {
      * @param options additional behaviors to perform during authentication.
      * @return a URL that starts the OAuth redirect chain
      */
+    @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options)"))
     suspend fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
 
     /** @see start */
+    @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options, callback)"))
     fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
@@ -550,6 +631,11 @@ interface DescopeOAuth {
      * This function exchanges the [code] received in the `code` URL
      * parameter for an [AuthenticationResponse].
      *
+     * - **Important:** The redirect URL might not contain a code URL parameter
+     *   but can contain an `err` URL parameter instead. This can occur when attempting to
+     *   [signUp] with an existing user or trying to [signIn] with a non-existing
+     *   user.
+     * 
      * @param code received in the final redirect as a url parameter named `code`
      * @return an [AuthenticationResponse] upon successful verification.
      */
