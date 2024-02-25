@@ -5,7 +5,6 @@ import androidx.annotation.VisibleForTesting
 import com.descope.internal.others.decodeBase64
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.toMap
-import com.descope.internal.others.tryOrNull
 import com.descope.internal.others.with
 import com.descope.types.DescopeException
 import org.json.JSONObject
@@ -28,14 +27,20 @@ interface DescopeToken {
     val id: String
 
     /**
-     * The value of the "aud" (audience) claim which is the unique id
+     * The value of the "iss" (issuer) claim which is the unique id
      * of the Descope project the JWT was generated for.
      */
     val projectId: String
 
     /**
-     * The value of the "exp" (expiration time) claim which is the time
-     * after which the JWT expires.
+     * The value of the "iat" (issue time) claim which is the time at
+     * which the JWT was created.
+     */
+    val issuedAt: Long
+
+    /**
+     * The value of the "exp" (expiry time) claim which is the time
+     * after which the JWT must be considered invalid.
      */
     val expiresAt: Long?
 
@@ -72,9 +77,10 @@ internal class Token(
 
     override val id: String
     override val projectId: String
-    override val expiresAt: Long?
+    override val issuedAt: Long
+    override val expiresAt: Long
     override val isExpired: Boolean
-        get() = expiresAt?.run { this <= System.currentTimeMillis() } ?: false
+        get() = expiresAt <= System.currentTimeMillis()
     override val claims: Map<String, Any>
 
     private val allClaims: Map<String, Any>
@@ -84,7 +90,8 @@ internal class Token(
             val map = decodeJwt(jwt)
             id = getClaim(Claim.Subject, map)
             projectId = decodeIssuer(getClaim(Claim.Issuer, map))
-            expiresAt = tryOrNull { getClaim<Int>(Claim.Expiration, map).toLong().secToMs() }
+            issuedAt = getClaim<Int>(Claim.IssuedAt, map).toLong().secToMs()
+            expiresAt = getClaim<Int>(Claim.Expiration, map).toLong().secToMs()
             claims = map.filter { Claim.isCustom(it.key) }
             allClaims = map
         } catch (e: Exception) {
@@ -128,13 +135,9 @@ internal class Token(
     private fun getTenants(): Map<String, Any> = getClaim(Claim.Tenants, allClaims)
 
     override fun toString(): String {
-        var expires = "expires=Never"
-        expiresAt?.let {
-            val label = if (isExpired) "expired" else "expires"
-            val date = DateFormat.format("yyyy-MM-dd HH:mm:ss", it)
-            expires = "$label=$date"
-        }
-        return "DescopeToken(id=${id}, $expires)"
+        val expires = if (isExpired) "expired" else "expires"
+        val date = DateFormat.format("yyyy-MM-dd HH:mm:ss", expiresAt)
+        return "DescopeToken(id=$id, $expires=$date)"
     }
 }
 
@@ -164,7 +167,6 @@ private sealed class TokenException : Exception() {
 // Claims
 
 private enum class Claim(val key: String) {
-    Audience("aud"),
     Subject("sub"),
     Issuer("iss"),
     IssuedAt("iat"),
