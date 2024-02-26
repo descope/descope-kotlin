@@ -77,8 +77,9 @@ class SessionLifecycle(private val auth: DescopeAuth) : DescopeSessionLifecycle 
 
     // Internal
 
-    private fun shouldRefresh(session: DescopeSession): Boolean =
-        session.sessionToken.expiresAt?.run { this - System.currentTimeMillis() <= stalenessAllowedInterval } ?: false
+    private fun shouldRefresh(session: DescopeSession): Boolean {
+        return session.sessionToken.expiresAt - System.currentTimeMillis() <= stalenessAllowedInterval
+    }
 
     // Timer
 

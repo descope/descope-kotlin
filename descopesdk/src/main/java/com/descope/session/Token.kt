@@ -8,6 +8,7 @@ import com.descope.internal.others.toMap
 import com.descope.internal.others.with
 import com.descope.types.DescopeException
 import org.json.JSONObject
+import java.util.Objects
 
 /**
  * A `DescopeToken` is a utility wrapper around a single JWT value.
@@ -24,7 +25,7 @@ interface DescopeToken {
      * The value of the "sub" (subject) claim, which is the unique id
      * of the user or access key the JWT was generated for.
      */
-    val id: String
+    val entityId: String
 
     /**
      * The value of the "iss" (issuer) claim which is the unique id
@@ -42,9 +43,9 @@ interface DescopeToken {
      * The value of the "exp" (expiry time) claim which is the time
      * after which the JWT must be considered invalid.
      */
-    val expiresAt: Long?
+    val expiresAt: Long
 
-    /** Whether the JWT expiry time (if any) has already passed. */
+    /** Whether the JWT expiry time has already passed. */
     val isExpired: Boolean
 
     /**
@@ -75,7 +76,7 @@ internal class Token(
     override val jwt: String,
 ) : DescopeToken {
 
-    override val id: String
+    override val entityId: String
     override val projectId: String
     override val issuedAt: Long
     override val expiresAt: Long
@@ -88,7 +89,7 @@ internal class Token(
     init {
         try {
             val map = decodeJwt(jwt)
-            id = getClaim(Claim.Subject, map)
+            entityId = getClaim(Claim.Subject, map)
             projectId = decodeIssuer(getClaim(Claim.Issuer, map))
             issuedAt = getClaim<Int>(Claim.IssuedAt, map).toLong().secToMs()
             expiresAt = getClaim<Int>(Claim.Expiration, map).toLong().secToMs()
@@ -98,6 +99,8 @@ internal class Token(
             throw DescopeException.tokenError.with(cause = e)
         }
     }
+    
+    // Authorization
 
     override fun permissions(tenant: String?): List<String> = try {
         authorizationItems(tenant, Claim.Permissions)
@@ -134,10 +137,25 @@ internal class Token(
 
     private fun getTenants(): Map<String, Any> = getClaim(Claim.Tenants, allClaims)
 
+    // Utilities
+
+    override fun equals(other: Any?): Boolean {
+        val token = other as? DescopeToken ?: return false
+        return jwt == token.jwt
+    }
+
+    override fun hashCode(): Int {
+        return jwt.hashCode()
+    }
+    
+    /**
+     * Returns a safe string representation of the token with the `entityId` value
+     * value and the token's expiry time (i.e., no private or secret data).
+     */
     override fun toString(): String {
         val expires = if (isExpired) "expired" else "expires"
         val date = DateFormat.format("yyyy-MM-dd HH:mm:ss", expiresAt)
-        return "DescopeToken(id=$id, $expires=$date)"
+        return "DescopeToken(entityId=$entityId, $expires=$date)"
     }
 }
 
@@ -200,8 +218,7 @@ private fun decodeFragment(string: String): Map<String, Any> {
     }
 }
 
-@VisibleForTesting
-fun decodeJwt(jwt: String): Map<String, Any> {
+private fun decodeJwt(jwt: String): Map<String, Any> {
     val fragments = jwt.split(".")
     if (fragments.size != 3) throw TokenException.InvalidEncoding()
     return decodeFragment(fragments[1])
