@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
-import com.descope.Descope
 import com.descope.internal.others.optionalMap
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonArray
@@ -49,15 +48,14 @@ interface DescopeSessionStorage {
  * The default implementation of the [DescopeSessionStorage] interface.
  *
  * By default, the `SessionStorage` persists the [DescopeSession] securely using
- * [EncryptedSharedPreferences]. This another layer of precaution over the fact
- * that applications are sandboxed.
+ * [EncryptedSharedPreferences]. This provides another layer of safety over
+ * the fact that Android applications and all their data are sandboxed.
  *
  * - **NOTE:** In order to take advantage of the [EncryptedSharedPreferences] based
- * storage, you must make sure [Descope.provideApplicationContext] provides the application
- * context and is not `null`:
+ * storage, the Descope SDK initializers require a [Context] argument, and you should
+ * always make sure to pass the `applicationContext` there:
  *
- *
- *     Descope.provideApplicationContext = { applicationContext }
+ *     Descope.setup(applicationContext, projectId = "DESCOPE_PROJECT_ID")
  *
  * For your convenience, you can implement the [SessionStorage.Store] class and
  * override the [SessionStorage.Store.loadItem], [SessionStorage.Store.saveItem]

@@ -93,12 +93,12 @@ as ensuring that it's refreshed when needed. For the default instances of
 the `DescopeSessionManager` class this means using the `EncryptedSharedPreferences`
 for secure storage of the session and refreshing it a short while before it expires.
 
-**Important**: If you're planning on using the default session storage, make sure to provide
-the application context when initializing `Descope` with a project ID / config:
+Make sure you initialize Descope with your application context so that the
+session manager implementation can access Android storage and load any
+existing session and user data:
 
 ```kotlin
-Descope.config = DescopeConfig(projectId = "<PROJECT-ID>")
-Descope.provideApplicationContext = { applicationContext }
+Descope.setup(applicationContext, projectId = "<PROJECT-ID>")
 ```
 
 Once the user completes a sign in flow successfully you should set the
