@@ -43,7 +43,7 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0"
     implementation "androidx.lifecycle:lifecycle-common:2.7.0"
     implementation "androidx.lifecycle:lifecycle-process:2.7.0"
-    implementation "androidx.browser:browser:1.7.0"
+    implementation "androidx.browser:browser:1.8.0"
     implementation "androidx.security:security-crypto:1.0.0"
     implementation "androidx.credentials:credentials:1.2.1"
     implementation "androidx.credentials:credentials-play-services-auth:1.2.1"
