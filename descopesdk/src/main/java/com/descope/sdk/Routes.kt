@@ -2,6 +2,8 @@ package com.descope.sdk
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
@@ -750,6 +752,7 @@ interface DescopePasskey {
      * @param details Optional details about the user signing up.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signUp(context: Context, loginId: String, details: SignUpDetails? = null): AuthenticationResponse
 
     /**
@@ -760,6 +763,7 @@ interface DescopePasskey {
      * @param options Additional behaviors to perform during authentication.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
 
     /**
@@ -773,6 +777,7 @@ interface DescopePasskey {
      * @param options Additional behaviors to perform during authentication.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signUpOrIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
 
     /**
@@ -782,6 +787,7 @@ interface DescopePasskey {
      * @param loginId What identifies the user when logging in
      * @param refreshJwt The `refreshJwt` from an active [DescopeSession].
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun add(context: Context, loginId: String, refreshJwt: String)
 }
 

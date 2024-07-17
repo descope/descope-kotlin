@@ -1,8 +1,11 @@
 package com.descope.internal.routes
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Base64
+import androidx.annotation.RequiresApi
 import androidx.credentials.CreateCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
@@ -32,6 +35,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 internal class Passkey(override val client: DescopeClient) : Route, DescopePasskey {
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun signUp(context: Context, loginId: String, details: SignUpDetails?): AuthenticationResponse {
         val startResponse = client.passkeySignUpStart(loginId, details, getPackageOrigin(context))
         val registerResponse = performRegister(context, startResponse.options)
@@ -39,6 +43,7 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
         return jwtResponse.convert()
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>?): AuthenticationResponse {
         val startResponse = client.passkeySignInStart(loginId, getPackageOrigin(context), options)
         val assertionResponse = performAssertion(context, startResponse.options)
@@ -46,6 +51,7 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
         return jwtResponse.convert()
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun signUpOrIn(context: Context, loginId: String, options: List<SignInOptions>?): AuthenticationResponse {
         val startResponse = client.passkeySignUpInStart(loginId, getPackageOrigin(context), options)
         val jwtResponse = if (startResponse.create) {
@@ -58,12 +64,14 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
         return jwtResponse.convert()
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun add(context: Context, loginId: String, refreshJwt: String) {
         val startResponse = client.passkeyAddStart(loginId, getPackageOrigin(context), refreshJwt)
         val registerResponse = performRegister(context, startResponse.options)
         client.passkeyAddFinish(startResponse.transactionId, registerResponse)
     }
 
+    @SuppressLint("PublicKeyCredential")
     private suspend fun performRegister(context: Context, options: String): String {
         val publicKey = convertOptions(options)
         val request = CreatePublicKeyCredentialRequest(publicKey)
@@ -129,6 +137,7 @@ private fun convertOptions(options: String): String {
     return publicKey
 }
 
+@RequiresApi(Build.VERSION_CODES.P)
 private fun getPackageOrigin(context: Context): String {
     val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
     val signers = packageInfo.signingInfo?.apkContentsSigners // nullable according to source code
