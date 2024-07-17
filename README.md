@@ -227,8 +227,8 @@ class FlowDoneActivity : AppCompatActivity() {
         <data android:scheme="https" android:host="<YOUR_HOST_HERE>" android:path="/done" />
     </intent-filter>
 
-    <!-- Optional: App Links are blocked by default on Opera Browsers. Add a custom scheme for that use case specifically -->
-    <intent-filter android:autoVerify="true"> <!-- autoVerify required for app links -->
+    <!-- Optional: App Links are blocked by default on Opera and some other browsers. Add a custom scheme for that use case specifically -->
+    <intent-filter>
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />

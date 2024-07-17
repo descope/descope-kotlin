@@ -107,7 +107,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
     )
 
     // MARK: - Passkey
-    
+
     suspend fun passkeySignUpStart(loginId: String, details: SignUpDetails?, origin: String): PasskeyStartServerResponse = post(
         route = "auth/webauthn/signup/start",
         decoder = PasskeyStartServerResponse::fromJson,
@@ -115,6 +115,14 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "loginId" to loginId,
             "user" to details?.toMap(),
             "origin" to origin,
+            "passkeyOptions" to mapOf(
+                "attestation" to "none",
+                "authenticatorSelection" to mapOf(
+                    "authenticatorAttachment" to "platform",
+                    "userVerification" to "required",
+                    "residentKey" to "required",
+                ),
+            ),
         ),
     )
 
@@ -155,6 +163,14 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "loginId" to loginId,
             "origin" to origin,
             "loginOptions" to options?.toMap(),
+            "passkeyOptions" to mapOf(
+                "attestation" to "none",
+                "authenticatorSelection" to mapOf(
+                    "authenticatorAttachment" to "platform",
+                    "userVerification" to "required",
+                    "residentKey" to "required",
+                )
+            ),
         ),
     )
 
@@ -176,7 +192,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "response" to response,
         ),
     )
-    
+
     // Password
 
     suspend fun passwordSignUp(loginId: String, password: String, details: SignUpDetails?): JwtServerResponse = post(
@@ -427,7 +443,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
             "codeVerifier" to codeVerifier,
         ),
     )
-    
+
     suspend fun flowPrime(codeChallenge: String, flowId: String, refreshJwt: String): Unit = post(
         route = "flow/prime",
         decoder = emptyResponse,
@@ -483,7 +499,7 @@ internal fun baseUrlForProjectId(projectId: String): String {
     return if (projectId.length >= 32) {
         val region = projectId.substring(1..4)
         "$prefix.$region.$suffix"
-    } else "$prefix.$suffix" 
+    } else "$prefix.$suffix"
 }
 
 // Internal Classes
