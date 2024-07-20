@@ -2,6 +2,8 @@ package com.descope.sdk
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
@@ -571,7 +573,7 @@ interface DescopeOAuth {
     fun signIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
-     * Authenticates an existing user if one exists, or create a new user using an
+     * Authenticate an existing user if one exists, or create a new user using an
      * OAuth redirect chain.
      *
      * This function returns a URL to redirect to in order to
@@ -750,6 +752,7 @@ interface DescopePasskey {
      * @param details Optional details about the user signing up.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signUp(context: Context, loginId: String, details: SignUpDetails? = null): AuthenticationResponse
 
     /**
@@ -760,6 +763,7 @@ interface DescopePasskey {
      * @param options Additional behaviors to perform during authentication.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
 
     /**
@@ -773,6 +777,7 @@ interface DescopePasskey {
      * @param options Additional behaviors to perform during authentication.
      * @return An [AuthenticationResponse] value upon successful authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun signUpOrIn(context: Context, loginId: String, options: List<SignInOptions>? = null): AuthenticationResponse
 
     /**
@@ -782,6 +787,7 @@ interface DescopePasskey {
      * @param loginId What identifies the user when logging in
      * @param refreshJwt The `refreshJwt` from an active [DescopeSession].
      */
+    @RequiresApi(Build.VERSION_CODES.P)
     suspend fun add(context: Context, loginId: String, refreshJwt: String)
 }
 
@@ -987,7 +993,7 @@ interface DescopeFlow {
      * Provide authentication info if the flow is being run by an already
      * authenticated user.
      * @param flowId the flow ID about to be run.
-     * @param refreshJwt the refresh JWT from and active descope session
+     * @param refreshJwt the refresh JWT from an active descope session
      */
     data class Authentication(val flowId: String, val refreshJwt: String)
 }
