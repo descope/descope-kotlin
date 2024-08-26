@@ -35,8 +35,9 @@ internal class Flow(
 
         private lateinit var codeVerifier: String
 
+        override var flowPresentation: DescopeFlow.Presentation? = null
         override var flowAuthentication: DescopeFlow.Authentication? = null
-        
+
         override suspend fun start(context: Context) {
             log(Info, "Starting flow", flowUrl)
             val codeChallenge = initVerifierAndChallenge()
@@ -73,7 +74,7 @@ internal class Flow(
         override fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
             exchange(incomingUri)
         }
-        
+
         // Internal
 
         private fun initVerifierAndChallenge(): String {
@@ -91,7 +92,7 @@ internal class Flow(
             // codeChallenge == base64(sha256(randomBytes))
             return hashed.toBase64()
         }
-        
+
         private fun startFlowViaBrowser(codeChallenge: String, context: Context) {
             val uriBuilder = Uri.parse(flowUrl).buildUpon()
                 .appendQueryParameter("ra-callback", deepLinkUrl)
@@ -106,15 +107,22 @@ internal class Flow(
             launchUri(context, uri)
         }
 
+        private fun launchUri(context: Context, uri: Uri) {
+            val customTabsIntent = flowPresentation?.createCustomTabsIntent(context) ?: defaultCustomTabIntent()
+            customTabsIntent.launchUrl(context, uri)
+        }
+
     }
 
 }
 
-private fun launchUri(context: Context, uri: Uri) {
-    val customTabsIntent = CustomTabsIntent.Builder()
+private fun defaultCustomTabIntent(): CustomTabsIntent {
+    return CustomTabsIntent.Builder()
         .setUrlBarHidingEnabled(true)
         .setShowTitle(true)
         .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
+        .setBookmarksButtonEnabled(false)
+        .setDownloadButtonEnabled(false)
+        .setInstantAppsEnabled(false)
         .build()
-    customTabsIntent.launchUrl(context, uri)
 }

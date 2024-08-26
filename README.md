@@ -303,6 +303,9 @@ Descope.sessionManager.session?.run {
     runner.flowAuthentication = DescopeFlow.Authentication("flow-id", refreshJwt)
 }
 
+// Optionally, you could customize the flow's presentation if needed
+runner.flowPresentation = myFlowPresentation
+
 // Starting an authentication flow
 runner.start(this@MainActivity)
 ```
