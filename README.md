@@ -9,7 +9,7 @@ written for Android. You can read more on the [Descope Website](https://descope.
 Add the following to your `build.gradle` dependencies:
 
 ```groovy
-implementation 'com.descope:descope-kotlin:0.10.0'
+implementation 'com.descope:descope-kotlin:0.11.0'
 ```
 
 ## Quickstart
@@ -303,7 +303,7 @@ Descope.sessionManager.session?.run {
     runner.flowAuthentication = DescopeFlow.Authentication("flow-id", refreshJwt)
 }
 
-// Optionally, you could customize the flow's presentation if needed
+// Optionally, you can customize the flow's presentation if needed
 runner.flowPresentation = myFlowPresentation
 
 // Starting an authentication flow
