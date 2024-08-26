@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
@@ -942,6 +943,9 @@ interface DescopeFlow {
         /** Optional authentication info to allow running flows for authenticated users */
         var flowAuthentication: Authentication?
         
+        /** Optional overrides and customizations to the flow's presentation */
+        var flowPresentation: Presentation?
+
         /**
          * Start a user authentication flow from the current [context].
          * 
@@ -987,6 +991,20 @@ interface DescopeFlow {
 
         /** @see exchange */
         fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit)
+    }
+
+    /**
+     * Customize the flow's presentation by implementing the [Presentation] interface.
+     */
+    interface Presentation {
+        /**
+         * Provide your own [CustomTabsIntent] that will be used when [Runner.start]
+         * or [Runner.resume] are called. You can configure it to suit 
+         * your application's presentation needs.
+         * @param context The context passed down to [Runner.start] or [Runner.resume]
+         * @return A [CustomTabsIntent]. Returning `null` will use the default custom tab intent.
+         */
+        fun createCustomTabsIntent(context: Context): CustomTabsIntent?
     }
 
     /**
