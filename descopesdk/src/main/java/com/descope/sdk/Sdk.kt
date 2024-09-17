@@ -30,7 +30,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     val passkey: DescopePasskey
     val password: DescopePassword
     val flow: DescopeFlow
-    val flow2: com.descope.internal.flow.Flow
 
     init {
         if (Looper.getMainLooper().thread != Thread.currentThread()) {
@@ -51,7 +50,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         passkey = Passkey(client)
         password = Password(client)
         flow = Flow(client)
-        flow2 = com.descope.internal.flow.Flow()
         // init session manager
         sessionManager = initDefaultManager(context, config)
     }
