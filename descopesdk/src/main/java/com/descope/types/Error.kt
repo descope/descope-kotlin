@@ -92,6 +92,7 @@ class DescopeException(
          * offline or the network request timing out.
          */
         val networkError = DescopeException(code = "K010001", desc = "Network error")
+        val browserError = DescopeException(code = "K010002", desc = "Unable to launch browser")
 
         val badRequest = DescopeException(code = "E011001", desc = API_DESC)
         val missingArguments = DescopeException(code = "E011002", desc = API_DESC)
