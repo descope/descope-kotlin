@@ -399,6 +399,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         body = mapOf(
             "provider" to provider.name,
             "loginOptions" to options?.toMap(),
+            "implicit" to true,
         ),
     )
 
