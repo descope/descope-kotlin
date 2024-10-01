@@ -3,7 +3,6 @@
 package com.descope
 
 import android.content.Context
-import com.descope.internal.flow.Flow
 import com.descope.sdk.DescopeAuth
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeEnchantedLink
@@ -116,9 +115,6 @@ object Descope {
     val password: DescopePassword
         get() = sdk.password
     
-    val flow2: Flow
-        get() = sdk.flow2
-
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
     private lateinit var sdk: DescopeSdk
 }

@@ -71,56 +71,6 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
         client.passkeyAddFinish(startResponse.transactionId, registerResponse)
     }
 
-    @SuppressLint("PublicKeyCredential")
-    private suspend fun performRegister(context: Context, options: String): String {
-        val publicKey = convertOptions(options)
-        val request = CreatePublicKeyCredentialRequest(publicKey)
-
-        try {
-            val credentialManager = CredentialManager.create(context)
-            val result = credentialManager.createCredential(context, request as CreateCredentialRequest) as CreatePublicKeyCredentialResponse
-            return result.registrationResponseJson
-        } catch (e: CreateCredentialCancellationException) {
-            throw DescopeException.passkeyCancelled
-        } catch (e: CreatePublicKeyCredentialDomException) {
-            throw DescopeException.passkeyFailed.with(message = "Error signing registration", cause = e)
-        } catch (e: CreateCredentialInterruptedException) {
-            throw DescopeException.passkeyFailed.with(message = "Please try again", cause = e)
-        } catch (e: CreateCredentialProviderConfigurationException) {
-            throw DescopeException.passkeyFailed.with(message = "Application might be improperly configured", cause = e)
-        } catch (e: CreateCredentialUnknownException) {
-            throw DescopeException.passkeyFailed.with(message = "Unknown failure", cause = e)
-        } catch (e: Exception) {
-            throw DescopeException.passkeyFailed.with(message = "Unexpected failure", cause = e)
-        }
-    }
-
-    private suspend fun performAssertion(context: Context, options: String): String {
-        val publicKey = convertOptions(options)
-        val option = GetPublicKeyCredentialOption(publicKey)
-        val request = GetCredentialRequest(listOf(option))
-
-        try {
-            val credentialManager = CredentialManager.create(context)
-            val result = credentialManager.getCredential(context, request)
-            val credential = result.credential as PublicKeyCredential
-            return credential.authenticationResponseJson
-        } catch (e: NoCredentialException) {
-            throw DescopeException.passkeyNoPasskeys.with(cause = e)
-        } catch (e: GetCredentialCancellationException) {
-            throw DescopeException.passkeyCancelled
-        } catch (e: GetPublicKeyCredentialDomException) {
-            throw DescopeException.passkeyFailed.with(message = "Error signing assertion", cause = e)
-        } catch (e: GetCredentialInterruptedException) {
-            throw DescopeException.passkeyFailed.with(message = "Please try again", cause = e)
-        } catch (e: GetCredentialProviderConfigurationException) {
-            throw DescopeException.passkeyFailed.with(message = "Application might be improperly configured", cause = e)
-        } catch (e: GetCredentialUnknownException) {
-            throw DescopeException.passkeyFailed.with(message = "Unknown failure", cause = e)
-        } catch (e: Exception) {
-            throw DescopeException.passkeyFailed.with(message = "Unexpected failure", cause = e)
-        }
-    }
 }
 
 private fun convertOptions(options: String): String {
@@ -138,7 +88,7 @@ private fun convertOptions(options: String): String {
 }
 
 @RequiresApi(Build.VERSION_CODES.P)
-private fun getPackageOrigin(context: Context): String {
+internal fun getPackageOrigin(context: Context): String {
     val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
     val signers = packageInfo.signingInfo?.apkContentsSigners // nullable according to source code
 
@@ -154,5 +104,56 @@ private fun getPackageOrigin(context: Context): String {
         return "android:apk-key-hash:$encoded"
     } catch (e: Exception) {
         throw DescopeException.passkeyFailed.with(message = "Failed to encode origin")
+    }
+}
+
+@SuppressLint("PublicKeyCredential")
+internal suspend fun performRegister(context: Context, options: String): String {
+    val publicKey = convertOptions(options)
+    val request = CreatePublicKeyCredentialRequest(publicKey)
+
+    try {
+        val credentialManager = CredentialManager.create(context)
+        val result = credentialManager.createCredential(context, request as CreateCredentialRequest) as CreatePublicKeyCredentialResponse
+        return result.registrationResponseJson
+    } catch (e: CreateCredentialCancellationException) {
+        throw DescopeException.passkeyCancelled
+    } catch (e: CreatePublicKeyCredentialDomException) {
+        throw DescopeException.passkeyFailed.with(message = "Error signing registration", cause = e)
+    } catch (e: CreateCredentialInterruptedException) {
+        throw DescopeException.passkeyFailed.with(message = "Please try again", cause = e)
+    } catch (e: CreateCredentialProviderConfigurationException) {
+        throw DescopeException.passkeyFailed.with(message = "Application might be improperly configured", cause = e)
+    } catch (e: CreateCredentialUnknownException) {
+        throw DescopeException.passkeyFailed.with(message = "Unknown failure", cause = e)
+    } catch (e: Exception) {
+        throw DescopeException.passkeyFailed.with(message = "Unexpected failure", cause = e)
+    }
+}
+
+internal suspend fun performAssertion(context: Context, options: String): String {
+    val publicKey = convertOptions(options)
+    val option = GetPublicKeyCredentialOption(publicKey)
+    val request = GetCredentialRequest(listOf(option))
+
+    try {
+        val credentialManager = CredentialManager.create(context)
+        val result = credentialManager.getCredential(context, request)
+        val credential = result.credential as PublicKeyCredential
+        return credential.authenticationResponseJson
+    } catch (e: NoCredentialException) {
+        throw DescopeException.passkeyNoPasskeys.with(cause = e)
+    } catch (e: GetCredentialCancellationException) {
+        throw DescopeException.passkeyCancelled
+    } catch (e: GetPublicKeyCredentialDomException) {
+        throw DescopeException.passkeyFailed.with(message = "Error signing assertion", cause = e)
+    } catch (e: GetCredentialInterruptedException) {
+        throw DescopeException.passkeyFailed.with(message = "Please try again", cause = e)
+    } catch (e: GetCredentialProviderConfigurationException) {
+        throw DescopeException.passkeyFailed.with(message = "Application might be improperly configured", cause = e)
+    } catch (e: GetCredentialUnknownException) {
+        throw DescopeException.passkeyFailed.with(message = "Unknown failure", cause = e)
+    } catch (e: Exception) {
+        throw DescopeException.passkeyFailed.with(message = "Unexpected failure", cause = e)
     }
 }
