@@ -656,13 +656,13 @@ interface DescopeOAuth {
      * the user sign in with the Google account they're already using on their device.
      *
      * If you haven't already configured your app to support Sign in with Google you'll
-     * probably need to set up your [Google APIs console project](https://developers.google.com/identity/one-tap/android/get-started#api-console)
+     * probably need to set up your [Google APIs console project](https://developer.android.com/identity/sign-in/credential-manager-siwg#set-google)
      * for this. You should also configure an OAuth provider for Google in the in the [Descope console](https://app.descope.com/settings/authentication/social),
      * with its `Grant Type` set to `Implicit`. Also note that the `Client ID` and
      * `Client Secret` should be set to the values of your `Web application` OAuth client,
      * rather than those from the `Android` OAuth client.
      * 
-     * For more details about configuring your app see the [Credential Manager documentation](https://developer.android.com/training/sign-in/credential-manager).
+     * For more details about configuring your app see the [Credential Manager documentation](https://developer.android.com/identity/sign-in/credential-manager).
      *
      * Note: This is an asynchronous operation that performs network requests before and
      * after displaying the modal authentication view. It is thus recommended to switch the
