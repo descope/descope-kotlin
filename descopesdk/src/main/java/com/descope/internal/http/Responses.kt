@@ -170,7 +170,9 @@ internal data class OAuthNativeStartServerResponse(
 ) {
     companion object {
         @Suppress("UNUSED_PARAMETER")
-        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+        fun fromJson(json: String, cookies: List<HttpCookie>) = fromJsonObject(JSONObject(json))
+
+        fun fromJsonObject(json: JSONObject) = json.run {
             OAuthNativeStartServerResponse(
                 clientId = getString("clientId"),
                 stateId = getString("stateId"),
