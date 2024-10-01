@@ -112,7 +112,7 @@ internal class Flow(
                 val customTabsIntent = flowPresentation?.createCustomTabsIntent(context) ?: defaultCustomTabIntent()
                 customTabsIntent.launchUrl(context, uri)
             } catch (e: Exception) {
-                throw DescopeException.browserError.with(message = e.message)
+                throw DescopeException.browserError.with(cause = e)
             }
         }
 
