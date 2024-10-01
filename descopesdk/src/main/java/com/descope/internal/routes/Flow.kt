@@ -108,8 +108,12 @@ internal class Flow(
         }
 
         private fun launchUri(context: Context, uri: Uri) {
-            val customTabsIntent = flowPresentation?.createCustomTabsIntent(context) ?: defaultCustomTabIntent()
-            customTabsIntent.launchUrl(context, uri)
+            try {
+                val customTabsIntent = flowPresentation?.createCustomTabsIntent(context) ?: defaultCustomTabIntent()
+                customTabsIntent.launchUrl(context, uri)
+            } catch (e: Exception) {
+                throw DescopeException.browserError.with(message = e.message)
+            }
         }
 
     }
