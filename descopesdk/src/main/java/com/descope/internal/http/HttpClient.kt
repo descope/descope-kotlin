@@ -21,11 +21,7 @@ internal open class HttpClient(
     client: DescopeNetworkClient?,
 ) {
 
-    private val networkClient: DescopeNetworkClient
-
-    init {
-        networkClient = client ?: defaultNetworkClient(logger)
-    }
+    private val networkClient: DescopeNetworkClient = client ?: defaultNetworkClient(logger)
 
     // Convenience functions
 

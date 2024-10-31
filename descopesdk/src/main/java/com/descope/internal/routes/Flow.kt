@@ -2,7 +2,6 @@ package com.descope.internal.routes
 
 import android.content.Context
 import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.android.defaultCustomTabIntent
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.toBase64

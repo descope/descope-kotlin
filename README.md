@@ -175,39 +175,38 @@ comes with predefined flows out of the box. You can customize your flows to suit
 and host it. Follow
 the [getting started](https://docs.descope.com/build/guides/gettingstarted/) guide for more details.
 
-### Setup #2: Enable App Links
+### (OPTIONAL) Setup #2: Enable App Links for Magic Link and OAuth (social)
 
-Running a flow via the Kotlin SDK requires setting up [App Links](https://developer.android.com/training/app-links#android-app-links).
-This is essential for the SDK to be notified when the user has successfully
-authenticated using a flow. Once you have a domain set up and 
-[verified](https://developer.android.com/training/app-links/verify-android-applinks)
-for sending App Links, you'll need to handle the incoming deep links in your app:
+Some authentication methods rely on leaving the application's context to authenticate the
+user, such as navigating to an identity provider's website to perform OAuth (social) authentication,
+or receiving a Magic Link via email or text message. If you do not intend to use these authentication
+methods, you can skip this step. Otherwise, in order for the user to get back
+to your application, setting up [App Links](https://developer.android.com/training/app-links#android-app-links) is required.
+Once you have a domain set up and [verified](https://developer.android.com/training/app-links/verify-android-applinks) for sending App Links,
+you'll need to handle the incoming deep links in your app, and resume the flow:
 
-#### Define an Activity to handle the App Link sent at the end of a flow
-_this code example demonstrates how app links should be handled - you can customize it to fit your app_
+#### Define an Activity to handle the App Link and resume a flow
+
+Any activity can handle an incoming App Link, however in order to resume the flow, the `DescopeFlowView`
+used to run the flow must be called with the `resumeFromDeepLink()` function.
+
+_this code example demonstrates how app links can be handled - you're app architecture might differ'_
 ```kotlin
-class FlowDoneActivity : AppCompatActivity() {
+class FlowRedirectActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val incomingUri: Uri = intent?.data ?: return // The incoming App link
-    
-        // `exchange` is a suspended function. 
-        // Use whichever scope makes sense in your app or keep the global scope
-        GlobalScope.launch(Dispatchers.Main) {
-            try {
-                // exchange the incoming URI for a session
-                val authResponse = Descope.flow.currentRunner?.exchange(incomingUri) ?: throw Exception("Flow is not running")
-                val session = DescopeSession(authResponse)
-                Descope.sessionManager.manageSession(session)
-    
-                // Show the post-authentication screen, for example
-                startActivity(Intent(this@FlowDoneActivity, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                })
-            } catch (e: Exception) {
-                // Handle errors here
-            }
-            finish() // There's no UI for this Activity, it just handles the logic
+        // assuming descopeFlowView is a reference to your instance of DescopeFlowView
+        intent?.data?.run {
+            descopeFlowView.resumeFromDeepLink(this)
+        }
+    }
+
+    // alternatively you might receive the URI from another activity
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.getStringExtra(descopeFlowUri)?.run {
+            // assuming descopeFlowView is a reference to your instance of DescopeFlowView
+            descopeFlowView.resumeFromDeepLink(Uri.parse(this))
         }
     }
 }
@@ -216,7 +215,7 @@ class FlowDoneActivity : AppCompatActivity() {
 #### Add a matching Manifest declaration
 ```xml
 <activity
-    android:name=".FlowDoneActivity"
+    android:name=".FlowRedirectActivity"
     android:exported="true">  <!-- exported required for app links -->
     <intent-filter android:autoVerify="true"> <!-- autoVerify required for app links -->
         <action android:name="android.intent.action.VIEW" />
@@ -239,96 +238,49 @@ class FlowDoneActivity : AppCompatActivity() {
 </activity>
 ```
 
-### (OPTIONAL) Setup #3: Support Magic Link Redirects 
-
-Supporting Magic Link authentication in flows requires adding another path entry to the [App Links](https://developer.android.com/training/app-links#android-app-links).
-This is essentially the same as the app link from the [previous setup step](#setup-2-enable-app-links),
-with different handling logic:
-
-#### Define an Activity to handle the App Link sent at the end of a flow
-_this code example demonstrates how app links should be handled - you can customize it to fit your app_
-```kotlin
-class MagicLinkRedirectActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val incomingUri: Uri = intent?.data ?: return // The incoming App link
-
-        // We need to relaunch the Activity that started the flow where the `resume` method needs to be called.
-        // It should be a single top activity so that the user won't 
-        // experience any weird behavior / duplicate chrome tabs
-        startActivity(Intent(this@MagicLinkRedirectActivity, AuthActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or  Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("descopeFlowUri", incomingUri.toString()) // Pass the URI to the flow
-        })
-    }
-}
-
-// This line should be called from a new instance of the single-top
-// activity that started the flow (in our case `AuthActivity`).
-Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
-```
-
-#### Add a matching Manifest declaration
-```xml
-<activity
-    android:name=".MagicLinkRedirectActivity"
-    android:exported="true">  <!-- exported required for app links -->
-    <intent-filter android:autoVerify="true"> <!-- autoVerify required for app links -->
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-
-        <!-- this is exactly the same setup we performed in setup #2, with a different path to differentiate between them -->
-        <data android:scheme="https" android:host="<YOUR_HOST_HERE>" android:path="/magiclink" />
-    </intent-filter>
-</activity>
-```
-
 ### Run a Flow
 
 After completing the prerequisite steps, it is now possible to run a flow.
-The flow will run in a Chrome [Custom Tab](https://developer.chrome.com/docs/android/custom-tabs/).
-Make sure the Activity running the flow is a `SINGLE_TOP` activity, to avoid any
-unexpected UX. Run the flow by creating a `DescopeFlow.Runner`:
+The flow will run in a dedicated `DescopeFlowView` which receives a `DescopeFlow`
+object. The `DescopeFlow` objects defines all of the options available when running a flow.
+Read the class documentation for a detailed explanation. The flow needs to reside in your UI in
+some form, and to start it, call the `run()` function
 
 ```kotlin
-val runner = Descope.flow.create(
-    flowUrl = "<URL_FOR_FLOW_IN_SETUP_#1>",
-    deepLinkUrl = "<URL_FOR_APP_LINK_IN_SETUP_#2>",
-    backupCustomScheme = "<OPTIONAL_CUSTOM_SCHEME_FROM_SETUP_#2>"
-)
+val descopeFlow = DescopeFlow(Uri.parse("<URL_FOR_FLOW_IN_SETUP_#1>"))
+descopeFlow.lifecycle = object : DescopeFlow.LifeCycle {
+    override fun onReady() {
+        // present the flow view via animation, or however you see fit
+    }
 
-// When starting a flow for an authenticated user, provide the authentication info
-Descope.sessionManager.session?.run {
-    runner.flowAuthentication = DescopeFlow.Authentication("flow-id", refreshJwt)
+    override fun onSuccess(response: AuthenticationResponse) {
+        // optionally hide the flow UI
+
+        // manage the incoming session
+        Descope.sessionManager.manageSession(DescopeSession(response))
+
+        // launch the "logged in" UI of your app
+    }
+
+    override fun onError(exception: DescopeException) {
+        // handle any errors here
+    }
+
+    override fun onNavigation(uri: Uri): Flow.NavigationStrategy {
+        // manage navigation event by deciding whether to open the URI
+        // in a custom tab (default behavior), inline, or do nothing.
+    }
 }
 
-// Optionally, you can customize the flow's presentation if needed
-runner.flowPresentation = myFlowPresentation
-
-// Starting an authentication flow
-runner.start(this@MainActivity)
+// set the OAuth provider ID that is configured to "sign in with Google"
+descopeFlow.oauthProvider = "google"
+// set the oauth redirect URI to use your app's deep link 
+descopeFlow.oauthRedirect = "<URL_FOR_APP_LINK_IN_SETUP_#2>"
+// customize the flow presentation further
+descopeFlow.presentation = flowPresentation
+// run the flow
+descopeFlowView.run(descopeFlow)
 ```
-
-When supporting Magic Links the `resume` function must be called. In your authentication Activity
-inside the `onCreate` method:
-
-```kotlin
-intent?.data?.let { incomingUri ->
-    Descope.flow.currentRunner?.resume(this@AuthActivity, incomingUri)
-}
-```
-
-The flow will finish by redirecting to the App Link provided to the `deepLinkUrl` parameter.
-When receiving the App Link pass the URI to the `exchange` method:
-
-```kotlin
-val authResponse = Descope.flow.currentRunner?.exchange(incomingUri) ?: throw Exception("Flow is not running")
-val session = DescopeSession(authResponse)
-Descope.sessionManager.manageSession(session)
-```
-
-See the [app link setup](#setup-2-enable-app-links) for more details.
 
 ## Authentication Methods
 

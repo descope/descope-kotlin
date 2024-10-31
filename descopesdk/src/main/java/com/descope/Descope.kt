@@ -116,5 +116,5 @@ object Descope {
         get() = sdk.password
     
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
-    private lateinit var sdk: DescopeSdk
+    internal lateinit var sdk: DescopeSdk
 }

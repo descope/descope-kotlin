@@ -7,12 +7,12 @@ import com.descope.internal.others.toStringList
 import org.json.JSONObject
 import java.net.HttpCookie
 
-private const val SESSION_COOKIE_NAME = "DS"
-private const val REFRESH_COOKIE_NAME = "DSR"
+internal const val SESSION_COOKIE_NAME = "DS"
+internal const val REFRESH_COOKIE_NAME = "DSR"
 
 internal data class JwtServerResponse(
-    val sessionJwt: String?,
-    val refreshJwt: String?,
+    var sessionJwt: String?,
+    var refreshJwt: String?,
     val user: UserResponse?,
     val firstSeen: Boolean,
 ) {
