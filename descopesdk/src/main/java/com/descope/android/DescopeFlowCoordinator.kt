@@ -111,6 +111,13 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                                 return@launch
                             }
 
+                            is NativePayload.Sso -> {
+                                logger?.log(Info, "Launching custom tab for sso")
+                                nativePayload.finishUrl?.run { pendingFinishUrl = this.toUri() }
+                                launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
+                                return@launch
+                            }
+
                             is NativePayload.WebAuthnCreate -> {
                                 logger?.log(Info, "Attempting to create new a passkey")
                                 nativeResponse.put("transactionId", nativePayload.transactionId)
@@ -161,7 +168,16 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 view?.run {
                     val isWebAuthnSupported = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
                     val origin = if (isWebAuthnSupported) getPackageOrigin(context) else ""
-                    evaluateJavascript(setupScript(origin, flow.oauthProvider, flow.oauthRedirect, isWebAuthnSupported)) {}
+                    evaluateJavascript(
+                        setupScript(
+                            origin = origin,
+                            oauthNativeProvider = flow.oauthProvider,
+                            oauthNativeRedirect = flow.oauthRedirect,
+                            ssoRedirect = flow.ssoRedirect,
+                            magicLinkRedirect = flow.magicLinkRedirect,
+                            isWebAuthnSupported = isWebAuthnSupported,
+                        )
+                    ) {}
                 }
             }
         }
@@ -214,6 +230,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 internal sealed class NativePayload {
     internal class OAuthNative(val start: JSONObject) : NativePayload()
     internal class OAuthWeb(val startUrl: String, val finishUrl: String?) : NativePayload()
+    internal class Sso(val startUrl: String, val finishUrl: String?) : NativePayload()
     internal class WebAuthnCreate(val transactionId: String, val options: String) : NativePayload()
     internal class WebAuthnGet(val transactionId: String, val options: String) : NativePayload()
 
@@ -225,6 +242,7 @@ internal sealed class NativePayload {
                 when (type) {
                     "oauthNative" -> OAuthNative(start = getJSONObject("start"))
                     "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
+                    "sso" -> Sso(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
                     else -> throw DescopeException.flowFailed.with(desc = "Unexpected server response in flow")
@@ -236,7 +254,14 @@ internal sealed class NativePayload {
 
 // JS
 
-private fun setupScript(origin: String, oauthNativeProvider: String, oauthNativeRedirect: String, isWebAuthnSupported: Boolean) = """
+private fun setupScript(
+    origin: String,
+    oauthNativeProvider: String,
+    oauthNativeRedirect: String,
+    ssoRedirect: String,
+    magicLinkRedirect: String,
+    isWebAuthnSupported: Boolean
+) = """
 function waitWebComponent() {
     document.body.style.background = 'transparent'
 
@@ -261,6 +286,8 @@ function prepareWebComponent(wc) {
         platform: 'android',
         oauthProvider: '$oauthNativeProvider',
         oauthRedirect: '$oauthNativeRedirect',
+        ssoRedirect: '$ssoRedirect',
+        magicLinkRedirect: '$magicLinkRedirect',
         origin: '$origin',
     }
 

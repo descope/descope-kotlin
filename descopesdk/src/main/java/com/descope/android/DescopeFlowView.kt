@@ -36,10 +36,21 @@ data class DescopeFlow(val uri: Uri) {
     var oauthProvider: String = ""
 
     /**
-     * A a deep link URL to configure web-based OAuth to returned back to your app
-     * from the browser.
+     * A a deep link URL to configure web-based OAuth  redirect chain 
+     * to return back to your app from the browser.
      */
     var oauthRedirect: String = ""
+
+    /**
+     * A a deep link URL to configure SSO redirect chain to return
+     * back to your app from the browser.
+     */
+    var ssoRedirect: String = ""
+
+    /**
+     * A a deep link URL to configure Magic Link authentication to return back to your app.
+     */
+    var magicLinkRedirect: String = ""
 
     /**
      * Customize the [DescopeFlowView] presentation by providing a [Presentation] implementation
