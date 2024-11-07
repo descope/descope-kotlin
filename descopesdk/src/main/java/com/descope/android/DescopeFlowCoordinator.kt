@@ -58,17 +58,10 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.settings.setSupportZoom(false)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
-            fun onReady(bridgeVersion: Int) {
-                if (bridgeVersion == 0) {
-                    logger?.log(Error, "The flow is hosted using an unsupported version of the Descope Web-Component SDK. Please update it")
-                    handler.post {
-                        flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = "Hosted flow uses unsupported web-component SDK version"))
-                    }
-                } else {
-                    logger?.log(Info, "Flow is ready")
-                    handler.post {
-                        flow.lifecycle?.onReady()
-                    }
+            fun onReady() {
+                logger?.log(Info, "Flow is ready")
+                handler.post {
+                    flow.lifecycle?.onReady()
                 }
             }
 
@@ -303,8 +296,12 @@ function prepareWebComponent(wc) {
     }
 
     wc.addEventListener('ready', () => {
+        if (!wc.bridgeVersion) {
+            flow.onError('Hosted flow uses unsupported web-component SDK version');
+            return
+        }
         wc.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
-        flow.onReady(wc.bridgeVersion || 0);
+        flow.onReady();
     })
     
     wc.addEventListener('success', (e) => {
