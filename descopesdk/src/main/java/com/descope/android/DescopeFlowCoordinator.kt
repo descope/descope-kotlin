@@ -47,9 +47,9 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
     private val logger: DescopeLogger?
         get() = sdk.client.config.logger
-    
+
     private var currentFlowUrl: Uri? = null
-    private var pendingFinishUrl: Uri? = null 
+    private var pendingFinishUrl: Uri? = null
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -98,7 +98,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                             is NativePayload.OAuthNative -> {
                                 logger?.log(Info, "Launching system UI for native oauth")
                                 val resp = nativeAuthorization(webView.context, nativePayload.start)
-                                nativeResponse.put("nativeOAuth", JSONObject().apply { 
+                                nativeResponse.put("nativeOAuth", JSONObject().apply {
                                     put("stateId", resp.stateId)
                                     put("idToken", resp.identityToken)
                                 })
@@ -205,7 +205,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.flowState.update({ token: '$t', stepId: '$stepId'})") {}
             }
             // oauth web / sso
-            code != null && (uri == null || uri.host == flow.uri.host)-> {
+            code != null && (uri == null || uri.host == flow.uri.host) -> {
                 logger?.log(Info, "resumeFromDeepLink received an exchange code ('code') query param")
                 val nativeResponse = JSONObject()
                 nativeResponse.put("exchangeCode", code)
@@ -345,7 +345,7 @@ internal fun findJwtInCookies(cookieString: String?, projectId: String, name: St
                 null
             }
         }
-        .filterNot { it.projectId != projectId } // enforce projectId
+        .filter { it.projectId == projectId } // enforce projectId
         .maxByOrNull { it.issuedAt }?.jwt // take latest
 }
 
