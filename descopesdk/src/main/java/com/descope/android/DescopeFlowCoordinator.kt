@@ -42,6 +42,7 @@ import java.net.HttpCookie
 internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     private lateinit var flow: DescopeFlow
+    private var state: State = State.Initial
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
@@ -59,6 +60,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady() {
+                if (state != State.Loading) {
+                    logger?.log(Info, "Flow onReady called in state $state - ignoring")
+                    return
+                }
+                state = State.Ready
                 logger?.log(Info, "Flow is ready")
                 handler.post {
                     flow.lifecycle?.onReady()
@@ -67,6 +73,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onSuccess(success: String, url: String) {
+                if (state != State.Ready) {
+                    logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
+                    return
+                }
+                state = State.Success
                 logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
@@ -81,6 +92,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onError(error: String) {
+                if (state != State.Ready) {
+                    logger?.log(Info, "Flow onError called in state $state - ignoring")
+                    return
+                }
+                state = State.Error
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
                     flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = error))
@@ -187,6 +203,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
+        state = State.Loading
         webView.loadUrl(flow.uri.toString())
     }
 
@@ -250,6 +267,14 @@ internal sealed class NativePayload {
             }
         }
     }
+}
+
+private enum class State {
+    Initial,
+    Loading,
+    Ready,
+    Success,
+    Error,
 }
 
 // JS
