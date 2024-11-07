@@ -20,7 +20,6 @@ import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.others.activityHelper
-import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
@@ -50,7 +49,6 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         get() = sdk.client.config.logger
 
     private var currentFlowUrl: Uri? = null
-    private var pendingFinishUrl: Uri? = null
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -122,14 +120,12 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
                             is NativePayload.OAuthWeb -> {
                                 logger?.log(Info, "Launching custom tab for web-based oauth")
-                                nativePayload.finishUrl?.run { pendingFinishUrl = this.toUri() }
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
                             is NativePayload.Sso -> {
                                 logger?.log(Info, "Launching custom tab for sso")
-                                nativePayload.finishUrl?.run { pendingFinishUrl = this.toUri() }
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
@@ -213,7 +209,6 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         val stepId = deepLink.getQueryParameter("descope-login-flow")?.split("_")?.lastOrNull()
         val t = deepLink.getQueryParameter("t")
         val code = deepLink.getQueryParameter("code")
-        val uri = pendingFinishUrl
 
         when {
             // magic link
@@ -222,20 +217,16 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.flowState.update({ token: '$t', stepId: '$stepId'})") {}
             }
             // oauth web / sso
-            code != null && (uri == null || uri.host == flow.uri.host) -> {
+            code != null -> {
                 logger?.log(Info, "resumeFromDeepLink received an exchange code ('code') query param")
                 val nativeResponse = JSONObject()
                 nativeResponse.put("exchangeCode", code)
                 nativeResponse.put("idpInitiated", true)
                 webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeComplete(`${nativeResponse.toString().escapeForBackticks()}`)") {}
             }
-            // anything else || finishUrl != flowUrl
+            // else ignore
             else -> {
-                logger?.log(Info, "resumeFromDeepLink defaulting to navigation")
-                // create the redirect flow URL by copying all url parameters received from the incoming URI
-                val uriBuilder = (pendingFinishUrl ?: currentFlowUrl ?: flow.uri).buildUpon()
-                deepLink.queryParameterNames.forEach { uriBuilder.appendQueryParameter(it, deepLink.getQueryParameter(it)) }
-                webView.loadUrl(uriBuilder.build().toString())
+                logger?.log(Error, "resumeFromDeepLink called with unsupported link / state")
             }
         }
     }
@@ -246,8 +237,8 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
 internal sealed class NativePayload {
     internal class OAuthNative(val start: JSONObject) : NativePayload()
-    internal class OAuthWeb(val startUrl: String, val finishUrl: String?) : NativePayload()
-    internal class Sso(val startUrl: String, val finishUrl: String?) : NativePayload()
+    internal class OAuthWeb(val startUrl: String) : NativePayload()
+    internal class Sso(val startUrl: String) : NativePayload()
     internal class WebAuthnCreate(val transactionId: String, val options: String) : NativePayload()
     internal class WebAuthnGet(val transactionId: String, val options: String) : NativePayload()
 
@@ -258,8 +249,8 @@ internal sealed class NativePayload {
             return json.getJSONObject("payload").run {
                 when (type) {
                     "oauthNative" -> OAuthNative(start = getJSONObject("start"))
-                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
-                    "sso" -> Sso(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
+                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
+                    "sso" -> Sso(startUrl = getString("startUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
                     else -> throw DescopeException.flowFailed.with(desc = "Unexpected server response in flow")
