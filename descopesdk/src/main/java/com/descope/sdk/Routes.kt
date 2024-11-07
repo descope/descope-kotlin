@@ -323,10 +323,10 @@ interface DescopeMagicLink {
      * merge the two users. See the documentation for [UpdateOptions] for more details.
      * @return masked email address the magic link was sent to.
      */
-    suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions? = null): String
+    suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): String
 
     /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
+    fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding a [phone] number.

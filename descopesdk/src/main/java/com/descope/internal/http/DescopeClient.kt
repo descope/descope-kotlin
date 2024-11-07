@@ -9,7 +9,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
-internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
+internal open class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
 
     // OTP
 
@@ -244,7 +244,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
     )
 
     suspend fun passwordGetPolicy(): PasswordPolicyServerResponse = get(
-        route = "auth/password/reset",
+        route = "auth/password/policy",
         decoder = PasswordPolicyServerResponse::fromJson,
     )
 
@@ -282,7 +282,7 @@ internal class DescopeClient(internal val config: DescopeConfig) : HttpClient(co
         ),
     )
 
-    suspend fun magicLinkUpdateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
+    suspend fun magicLinkUpdateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): MaskedAddressServerResponse = post(
         route = "auth/magiclink/update/email",
         decoder = MaskedAddressServerResponse::fromJson,
         headers = authorization(refreshJwt),

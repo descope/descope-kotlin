@@ -32,10 +32,10 @@ internal class MagicLink(private val client: DescopeClient): DescopeMagicLink {
         signUpOrIn(method, loginId, uri, options)
     }
 
-    override suspend fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?): String =
+    override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): String =
         client.magicLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert(DeliveryMethod.Email)
 
-    override fun updateEmail(email: String, loginId: String, uri: String, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
+    override fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?, callback: (Result<String>) -> Unit) = wrapCoroutine(callback) {
         updateEmail(email, loginId, uri, refreshJwt, options)
     }
 

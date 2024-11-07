@@ -29,14 +29,14 @@ internal open class HttpClient(
 
     // Convenience functions
 
-    suspend fun <T> get(
+    open suspend fun <T> get(
         route: String,
         decoder: (String, List<HttpCookie>) -> T,
         headers: Map<String, String> = emptyMap(),
         params: Map<String, String?> = emptyMap(),
     ) = call(route, "GET", decoder, headers = headers, params = params)
 
-    suspend fun <T> post(
+    open suspend fun <T> post(
         route: String,
         decoder: (String, List<HttpCookie>) -> T,
         body: Map<String, Any?> = emptyMap(),
