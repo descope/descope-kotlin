@@ -2,7 +2,7 @@ package com.descope.internal.routes
 
 import android.content.Context
 import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
+import com.descope.android.defaultCustomTabIntent
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.toBase64
 import com.descope.internal.others.with
@@ -118,15 +118,4 @@ internal class Flow(
 
     }
 
-}
-
-private fun defaultCustomTabIntent(): CustomTabsIntent {
-    return CustomTabsIntent.Builder()
-        .setUrlBarHidingEnabled(true)
-        .setShowTitle(true)
-        .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
-        .setBookmarksButtonEnabled(false)
-        .setDownloadButtonEnabled(false)
-        .setInstantAppsEnabled(false)
-        .build()
 }

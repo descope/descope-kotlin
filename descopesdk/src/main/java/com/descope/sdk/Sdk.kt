@@ -18,7 +18,6 @@ import com.descope.session.SessionLifecycle
 import com.descope.session.SessionStorage
 
 class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.() -> Unit) {
-
     var sessionManager: DescopeSessionManager
     val auth: DescopeAuth
     val otp: DescopeOtp
@@ -29,7 +28,10 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     val sso: DescopeSso
     val passkey: DescopePasskey
     val password: DescopePassword
+    @Deprecated(message = "Use DescopeFlowView instead")
     val flow: DescopeFlow
+
+    internal val client: DescopeClient
 
     init {
         if (Looper.getMainLooper().thread != Thread.currentThread()) {
@@ -39,7 +41,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         val config = DescopeConfig(projectId = projectId)
         configure(config)
         // init auth methods
-        val client = DescopeClient(config)
+        client = DescopeClient(config)
         auth = Auth(client)
         otp = Otp(client)
         totp = Totp(client)

@@ -912,6 +912,7 @@ interface DescopePassword {
  *
  * See examples for more information on how to handle deep links.
  */
+@Deprecated(message = "Use DescopeFlowView instead")
 interface DescopeFlow {
 
     /** The current (last created) runner. Will be `null` before creation and after completion of a flow */
