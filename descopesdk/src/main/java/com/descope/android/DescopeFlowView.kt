@@ -12,6 +12,7 @@ import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
+import com.descope.types.OAuthProvider
 
 /**
  * The configuration class required to run a Flow. Provide an instance
@@ -33,24 +34,24 @@ data class DescopeFlow(val uri: Uri) {
      * Will likely be "google" if the Descope "Google" provider was customized,
      * or alternatively a custom provider ID.
      */
-    var oauthProvider: String = ""
+    var oauthProvider: OAuthProvider? = null
 
     /**
      * A a deep link URL to configure web-based OAuth  redirect chain 
      * to return back to your app from the browser.
      */
-    var oauthRedirect: String = ""
+    var oauthRedirect: String? = null
 
     /**
      * A a deep link URL to configure SSO redirect chain to return
      * back to your app from the browser.
      */
-    var ssoRedirect: String = ""
+    var ssoRedirect: String? = null
 
     /**
      * A a deep link URL to configure Magic Link authentication to return back to your app.
      */
-    var magicLinkRedirect: String = ""
+    var magicLinkRedirect: String? = null
 
     /**
      * Customize the [DescopeFlowView] presentation by providing a [Presentation] implementation

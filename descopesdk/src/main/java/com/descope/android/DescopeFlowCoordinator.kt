@@ -58,10 +58,14 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.settings.setSupportZoom(false)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
-            fun onReady() {
-                logger?.log(Info, "Flow is ready")
-                handler.post {
-                    flow.lifeCycle?.onReady()
+            fun onReady(bridgeVersion: Int) {
+                if (bridgeVersion == 0) {
+                    logger?.log(Error, "The flow is hosted using an unsupported version of the Descope Web-Component SDK. Please update it")
+                } else {
+                    logger?.log(Info, "Flow is ready")
+                    handler.post {
+                        flow.lifeCycle?.onReady()
+                    }
                 }
             }
 
@@ -171,10 +175,10 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                     evaluateJavascript(
                         setupScript(
                             origin = origin,
-                            oauthNativeProvider = flow.oauthProvider,
-                            oauthNativeRedirect = flow.oauthRedirect,
-                            ssoRedirect = flow.ssoRedirect,
-                            magicLinkRedirect = flow.magicLinkRedirect,
+                            oauthNativeProvider = flow.oauthProvider?.name ?: "",
+                            oauthNativeRedirect = flow.oauthRedirect ?: "",
+                            ssoRedirect = flow.ssoRedirect ?: "",
+                            magicLinkRedirect = flow.magicLinkRedirect ?: "",
                             isWebAuthnSupported = isWebAuthnSupported,
                         )
                     ) {}
@@ -204,7 +208,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 logger?.log(Info, "resumeFromDeepLink received a token ('t') query param")
                 webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.flowState.update({ token: '$t', stepId: '$stepId'})") {}
             }
-            // oauth web
+            // oauth web / sso
             code != null && (uri == null || uri.host == flow.uri.host)-> {
                 logger?.log(Info, "resumeFromDeepLink received an exchange code ('code') query param")
                 val nativeResponse = JSONObject()
@@ -263,8 +267,6 @@ private fun setupScript(
     isWebAuthnSupported: Boolean
 ) = """
 function waitWebComponent() {
-    document.body.style.background = 'transparent'
-
     let id
     id = setInterval(() => {
         wc = document.getElementsByTagName('descope-wc')[0]
@@ -276,11 +278,6 @@ function waitWebComponent() {
 }
 
 function prepareWebComponent(wc) {
-    const parent = wc.parentElement?.parentElement
-    if (parent) {
-        parent.style.boxShadow = 'unset'
-    }
-    
     wc.nativeOptions = {
         bridgeVersion: 1,
         platform: 'android',
@@ -293,7 +290,7 @@ function prepareWebComponent(wc) {
 
     wc.addEventListener('ready', () => {
         wc.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
-        flow.onReady();
+        flow.onReady(wc.bridgeVersion || 0);
     })
     
     wc.addEventListener('success', (e) => {
