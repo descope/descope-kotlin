@@ -265,8 +265,7 @@ private fun setupScript(
 function waitWebComponent() {
     const styles = `
         * {
-          -webkit-touch-callout: none;
-          -webkit-user-select: none;
+          user-select: none;
         }
     `
 
