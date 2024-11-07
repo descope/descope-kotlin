@@ -61,11 +61,13 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
             fun onReady(bridgeVersion: Int) {
                 if (bridgeVersion == 0) {
                     logger?.log(Error, "The flow is hosted using an unsupported version of the Descope Web-Component SDK. Please update it")
-                    flow.lifeCycle?.onError(DescopeException.flowFailed.with(desc = "Hosted flow uses unsupported web-component SDK version"))
+                    handler.post {
+                        flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = "Hosted flow uses unsupported web-component SDK version"))
+                    }
                 } else {
                     logger?.log(Info, "Flow is ready")
                     handler.post {
-                        flow.lifeCycle?.onReady()
+                        flow.lifecycle?.onReady()
                     }
                 }
             }
@@ -80,7 +82,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = SESSION_COOKIE_NAME)
                 jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = REFRESH_COOKIE_NAME)
                 handler.post {
-                    flow.lifeCycle?.onSuccess(jwtServerResponse.convert())
+                    flow.lifecycle?.onSuccess(jwtServerResponse.convert())
                 }
             }
 
@@ -88,7 +90,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
             fun onError(error: String) {
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
-                    flow.lifeCycle?.onError(DescopeException.flowFailed.with(desc = error))
+                    flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = error))
                 }
             }
 
@@ -139,12 +141,12 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                         }
                     } catch (e: DescopeException) {
                         val failure = when (e) {
-                            DescopeException.oauthNativeCancelled -> "AndroidOAuthNativeCancelled"
-                            DescopeException.oauthNativeFailed -> "AndroidOAuthNativeFailed"
-                            DescopeException.passkeyFailed -> "AndroidPasskeyFailed"
-                            DescopeException.passkeyNoPasskeys -> "AndroidPasskeyNoPasskeys"
-                            DescopeException.passkeyCancelled -> "AndroidPasskeyCanceled"
-                            else -> "AndroidNativeFailed"
+                            DescopeException.oauthNativeCancelled -> "OAuthNativeCancelled"
+                            DescopeException.oauthNativeFailed -> "OAuthNativeFailed"
+                            DescopeException.passkeyFailed -> "PasskeyFailed"
+                            DescopeException.passkeyNoPasskeys -> "PasskeyNoPasskeys"
+                            DescopeException.passkeyCancelled -> "PasskeyCanceled"
+                            else -> "NativeFailed"
                         }
                         nativeResponse.put("failure", failure)
                     }
@@ -159,7 +161,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 val uri = request?.url ?: return false
                 if (request.isRedirect) return false
                 logger?.log(Info, "Flow attempting to navigate to a URL", uri)
-                return when (flow.lifeCycle?.onNavigation(uri) ?: OpenBrowser) {
+                return when (flow.lifecycle?.onNavigation(uri) ?: OpenBrowser) {
                     Inline -> false
                     DoNothing -> true
                     OpenBrowser -> {

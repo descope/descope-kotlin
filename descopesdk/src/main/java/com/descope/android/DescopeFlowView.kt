@@ -23,8 +23,8 @@ import com.descope.types.OAuthProvider
  */
 data class DescopeFlow(val uri: Uri) {
     
-    /** The [LifeCycle] property is called according to the Flow's state */
-    var lifeCycle: LifeCycle? = null
+    /** The [Lifecycle] property is called according to the Flow's state */
+    var lifecycle: Lifecycle? = null
     
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
@@ -59,9 +59,9 @@ data class DescopeFlow(val uri: Uri) {
     var presentation: Presentation? = null
 
     /**
-     * The [LifeCycle] interface is used to communicate Flow life cycle events back to the caller.
+     * The [Lifecycle] interface is used to communicate Flow life cycle events back to the caller.
      */
-    interface LifeCycle {
+    interface Lifecycle {
         /**
          * Called when a flow is fully loaded and ready to be displayed
          */
@@ -113,7 +113,7 @@ data class DescopeFlow(val uri: Uri) {
     }
 
     /**
-     * Returned from a [LifeCycle.onNavigation] call, and determines
+     * Returned from a [Lifecycle.onNavigation] call, and determines
      * the how to handle navigation event. This is useful to override 
      * URL opening for certain use-cases or provide you're own implementation.
      */
