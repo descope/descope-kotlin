@@ -65,7 +65,7 @@ data class DescopeFlow(val uri: Uri) {
         /**
          * Called when a flow is fully loaded and ready to be displayed
          */
-        fun onReady() {}
+        fun onReady()
 
         /**
          * Called when a flow has completed successfully. Typically create a [DescopeSession]
@@ -73,7 +73,7 @@ data class DescopeFlow(val uri: Uri) {
          * 
          * @param response The successful authentication response
          */
-        fun onSuccess(response: AuthenticationResponse) {}
+        fun onSuccess(response: AuthenticationResponse)
 
         /**
          * Called when a flow has encountered an error.
@@ -82,7 +82,7 @@ data class DescopeFlow(val uri: Uri) {
          *
          * @param exception What caused the error
          */
-        fun onError(exception: DescopeException) {}
+        fun onError(exception: DescopeException)
 
         /**
          * Called when the flow attempts to navigate to a different URL.
@@ -190,7 +190,7 @@ data class DescopeFlow(val uri: Uri) {
  *     }
  *     
  *     // set the OAuth provider ID that is configured to "sign in with Google"
- *     descopeFlow.oauthProvider = "google"
+ *     descopeFlow.oauthProvider = OAuthProvider.Google
  *     // set the oauth redirect URI to use your app's deep link 
  *     descopeFlow.oauthRedirect = "my-redirect-deep-link"
  *     // customize the flow presentation further

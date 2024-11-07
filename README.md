@@ -273,7 +273,7 @@ descopeFlow.lifecycle = object : DescopeFlow.LifeCycle {
 }
 
 // set the OAuth provider ID that is configured to "sign in with Google"
-descopeFlow.oauthProvider = "google"
+descopeFlow.oauthProvider = OAuthProvider.Google
 // set the oauth redirect URI to use your app's deep link 
 descopeFlow.oauthRedirect = "<URL_FOR_APP_LINK_IN_SETUP_#2>"
 // customize the flow presentation further
