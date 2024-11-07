@@ -193,7 +193,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (!this::flow.isInitialized) throw DescopeException.flowFailed.with(desc = "`resumeFromDeepLink` cannot be called before `startFlow`")
         activityHelper.closeCustomTab(webView.context)
-        val stepId = deepLink.getQueryParameter("descope-login-flow")?.split("_")?.get(1)
+        val stepId = deepLink.getQueryParameter("descope-login-flow")?.split("_")?.lastOrNull()
         val t = deepLink.getQueryParameter("t")
         val code = deepLink.getQueryParameter("code")
         val uri = pendingFinishUrl
