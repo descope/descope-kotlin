@@ -206,29 +206,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (!this::flow.isInitialized) throw DescopeException.flowFailed.with(desc = "`resumeFromDeepLink` cannot be called before `startFlow`")
         activityHelper.closeCustomTab(webView.context)
-        val stepId = deepLink.getQueryParameter("descope-login-flow")?.split("_")?.lastOrNull()
-        val t = deepLink.getQueryParameter("t")
-        val code = deepLink.getQueryParameter("code")
-
-        when {
-            // magic link
-            t != null && stepId != null -> {
-                logger?.log(Info, "resumeFromDeepLink received a token ('t') query param")
-                webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.flowState.update({ token: '$t', stepId: '$stepId'})") {}
-            }
-            // oauth web / sso
-            code != null -> {
-                logger?.log(Info, "resumeFromDeepLink received an exchange code ('code') query param")
-                val nativeResponse = JSONObject()
-                nativeResponse.put("exchangeCode", code)
-                nativeResponse.put("idpInitiated", true)
-                webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeComplete(`${nativeResponse.toString().escapeForBackticks()}`)") {}
-            }
-            // else ignore
-            else -> {
-                logger?.log(Error, "resumeFromDeepLink called with unsupported link / state")
-            }
-        }
+        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume({urlString: '$deepLink'})") {}
     }
 
 }
