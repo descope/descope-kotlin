@@ -23,9 +23,6 @@ import com.descope.types.OAuthProvider
  */
 data class DescopeFlow(val uri: Uri) {
     
-    /** The [Lifecycle] property is called according to the Flow's state */
-    var lifecycle: Lifecycle? = null
-    
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
@@ -66,68 +63,18 @@ data class DescopeFlow(val uri: Uri) {
     var presentation: Presentation? = null
 
     /**
-     * The [Lifecycle] interface is used to communicate Flow life cycle events back to the caller.
-     */
-    interface Lifecycle {
-        /**
-         * Called when a flow is fully loaded and ready to be displayed
-         */
-        fun onReady()
-
-        /**
-         * Called when a flow has completed successfully. Typically create a [DescopeSession]
-         * and manage it using [Descope.sessionManager]
-         * 
-         * @param response The successful authentication response
-         */
-        fun onSuccess(response: AuthenticationResponse)
-
-        /**
-         * Called when a flow has encountered an error.
-         * 
-         * Typically a flow will not to be restarted at this point.
-         *
-         * @param exception What caused the error
-         */
-        fun onError(exception: DescopeException)
-
-        /**
-         * Called when the flow attempts to navigate to a different URL.
-         * The [DescopeFlowView] will act upon the response from this function.
-         * It will either open an external custom tab, if [NavigationStrategy.OpenBrowser] is returned,
-         * allow the navigation to happen [NavigationStrategy.Inline] or allow the caller to
-         * override the navigation altogether if [NavigationStrategy.DoNothing] is returned.
-         *
-         * @param uri The URI to navigate to
-         * @return The [NavigationStrategy] to act upon
-         */
-        fun onNavigation(uri: Uri): NavigationStrategy = NavigationStrategy.OpenBrowser
-    }
-
-    /**
      * Customize the flow's presentation by implementing the [Presentation] interface.
      */
     interface Presentation {
         /**
          * Provide your own [CustomTabsIntent] that will be used when a custom tab
          * is required, e.g. when performing web-based OAuth authentication,
-         * or when [NavigationStrategy.OpenBrowser] is returned for navigation events,
+         * or when [DescopeFlowView.NavigationStrategy.OpenBrowser] is returned for navigation events,
          * which is also the default behavior.
          * @param context The context the [DescopeFlowView] resides inside.
          * @return A [CustomTabsIntent]. Returning `null` will use the default custom tab intent.
          */
         fun createCustomTabsIntent(context: Context): CustomTabsIntent?
-    }
-
-    /**
-     * Returned from a [Lifecycle.onNavigation] call, and determines
-     * the how to handle navigation event. This is useful to override 
-     * URL opening for certain use-cases or provide you're own implementation.
-     */
-    enum class NavigationStrategy {
-        OpenBrowser,
-        Inline,
-        DoNothing,
     }
 }
 
@@ -176,8 +123,7 @@ data class DescopeFlow(val uri: Uri) {
  * Read the [DescopeFlow] documentation for a detailed,
  * explanation of the available required and optional configurations.
  * 
- *     val descopeFlow = DescopeFlow(Uri.parse("my-flow-url"))
- *     descopeFlow.lifecycle = object : DescopeFlow.LifeCycle {
+ *     descopeFlowView.listener = object : DescopeFlowView.Listener {
  *         override fun onReady() {
  *             // present the flow view via animation, or however you see fit
  *         }
@@ -195,12 +141,13 @@ data class DescopeFlow(val uri: Uri) {
  *             // handle any errors here
  *         }
  *
- *         override fun onNavigation(uri: Uri): Flow.NavigationStrategy {
+ *         override fun onNavigation(uri: Uri): DescopeFlowView.NavigationStrategy {
  *             // manage navigation event by deciding whether to open the URI
  *             // in a custom tab (default behavior), inline, or do nothing.
  *         }
  *     }
  *     
+ *     val descopeFlow = DescopeFlow(Uri.parse("https://example.com"))
  *     // set the OAuth provider ID that is configured to "sign in with Google"
  *     descopeFlow.oauthProvider = OAuthProvider.Google
  *     // set the oauth redirect URI to use your app's deep link 
@@ -214,6 +161,15 @@ data class DescopeFlow(val uri: Uri) {
  */
 class DescopeFlowView : ViewGroup {
 
+    /** The [Listener] property is called according to the Flow's state */
+    var listener: Listener?
+        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.listener else null
+        set(value) {
+            if (this::flowCoordinator.isInitialized) {
+                flowCoordinator.listener = value
+            }
+        }
+    
     private lateinit var flowCoordinator: DescopeFlowCoordinator
 
     constructor(context: Context) : super(context, null, 0) {
@@ -268,5 +224,57 @@ class DescopeFlowView : ViewGroup {
             val child = getChildAt(i)
             child.layout(0, 0, width, height);
         }
+    }
+    
+    // Helper Classes
+
+    /**
+     * The [Listener] interface is used to communicate Flow lifecycle events back to the caller.
+     */
+    interface Listener {
+        /**
+         * Called when a flow is fully loaded and ready to be displayed
+         */
+        fun onReady()
+
+        /**
+         * Called when a flow has completed successfully. Typically create a [DescopeSession]
+         * and manage it using [Descope.sessionManager]
+         *
+         * @param response The successful authentication response
+         */
+        fun onSuccess(response: AuthenticationResponse)
+
+        /**
+         * Called when a flow has encountered an error.
+         *
+         * Typically a flow will not to be restarted at this point.
+         *
+         * @param exception What caused the error
+         */
+        fun onError(exception: DescopeException)
+
+        /**
+         * Called when the flow attempts to navigate to a different URL.
+         * The [DescopeFlowView] will act upon the response from this function.
+         * It will either open an external custom tab, if [NavigationStrategy.OpenBrowser] is returned,
+         * allow the navigation to happen [NavigationStrategy.Inline] or allow the caller to
+         * override the navigation altogether if [NavigationStrategy.DoNothing] is returned.
+         *
+         * @param uri The URI to navigate to
+         * @return The [NavigationStrategy] to act upon
+         */
+        fun onNavigation(uri: Uri): NavigationStrategy = NavigationStrategy.OpenBrowser
+    }
+
+    /**
+     * Returned from a [Listener.onNavigation] call, and determines
+     * the how to handle navigation event. This is useful to override
+     * URL opening for certain use-cases or provide you're own implementation.
+     */
+    enum class NavigationStrategy {
+        OpenBrowser,
+        Inline,
+        DoNothing,
     }
 }

@@ -13,9 +13,9 @@ import android.webkit.WebViewClient
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.descope.Descope
-import com.descope.android.DescopeFlow.NavigationStrategy.DoNothing
-import com.descope.android.DescopeFlow.NavigationStrategy.Inline
-import com.descope.android.DescopeFlow.NavigationStrategy.OpenBrowser
+import com.descope.android.DescopeFlowView.NavigationStrategy.DoNothing
+import com.descope.android.DescopeFlowView.NavigationStrategy.Inline
+import com.descope.android.DescopeFlowView.NavigationStrategy.OpenBrowser
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
@@ -40,6 +40,8 @@ import java.net.HttpCookie
 @SuppressLint("SetJavaScriptEnabled")
 internal class DescopeFlowCoordinator(private val webView: WebView) {
 
+    internal var listener: DescopeFlowView.Listener? = null
+    
     private lateinit var flow: DescopeFlow
     private var state: State = State.Initial
     private val handler: Handler = Handler(Looper.getMainLooper())
@@ -65,7 +67,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 state = State.Ready
                 logger?.log(Info, "Flow is ready")
                 handler.post {
-                    flow.lifecycle?.onReady()
+                    listener?.onReady()
                 }
             }
 
@@ -84,7 +86,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = SESSION_COOKIE_NAME)
                 jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = REFRESH_COOKIE_NAME)
                 handler.post {
-                    flow.lifecycle?.onSuccess(jwtServerResponse.convert())
+                    listener?.onSuccess(jwtServerResponse.convert())
                 }
             }
 
@@ -97,7 +99,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 state = State.Failed
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
-                    flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = error))
+                    listener?.onError(DescopeException.flowFailed.with(desc = error))
                 }
             }
 
@@ -169,7 +171,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 val uri = request?.url ?: return false
                 if (request.isRedirect) return false
                 logger?.log(Info, "Flow attempting to navigate to a URL", uri)
-                return when (flow.lifecycle?.onNavigation(uri) ?: OpenBrowser) {
+                return when (listener?.onNavigation(uri) ?: OpenBrowser) {
                     Inline -> false
                     DoNothing -> true
                     OpenBrowser -> {
