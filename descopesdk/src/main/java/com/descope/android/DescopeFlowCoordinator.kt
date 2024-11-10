@@ -20,7 +20,6 @@ import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.others.activityHelper
-import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
@@ -42,6 +41,7 @@ import java.net.HttpCookie
 internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     private lateinit var flow: DescopeFlow
+    private var state: State = State.Initial
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
@@ -49,7 +49,6 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         get() = sdk.client.config.logger
 
     private var currentFlowUrl: Uri? = null
-    private var pendingFinishUrl: Uri? = null
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -59,6 +58,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady() {
+                if (state != State.Started) {
+                    logger?.log(Info, "Flow onReady called in state $state - ignoring")
+                    return
+                }
+                state = State.Ready
                 logger?.log(Info, "Flow is ready")
                 handler.post {
                     flow.lifecycle?.onReady()
@@ -67,6 +71,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onSuccess(success: String, url: String) {
+                if (state != State.Ready) {
+                    logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
+                    return
+                }
+                state = State.Finished
                 logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
@@ -81,6 +90,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onError(error: String) {
+                if (state != State.Ready) {
+                    logger?.log(Info, "Flow onError called in state $state - ignoring")
+                    return
+                }
+                state = State.Failed
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
                     flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = error))
@@ -92,9 +106,12 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 currentFlowUrl = url.toUri()
                 webView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.Main) {
                     val nativeResponse = JSONObject()
+                    var type = ""
                     try {
                         if (response == null) return@launch
-                        when (val nativePayload = NativePayload.fromJson(response)) {
+                        val nativePayload = NativePayload.fromJson(response)
+                        type = nativePayload.type
+                        when (nativePayload) {
                             is NativePayload.OAuthNative -> {
                                 logger?.log(Info, "Launching system UI for native oauth")
                                 val resp = nativeAuthorization(webView.context, nativePayload.start)
@@ -106,14 +123,12 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
                             is NativePayload.OAuthWeb -> {
                                 logger?.log(Info, "Launching custom tab for web-based oauth")
-                                nativePayload.finishUrl?.run { pendingFinishUrl = this.toUri() }
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
                             is NativePayload.Sso -> {
                                 logger?.log(Info, "Launching custom tab for sso")
-                                nativePayload.finishUrl?.run { pendingFinishUrl = this.toUri() }
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
@@ -145,7 +160,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                     }
 
                     // we call the callback even when we fail
-                    webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeComplete(`${nativeResponse.toString().escapeForBackticks()}`)") {}
+                    webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${nativeResponse.toString().escapeForBackticks()}`)") {}
                 }
             }
         }, "flow")
@@ -187,40 +202,16 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
+        state = State.Started
         webView.loadUrl(flow.uri.toString())
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (!this::flow.isInitialized) throw DescopeException.flowFailed.with(desc = "`resumeFromDeepLink` cannot be called before `startFlow`")
         activityHelper.closeCustomTab(webView.context)
-        val stepId = deepLink.getQueryParameter("descope-login-flow")?.split("_")?.get(1)
-        val t = deepLink.getQueryParameter("t")
-        val code = deepLink.getQueryParameter("code")
-        val uri = pendingFinishUrl
-
-        when {
-            // magic link
-            t != null && stepId != null -> {
-                logger?.log(Info, "resumeFromDeepLink received a token ('t') query param")
-                webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.flowState.update({ token: '$t', stepId: '$stepId'})") {}
-            }
-            // oauth web / sso
-            code != null && (uri == null || uri.host == flow.uri.host) -> {
-                logger?.log(Info, "resumeFromDeepLink received an exchange code ('code') query param")
-                val nativeResponse = JSONObject()
-                nativeResponse.put("exchangeCode", code)
-                nativeResponse.put("idpInitiated", true)
-                webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeComplete(`${nativeResponse.toString().escapeForBackticks()}`)") {}
-            }
-            // anything else || finishUrl != flowUrl
-            else -> {
-                logger?.log(Info, "resumeFromDeepLink defaulting to navigation")
-                // create the redirect flow URL by copying all url parameters received from the incoming URI
-                val uriBuilder = (pendingFinishUrl ?: currentFlowUrl ?: flow.uri).buildUpon()
-                deepLink.queryParameterNames.forEach { uriBuilder.appendQueryParameter(it, deepLink.getQueryParameter(it)) }
-                webView.loadUrl(uriBuilder.build().toString())
-            }
-        }
+        val response = JSONObject().apply { put("url", deepLink.toString()) }
+        val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
+        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${response.toString().escapeForBackticks()}`)") {}
     }
 
 }
@@ -229,10 +220,19 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
 internal sealed class NativePayload {
     internal class OAuthNative(val start: JSONObject) : NativePayload()
-    internal class OAuthWeb(val startUrl: String, val finishUrl: String?) : NativePayload()
-    internal class Sso(val startUrl: String, val finishUrl: String?) : NativePayload()
+    internal class OAuthWeb(val startUrl: String) : NativePayload()
+    internal class Sso(val startUrl: String) : NativePayload()
     internal class WebAuthnCreate(val transactionId: String, val options: String) : NativePayload()
     internal class WebAuthnGet(val transactionId: String, val options: String) : NativePayload()
+
+    val type
+        get() = when (this) {
+            is OAuthNative -> "oauthNative"
+            is OAuthWeb -> "oauthWeb"
+            is Sso -> "sso"
+            is WebAuthnCreate -> "webauthnCreate"
+            is WebAuthnGet -> "webauthnGet"
+        }
 
     companion object {
         fun fromJson(jsonString: String): NativePayload {
@@ -241,8 +241,8 @@ internal sealed class NativePayload {
             return json.getJSONObject("payload").run {
                 when (type) {
                     "oauthNative" -> OAuthNative(start = getJSONObject("start"))
-                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
-                    "sso" -> Sso(startUrl = getString("startUrl"), finishUrl = stringOrEmptyAsNull("finishUrl"))
+                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
+                    "sso" -> Sso(startUrl = getString("startUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
                     else -> throw DescopeException.flowFailed.with(desc = "Unexpected server response in flow")
@@ -250,6 +250,14 @@ internal sealed class NativePayload {
             }
         }
     }
+}
+
+private enum class State {
+    Initial,
+    Started,
+    Ready,
+    Failed,
+    Finished,
 }
 
 // JS
