@@ -37,19 +37,20 @@ data class DescopeFlow(val uri: Uri) {
     var oauthProvider: OAuthProvider? = null
 
     /**
-     * A a deep link URL to configure web-based OAuth  redirect chain 
-     * to return back to your app from the browser.
+     * An optional deep link link URL to use when performing OAuth authentication, overriding 
+     * whatever is configured in the flow or project
      */
     var oauthRedirect: String? = null
 
     /**
-     * A a deep link URL to configure SSO redirect chain to return
-     * back to your app from the browser.
+     * An optional deep link link URL to use performing SSO authentication, overriding
+     * whatever is configured in the flow or project
      */
     var ssoRedirect: String? = null
 
     /**
-     * A a deep link URL to configure Magic Link authentication to return back to your app.
+     * An optional deep link link URL to use when sending magic link emails, overriding
+     * whatever is configured in the flow or project
      */
     var magicLinkRedirect: String? = null
 
@@ -125,10 +126,10 @@ data class DescopeFlow(val uri: Uri) {
 }
 
 /**
- * Authenticate a user using the Descope Flows.
+ * Authenticate a user using Descope Flows.
  * 
  * Embed this view into your UI to be able to run flows built with the 
- * Descope Flows: https://app.descope.com/flows
+ * [Descope Flow builder](https://app.descope.com/flows)
  * 
  * **Setup**
  * 
@@ -137,16 +138,17 @@ data class DescopeFlow(val uri: Uri) {
  * yourself. Read more [here.](https://docs.descope.com/auth-hosting-app)
  *
  * - To use the Descope authentication methods, it is required
- * to configure desired the authentication methods in the [Descope console.](https://app.descope.com/settings/authentication)
+ * to configure the desired authentication methods in the [Descope console.](https://app.descope.com/settings/authentication)
  * Some of the default configurations might be OK to start out with,
- * but it is likely the modifications will be required before release.
+ * but it is likely that modifications will be required before release.
  * 
  * - Beyond that, in order to use navigation / redirection based authentication,
- * namely `Magic Link` and `OAuth (social)`, it's required to set up app links.
+ * namely `Magic Link`, `OAuth (social)` and SSO, it's required to set up app links.
  * App Links allow the application to receive navigation to specific URLs,
  * instead of opening the browser. Follow the [Android official documentation](https://developer.android.com/training/app-links)
+ * to set up App link in your application.
  * 
- * - Finally, it is possibles for users to authenticate using their Google accounts used
+ * - Finally, it is possible for users to authenticate using the Google account or accounts they are logged into
  * on their Android devices. If you haven't already configured your app to support `Sign in with Google` you'll
  * probably need to set up your [Google APIs console project](https://developer.android.com/identity/sign-in/credential-manager-siwg#set-google)
  * for this. You should also configure an OAuth provider for Google in the in the [Descope console](https://app.descope.com/settings/authentication/social),

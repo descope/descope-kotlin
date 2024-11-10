@@ -58,7 +58,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady() {
-                if (state != State.Loading) {
+                if (state != State.Started) {
                     logger?.log(Info, "Flow onReady called in state $state - ignoring")
                     return
                 }
@@ -75,7 +75,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                     logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
-                state = State.Success
+                state = State.Finished
                 logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
@@ -94,7 +94,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                     logger?.log(Info, "Flow onError called in state $state - ignoring")
                     return
                 }
-                state = State.Error
+                state = State.Failed
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
                     flow.lifecycle?.onError(DescopeException.flowFailed.with(desc = error))
@@ -202,7 +202,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
-        state = State.Loading
+        state = State.Started
         webView.loadUrl(flow.uri.toString())
     }
 
@@ -254,10 +254,10 @@ internal sealed class NativePayload {
 
 private enum class State {
     Initial,
-    Loading,
+    Started,
     Ready,
-    Success,
-    Error,
+    Failed,
+    Finished,
 }
 
 // JS
