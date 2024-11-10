@@ -38,13 +38,19 @@ data class DescopeFlow(val uri: Uri) {
 
     /**
      * An optional deep link link URL to use when performing OAuth authentication, overriding 
-     * whatever is configured in the flow or project
+     * whatever is configured in the flow or project. 
+     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
+     * It is possible to circumvent this issue by using a custom scheme, albeit less secure.
      */
     var oauthRedirect: String? = null
 
     /**
      * An optional deep link link URL to use performing SSO authentication, overriding
      * whatever is configured in the flow or project
+     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
+     * It is possible to circumvent this issue by using a custom scheme, albeit less secure.
      */
     var ssoRedirect: String? = null
 
@@ -141,6 +147,10 @@ data class DescopeFlow(val uri: Uri) {
  * to configure the desired authentication methods in the [Descope console.](https://app.descope.com/settings/authentication)
  * Some of the default configurations might be OK to start out with,
  * but it is likely that modifications will be required before release.
+ *  
+ *    - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
+ *      deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
+ *      It is possible to circumvent this issue by using a custom scheme, albeit less secure.
  * 
  * - Beyond that, in order to use navigation / redirection based authentication,
  * namely `Magic Link`, `OAuth (social)` and SSO, it's required to set up app links.
