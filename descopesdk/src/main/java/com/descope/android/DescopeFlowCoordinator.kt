@@ -106,9 +106,12 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 currentFlowUrl = url.toUri()
                 webView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.Main) {
                     val nativeResponse = JSONObject()
+                    var type = ""
                     try {
                         if (response == null) return@launch
-                        when (val nativePayload = NativePayload.fromJson(response)) {
+                        val nativePayload = NativePayload.fromJson(response)
+                        type = nativePayload.type
+                        when (nativePayload) {
                             is NativePayload.OAuthNative -> {
                                 logger?.log(Info, "Launching system UI for native oauth")
                                 val resp = nativeAuthorization(webView.context, nativePayload.start)
@@ -157,7 +160,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                     }
 
                     // we call the callback even when we fail
-                    webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeComplete(`${nativeResponse.toString().escapeForBackticks()}`)") {}
+                    webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${nativeResponse.toString().escapeForBackticks()}`)") {}
                 }
             }
         }, "flow")
@@ -206,7 +209,9 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (!this::flow.isInitialized) throw DescopeException.flowFailed.with(desc = "`resumeFromDeepLink` cannot be called before `startFlow`")
         activityHelper.closeCustomTab(webView.context)
-        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume({urlString: '$deepLink'})") {}
+        val response = JSONObject().apply { put("url", deepLink.toString()) }
+        val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
+        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${response.toString().escapeForBackticks()}`)") {}
     }
 
 }
@@ -219,6 +224,15 @@ internal sealed class NativePayload {
     internal class Sso(val startUrl: String) : NativePayload()
     internal class WebAuthnCreate(val transactionId: String, val options: String) : NativePayload()
     internal class WebAuthnGet(val transactionId: String, val options: String) : NativePayload()
+
+    val type
+        get() = when (this) {
+            is OAuthNative -> "oauthNative"
+            is OAuthWeb -> "oauthWeb"
+            is Sso -> "sso"
+            is WebAuthnCreate -> "webauthnCreate"
+            is WebAuthnGet -> "webauthnGet"
+        }
 
     companion object {
         fun fromJson(jsonString: String): NativePayload {
