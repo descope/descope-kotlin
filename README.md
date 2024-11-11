@@ -247,8 +247,7 @@ Read the class documentation for a detailed explanation. The flow needs to resid
 some form, and to start it, call the `run()` function
 
 ```kotlin
-val descopeFlow = DescopeFlow(Uri.parse("<URL_FOR_FLOW_IN_SETUP_#1>"))
-descopeFlow.lifecycle = object : DescopeFlow.LifeCycle {
+descopeFlowView.listener = object : DescopeFlowView.Listener {
     override fun onReady() {
         // present the flow view via animation, or however you see fit
     }
@@ -266,12 +265,13 @@ descopeFlow.lifecycle = object : DescopeFlow.LifeCycle {
         // handle any errors here
     }
 
-    override fun onNavigation(uri: Uri): Flow.NavigationStrategy {
+    override fun onNavigation(uri: Uri): DescopeFlowView.NavigationStrategy {
         // manage navigation event by deciding whether to open the URI
         // in a custom tab (default behavior), inline, or do nothing.
     }
 }
 
+val descopeFlow = DescopeFlow(Uri.parse("<URL_FOR_FLOW_IN_SETUP_#1>"))
 // set the OAuth provider ID that is configured to "sign in with Google"
 descopeFlow.oauthProvider = OAuthProvider.Google
 // set the oauth redirect URI to use your app's deep link 
