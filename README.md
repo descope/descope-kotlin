@@ -151,13 +151,13 @@ active session and clear it from the session manager:
 
 ```kotlin
  Descope.sessionManager.session?.refreshJwt?.run {
-    Descope.auth.logout(this)
+    Descope.auth.revokeSessions(RevokeType.CurrentSession, this)
     Descope.sessionManager.clearSession()
 }
 ```
 
-It is possible to log out of older sessions or all sessions by providing
-the optional `LogoutRevoke` parameter.
+It is also possible to revoke older sessions or all sessions by providing
+a different `RevokeType` parameter.
 
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation
