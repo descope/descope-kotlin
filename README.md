@@ -156,6 +156,16 @@ active session and clear it from the session manager:
 }
 ```
 
+When the user wants revoke previous (other machines)
+active session:
+
+```kotlin
+ Descope.sessionManager.session?.refreshJwt?.run {
+    Descope.auth.logoutPrevious(this)
+    Descope.sessionManager.clearSession()
+}
+```
+
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation
 for more details.

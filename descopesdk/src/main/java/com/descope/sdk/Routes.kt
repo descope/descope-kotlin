@@ -62,6 +62,16 @@ interface DescopeAuth {
 
     /** @see logout */
     suspend fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit)
+
+    /**
+     * invalidates all sessions that were created prior to this one [DescopeSession].
+     *
+     * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     */
+    suspend fun logoutPrevious(refreshJwt: String)
+
+    /** @see logoutPrevious */
+    suspend fun logoutPrevious(refreshJwt: String, callback: (Result<Unit>) -> Unit)
 }
 
 /**

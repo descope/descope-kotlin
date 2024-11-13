@@ -475,6 +475,13 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
+    suspend fun logoutPrevious(refreshJwt: String) = post(
+        route = "auth/logoutprevious",
+        decoder = emptyResponse,
+        headers = authorization(refreshJwt),
+    )
+
+
     // Overrides
 
     override val basePath = "/v1/"

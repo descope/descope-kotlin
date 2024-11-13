@@ -29,4 +29,8 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
         logout(refreshJwt)
     }
 
+    override suspend fun logoutPrevious(refreshJwt: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+        logoutPrevious(refreshJwt)
+    }
+
 }
