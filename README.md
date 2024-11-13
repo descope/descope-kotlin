@@ -156,6 +156,9 @@ active session and clear it from the session manager:
 }
 ```
 
+It is possible to log out of older sessions or all sessions by providing
+the optional `LogoutType` parameter.
+
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation
 for more details.
@@ -531,5 +534,5 @@ If you need help you can email [Descope Support](mailto:support@descope.com)
 
 ## License
 
-The Descope SDK for Flutter is licensed for use under the terms and conditions
+The Descope SDK for Android is licensed for use under the terms and conditions
 of the [MIT license Agreement](https://github.com/descope/descope-android/blob/main/LICENSE).

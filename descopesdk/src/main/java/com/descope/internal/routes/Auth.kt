@@ -22,11 +22,11 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
         refreshSession(refreshJwt)
     }
 
-    override suspend fun logout(refreshJwt: String) =
-        client.logout(refreshJwt)
+    override suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType) =
+        client.logout(refreshJwt, type)
 
-    override suspend fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
-        logout(refreshJwt)
+    override suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+        logout(refreshJwt, type)
     }
 
 }

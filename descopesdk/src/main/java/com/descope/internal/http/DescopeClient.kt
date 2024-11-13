@@ -1,5 +1,9 @@
 package com.descope.internal.http
 
+import com.descope.sdk.DescopeAuth
+import com.descope.sdk.DescopeAuth.LogoutType.CurrentSession
+import com.descope.sdk.DescopeAuth.LogoutType.AllSessions
+import com.descope.sdk.DescopeAuth.LogoutType.OlderSessions
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
@@ -469,8 +473,12 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
-    suspend fun logout(refreshJwt: String) = post(
-        route = "auth/logout",
+    suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType) = post(
+        route = when (type) {
+            CurrentSession -> "auth/logout"
+            OlderSessions -> "auth/logoutprevious"
+            AllSessions -> "auth/logoutall"
+        },
         decoder = emptyResponse,
         headers = authorization(refreshJwt),
     )
