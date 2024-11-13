@@ -157,7 +157,7 @@ active session and clear it from the session manager:
 ```
 
 It is possible to log out of older sessions or all sessions by providing
-the optional `LogoutType` parameter.
+the optional `LogoutRevoke` parameter.
 
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation

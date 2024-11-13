@@ -10,6 +10,7 @@ import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
 import com.descope.types.DescopeUser
 import com.descope.types.EnchantedLinkResponse
+import com.descope.types.LogoutRevoke
 import com.descope.types.OAuthProvider
 import com.descope.types.PasswordPolicy
 import com.descope.types.RefreshResponse
@@ -57,27 +58,15 @@ interface DescopeAuth {
      * Logs out from an active [DescopeSession].
      *
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
-     * @param type which sessions should be removed by this call.
+     * @param revoke which sessions should be removed by this call.
      *  - `CurrentSession`: log out of the current session (the one provided by this refresh JWT)
      *  - `OlderSessions`: log out of all of the sessions that were created before the provided refresh JWT
      *  - `AllSessions`: log out of all sessions for the user
      */
-    suspend fun logout(refreshJwt: String, type: LogoutType = LogoutType.CurrentSession)
+    suspend fun logout(refreshJwt: String, revoke: LogoutRevoke = LogoutRevoke.CurrentSession)
 
     /** @see logout */
-    suspend fun logout(refreshJwt: String, type: LogoutType = LogoutType.CurrentSession, callback: (Result<Unit>) -> Unit)
-
-    /**
-     * Which sessions to remove when calling [logout]
-     */
-    enum class LogoutType {
-        /** log out of the current session, provided an active refresh JWT */
-        CurrentSession,
-        /** log out of all of the sessions that were created before the provided refresh JWT */
-        OlderSessions, 
-        /** log out of all sessions for the user */
-        AllSessions
-    }
+    suspend fun logout(refreshJwt: String, revoke: LogoutRevoke = LogoutRevoke.CurrentSession, callback: (Result<Unit>) -> Unit)
 }
 
 /**

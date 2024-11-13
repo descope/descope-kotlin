@@ -1,12 +1,12 @@
 package com.descope.internal.http
 
-import com.descope.sdk.DescopeAuth
-import com.descope.sdk.DescopeAuth.LogoutType.CurrentSession
-import com.descope.sdk.DescopeAuth.LogoutType.AllSessions
-import com.descope.sdk.DescopeAuth.LogoutType.OlderSessions
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
+import com.descope.types.LogoutRevoke
+import com.descope.types.LogoutRevoke.AllSessions
+import com.descope.types.LogoutRevoke.CurrentSession
+import com.descope.types.LogoutRevoke.OlderSessions
 import com.descope.types.OAuthProvider
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
@@ -473,8 +473,8 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
-    suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType) = post(
-        route = when (type) {
+    suspend fun logout(refreshJwt: String, revoke: LogoutRevoke) = post(
+        route = when (revoke) {
             CurrentSession -> "auth/logout"
             OlderSessions -> "auth/logoutprevious"
             AllSessions -> "auth/logoutall"

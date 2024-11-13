@@ -4,6 +4,28 @@ import com.descope.session.DescopeSession
 
 // Enums
 
+/**
+ * Which sessions to revoke when calling `DescopeAuth.Logout()`
+ */
+enum class LogoutRevoke {
+    /** Revokes the provided refresh JWT. */
+    CurrentSession,
+    /** 
+     * Revokes any other active sessions for the user that were created before the provided refresh JWT.
+     * 
+     * - Important: The provided refresh JWT itself is not revoked and will still be usable
+     *   after the logout call completes.
+     */
+    OlderSessions,
+    /** 
+     * Revokes the provided refresh JWT and all other active sessions for the user.
+     *
+     * - Important: This causes all sessions for the user to be removed, and the provided
+     *   refresh JWT will not be usable after the logout call completes. 
+     */
+    AllSessions,
+}
+
 /** The delivery method for an OTP or Magic Link message. */
 enum class DeliveryMethod {
     Email,

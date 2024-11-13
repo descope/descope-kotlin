@@ -3,6 +3,7 @@ package com.descope.internal.routes
 import com.descope.internal.http.DescopeClient
 import com.descope.sdk.DescopeAuth
 import com.descope.types.DescopeUser
+import com.descope.types.LogoutRevoke
 import com.descope.types.RefreshResponse
 import com.descope.types.Result
 
@@ -22,11 +23,11 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
         refreshSession(refreshJwt)
     }
 
-    override suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType) =
-        client.logout(refreshJwt, type)
+    override suspend fun logout(refreshJwt: String, revoke: LogoutRevoke) =
+        client.logout(refreshJwt, revoke)
 
-    override suspend fun logout(refreshJwt: String, type: DescopeAuth.LogoutType, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
-        logout(refreshJwt, type)
+    override suspend fun logout(refreshJwt: String, revoke: LogoutRevoke, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
+        logout(refreshJwt, revoke)
     }
 
 }
