@@ -52,7 +52,7 @@ interface DescopeAuth {
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
 
     /** @see refreshSession */
-    suspend fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
+    fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
 
     /**
      * Logs out from an active [DescopeSession].

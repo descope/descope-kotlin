@@ -19,7 +19,7 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
     override suspend fun refreshSession(refreshJwt: String): RefreshResponse =
         client.refresh(refreshJwt).toRefreshResponse()
 
-    override suspend fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit) = wrapCoroutine(callback) {
+    override fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit) = wrapCoroutine(callback) {
         refreshSession(refreshJwt)
     }
 
