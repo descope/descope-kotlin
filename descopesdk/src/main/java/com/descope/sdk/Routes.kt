@@ -59,7 +59,6 @@ interface DescopeAuth {
      *
      * @param revokeType which sessions should be removed by this call.
      *  - `CurrentSession`: log out of the current session (the one provided by this refresh JWT)
-     *  - `OlderSessions`: log out of all of the sessions that were created before the provided refresh JWT
      *  - `AllSessions`: log out of all sessions for the user
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
      */

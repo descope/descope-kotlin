@@ -11,13 +11,6 @@ enum class RevokeType {
     /** Revokes the provided refresh JWT. */
     CurrentSession,
     /** 
-     * Revokes any other active sessions for the user that were created before the provided refresh JWT.
-     * 
-     * - Important: The provided refresh JWT itself is not revoked and will still be usable
-     *   after the logout call completes.
-     */
-    OlderSessions,
-    /** 
      * Revokes the provided refresh JWT and all other active sessions for the user.
      *
      * - Important: This causes all sessions for the user to be removed, and the provided
@@ -116,6 +109,12 @@ sealed class SignInOptions {
      * and refresh JWTs will be an array with an entry for each authentication method used.
      */
     class Mfa(val refreshJwt: String) : SignInOptions()
+
+
+    /**
+     * Revokes all other active sessions for the user besides the new session being created.
+     */
+    data object RevokeOtherSessions : SignInOptions()
 }
 
 /**
