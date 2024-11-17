@@ -377,7 +377,6 @@ private fun String.toUri(): Uri? {
 private fun shouldUseCustomSchemeUrl(context: Context): Boolean {
     val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-    println(resolveInfo?.loadLabel(context.packageManager).toString().lowercase())
     return when(resolveInfo?.loadLabel(context.packageManager).toString().lowercase()){
         "opera",
         "opera mini",

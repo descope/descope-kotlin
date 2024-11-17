@@ -36,8 +36,8 @@ data class DescopeFlow(val uri: Uri) {
     /**
      * An optional deep link link URL to use when performing OAuth authentication, overriding 
      * whatever is configured in the flow or project. 
-     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
-     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
+     * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
      * It is possible to circumvent this issue by providing a custom scheme based URL via [oauthRedirectCustomScheme].
      */
     var oauthRedirect: String? = null
@@ -55,8 +55,8 @@ data class DescopeFlow(val uri: Uri) {
     /**
      * An optional deep link link URL to use performing SSO authentication, overriding
      * whatever is configured in the flow or project
-     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
-     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
+     * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
      * It is possible to circumvent this issue by providing a custom scheme via [ssoRedirectCustomScheme]
      */
     var ssoRedirect: String? = null
