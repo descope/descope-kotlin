@@ -1,6 +1,9 @@
 package com.descope.android
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -185,12 +188,13 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
                 view?.run {
                     val isWebAuthnSupported = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
                     val origin = if (isWebAuthnSupported) getPackageOrigin(context) else ""
+                    val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
                     evaluateJavascript(
                         setupScript(
                             origin = origin,
                             oauthNativeProvider = flow.oauthProvider?.name ?: "",
-                            oauthNativeRedirect = flow.oauthRedirect ?: "",
-                            ssoRedirect = flow.ssoRedirect ?: "",
+                            oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback),
+                            ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback),
                             magicLinkRedirect = flow.magicLinkRedirect ?: "",
                             isWebAuthnSupported = isWebAuthnSupported,
                         )
@@ -267,7 +271,7 @@ private enum class State {
 private fun setupScript(
     origin: String,
     oauthNativeProvider: String,
-    oauthNativeRedirect: String,
+    oauthRedirect: String,
     ssoRedirect: String,
     magicLinkRedirect: String,
     isWebAuthnSupported: Boolean
@@ -298,7 +302,7 @@ function prepareWebComponent(wc) {
         bridgeVersion: 1,
         platform: 'android',
         oauthProvider: '$oauthNativeProvider',
-        oauthRedirect: '$oauthNativeRedirect',
+        oauthRedirect: '$oauthRedirect',
         ssoRedirect: '$ssoRedirect',
         magicLinkRedirect: '$magicLinkRedirect',
         origin: '$origin',
@@ -366,4 +370,24 @@ private fun String.toUri(): Uri? {
     } catch (ignored: Exception) {
         null
     }
+}
+
+// Default Browser
+
+private fun shouldUseCustomSchemeUrl(context: Context): Boolean {
+    val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
+    val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
+    return when(resolveInfo?.loadLabel(context.packageManager).toString().lowercase()){
+        "opera",
+        "opera mini",
+        "duckduckgo",
+        "mi browser" -> true
+        else -> false
+    }
+}
+
+private fun pickRedirectUrl(main: String?, fallback: String?, useFallback: Boolean): String {
+    var url = main
+    if (useFallback && fallback != null) url = fallback
+    return url ?: ""
 }

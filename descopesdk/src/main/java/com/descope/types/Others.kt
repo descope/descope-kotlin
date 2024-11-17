@@ -4,6 +4,21 @@ import com.descope.session.DescopeSession
 
 // Enums
 
+/**
+ * Which sessions to revoke when calling `DescopeAuth.revokeSessions()`
+ */
+enum class RevokeType {
+    /** Revokes the provided refresh JWT. */
+    CurrentSession,
+    /** 
+     * Revokes the provided refresh JWT and all other active sessions for the user.
+     *
+     * - Important: This causes all sessions for the user to be removed, and the provided
+     *   refresh JWT will not be usable after the logout call completes. 
+     */
+    AllSessions,
+}
+
 /** The delivery method for an OTP or Magic Link message. */
 enum class DeliveryMethod {
     Email,
@@ -94,6 +109,12 @@ sealed class SignInOptions {
      * and refresh JWTs will be an array with an entry for each authentication method used.
      */
     class Mfa(val refreshJwt: String) : SignInOptions()
+
+
+    /**
+     * Revokes all other active sessions for the user besides the new session being created.
+     */
+    data object RevokeOtherSessions : SignInOptions()
 }
 
 /**

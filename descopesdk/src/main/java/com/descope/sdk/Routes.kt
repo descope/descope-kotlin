@@ -10,6 +10,7 @@ import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
 import com.descope.types.DescopeUser
 import com.descope.types.EnchantedLinkResponse
+import com.descope.types.RevokeType
 import com.descope.types.OAuthProvider
 import com.descope.types.PasswordPolicy
 import com.descope.types.RefreshResponse
@@ -51,17 +52,47 @@ interface DescopeAuth {
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
 
     /** @see refreshSession */
-    suspend fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
+    fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
 
     /**
-     * Logs out from an active [DescopeSession].
+     * It's a good security practice to remove refresh JWTs from the Descope servers if
+     * they become redundant before expiry. This function will usually be called with `.currentSession`
+     * when the user wants to sign out of the application. For example:
      *
+     * 
+     *     fun onSignOut() {
+     *         // clear the session locally from the app and revoke the refreshJWT 
+     *         // from the Descope servers in a coroutine scope without waiting for the call to finish
+     *         Descope.sessionManager.session?.refreshJwt?.run {
+     *             Descope.sessionManager.clearSession()
+     *             GlobalScope.launch(Dispatchers.Main) { // This can be whatever scope makes sense for your app
+     *                 try {
+     *                     Descope.auth.revokeSessions(RevokeType.CurrentSession, refreshJwt)
+     *                 } catch (e: Exception){
+     *                 }
+     *             }
+     *          }
+     *         showLaunchScreen()
+     *     }
+     *
+     * - Important: When called with `RevokeType.AllSessions` the provided refresh JWT will not
+     *     be usable anymore and the user will need to sign in again.
+     *
+     * @param revokeType which sessions should be removed by this call.
+     *  - `CurrentSession`: log out of the current session (the one provided by this refresh JWT)
+     *  - `AllSessions`: log out of all sessions for the user
      * @param refreshJwt the refreshJwt from an active [DescopeSession].
      */
+    suspend fun revokeSessions(revokeType: RevokeType, refreshJwt: String)
+
+    /** @see revokeSessions*/ 
+    fun revokeSessions(revoke: RevokeType, refreshJwt: String, callback: (Result<Unit>) -> Unit)
+
+    @Deprecated(message = "Use revokeSessions instead", replaceWith = ReplaceWith("revokeSessions(RevokeType.CurrentSession, refreshJwt)"))
     suspend fun logout(refreshJwt: String)
 
-    /** @see logout */
-    suspend fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit)
+    @Deprecated(message = "Use revokeSessions instead", replaceWith = ReplaceWith("revokeSessions(RevokeType.CurrentSession, refreshJwt, callback)"))
+    fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit)
 }
 
 /**

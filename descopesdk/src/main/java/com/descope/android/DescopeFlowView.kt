@@ -36,20 +36,40 @@ data class DescopeFlow(val uri: Uri) {
     /**
      * An optional deep link link URL to use when performing OAuth authentication, overriding 
      * whatever is configured in the flow or project. 
-     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
-     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
-     * It is possible to circumvent this issue by using a custom scheme, albeit less secure.
+     * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
+     * It is possible to circumvent this issue by providing a custom scheme based URL via [oauthRedirectCustomScheme].
      */
     var oauthRedirect: String? = null
 
     /**
+     * An optional custom scheme based URL, e.g. `mycustomscheme://myhost`,
+     * to use when performing OAuth authentication overriding whatever is configured in the flow or project.
+     * Functionally, this URL is exactly the same as [oauthRedirect], and will be used in its stead, only
+     * when the user has a default browser that does not honor App Links by default. 
+     * That means the `https` based App Links are opened inline in the browser, instead
+     * of being handled by the application.
+     */
+    var oauthRedirectCustomScheme: String? = null
+
+    /**
      * An optional deep link link URL to use performing SSO authentication, overriding
      * whatever is configured in the flow or project
-     * - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
-     * deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
-     * It is possible to circumvent this issue by using a custom scheme, albeit less secure.
+     * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
+     * It is possible to circumvent this issue by providing a custom scheme via [ssoRedirectCustomScheme]
      */
     var ssoRedirect: String? = null
+
+    /**
+     * An optional custom scheme based URL, e.g. `mycustomscheme://myhost`,
+     * to use when performing SSO authentication overriding whatever is configured in the flow or project.
+     * Functionally, this URL is exactly the same as [ssoRedirect], and will be used in its stead, only
+     * when the user has a default browser that does not honor App Links by default.
+     * That means the `https` based App Links are opened inline in the browser, instead
+     * of being handled by the application.
+     */
+    var ssoRedirectCustomScheme: String? = null
 
     /**
      * An optional deep link link URL to use when sending magic link emails, overriding

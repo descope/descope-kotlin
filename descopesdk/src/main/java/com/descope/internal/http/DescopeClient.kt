@@ -4,6 +4,9 @@ import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
 import com.descope.types.OAuthProvider
+import com.descope.types.RevokeType
+import com.descope.types.RevokeType.AllSessions
+import com.descope.types.RevokeType.CurrentSession
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
@@ -469,8 +472,11 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
-    suspend fun logout(refreshJwt: String) = post(
-        route = "auth/logout",
+    suspend fun logout(refreshJwt: String, revokeType: RevokeType) = post(
+        route = when (revokeType) {
+            CurrentSession -> "auth/logout"
+            AllSessions -> "auth/logoutall"
+        },
         decoder = emptyResponse,
         headers = authorization(refreshJwt),
     )
@@ -538,6 +544,7 @@ private fun List<SignInOptions>.toMap(): Map<String, Any> {
             is SignInOptions.CustomClaims -> map["customClaims"] = it.claims
             is SignInOptions.Mfa -> map["mfa"] = true
             is SignInOptions.StepUp -> map["stepup"] = true
+            is SignInOptions.RevokeOtherSessions -> map["revokeOtherSessions"] = true
         }
     }
     return map.toMap()

@@ -9,7 +9,7 @@ written for Android. You can read more on the [Descope Website](https://descope.
 Add the following to your `build.gradle` dependencies:
 
 ```groovy
-implementation 'com.descope:descope-kotlin:0.12.0'
+implementation 'com.descope:descope-kotlin:0.12.1'
 ```
 
 ## Quickstart
@@ -151,10 +151,12 @@ active session and clear it from the session manager:
 
 ```kotlin
  Descope.sessionManager.session?.refreshJwt?.run {
-    Descope.auth.logout(this)
+    Descope.auth.revokeSessions(RevokeType.CurrentSession, this)
     Descope.sessionManager.clearSession()
 }
 ```
+
+It is also possible to revoke all sessions by providing the appropriate `RevokeType` parameter.
 
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation
@@ -531,5 +533,5 @@ If you need help you can email [Descope Support](mailto:support@descope.com)
 
 ## License
 
-The Descope SDK for Flutter is licensed for use under the terms and conditions
+The Descope SDK for Android is licensed for use under the terms and conditions
 of the [MIT license Agreement](https://github.com/descope/descope-android/blob/main/LICENSE).
