@@ -55,7 +55,28 @@ interface DescopeAuth {
     fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
 
     /**
-     * Logs out from an active [DescopeSession].
+     * It's a good security practice to remove refresh JWTs from the Descope servers if
+     * they become redundant before expiry. This function will usually be called with `.currentSession`
+     * when the user wants to sign out of the application. For example:
+     *
+     * 
+     *     fun onSignOut() {
+     *         // clear the session locally from the app and revoke the refreshJWT 
+     *         // from the Descope servers in a coroutine scope without waiting for the call to finish
+     *         Descope.sessionManager.session?.refreshJwt?.run {
+     *             Descope.sessionManager.clearSession()
+     *             GlobalScope.launch(Dispatchers.Main) { // This can be whatever scope makes sense for your app
+     *                 try {
+     *                     Descope.auth.revokeSessions(RevokeType.CurrentSession, refreshJwt)
+     *                 } catch (e: Exception){
+     *                 }
+     *             }
+     *          }
+     *         showLaunchScreen()
+     *     }
+     *
+     * - Important: When called with `RevokeType.AllSessions` the provided refresh JWT will not
+     *     be usable anymore and the user will need to sign in again.
      *
      * @param revokeType which sessions should be removed by this call.
      *  - `CurrentSession`: log out of the current session (the one provided by this refresh JWT)

@@ -5,7 +5,7 @@ import com.descope.session.DescopeSession
 // Enums
 
 /**
- * Which sessions to revoke when calling `DescopeAuth.RevokeType()`
+ * Which sessions to revoke when calling `DescopeAuth.revokeSessions()`
  */
 enum class RevokeType {
     /** Revokes the provided refresh JWT. */
