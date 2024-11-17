@@ -156,8 +156,7 @@ active session and clear it from the session manager:
 }
 ```
 
-It is also possible to revoke older sessions or all sessions by providing
-a different `RevokeType` parameter.
+It is also possible to revoke all sessions by providing the appropriate `RevokeType` parameter.
 
 You can customize how the `DescopeSessionManager` behaves by using
 your own `storage` and `lifecycle` objects. See the documentation
