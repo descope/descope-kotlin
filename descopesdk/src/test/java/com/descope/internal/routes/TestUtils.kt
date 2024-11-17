@@ -54,6 +54,10 @@ internal fun List<SignInOptions>.validate(body: Map<String, Any?>) {
             is SignInOptions.StepUp -> {
                 assertTrue(loginOptions["stepup"] as Boolean)
             }
+            
+            is SignInOptions.RevokeOtherSessions -> {
+                assertTrue(loginOptions["revokeOtherSessions"] as Boolean)
+            }
         }
     }
 }
