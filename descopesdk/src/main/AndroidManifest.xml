@@ -13,4 +13,12 @@
             android:fitsSystemWindows="true"
             android:theme="@style/Theme.Hidden" />
     </application>
+    
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
 </manifest>
