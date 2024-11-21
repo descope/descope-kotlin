@@ -15,7 +15,6 @@ import com.descope.types.RevokeType
 import com.descope.types.OAuthProvider
 import com.descope.types.PasswordPolicy
 import com.descope.types.RefreshResponse
-import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.TotpResponse
@@ -37,9 +36,6 @@ interface DescopeAuth {
      */
     suspend fun me(refreshJwt: String): DescopeUser
 
-    /** @see me */
-    fun me(refreshJwt: String, callback: (Result<DescopeUser>) -> Unit)
-
     /**
      * Returns the current session user tenants.
      * 
@@ -53,9 +49,6 @@ interface DescopeAuth {
      */
     suspend fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String): List<DescopeTenant>
 
-    /** @see tenants */
-    fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String, callback: (Result<List<DescopeTenant>>) -> Unit)
-
     /**
      * Refreshes a [DescopeSession].
      *
@@ -67,9 +60,6 @@ interface DescopeAuth {
      * @return a [RefreshResponse] with a refreshed `sessionJwt`.
      */
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
-
-    /** @see refreshSession */
-    fun refreshSession(refreshJwt: String, callback: (Result<RefreshResponse>) -> Unit)
 
     /**
      * It's a good security practice to remove refresh JWTs from the Descope servers if
@@ -102,14 +92,8 @@ interface DescopeAuth {
      */
     suspend fun revokeSessions(revokeType: RevokeType, refreshJwt: String)
 
-    /** @see revokeSessions*/ 
-    fun revokeSessions(revoke: RevokeType, refreshJwt: String, callback: (Result<Unit>) -> Unit)
-
     @Deprecated(message = "Use revokeSessions instead", replaceWith = ReplaceWith("revokeSessions(RevokeType.CurrentSession, refreshJwt)"))
     suspend fun logout(refreshJwt: String)
-
-    @Deprecated(message = "Use revokeSessions instead", replaceWith = ReplaceWith("revokeSessions(RevokeType.CurrentSession, refreshJwt, callback)"))
-    fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit)
 }
 
 /**
@@ -133,9 +117,6 @@ interface DescopeOtp {
      */
     suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null): String
 
-    /** @see signUp */
-    fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Authenticates an existing user using an OTP
      *
@@ -149,9 +130,6 @@ interface DescopeOtp {
      * @return masked version of the delivery method used, i.e. a masked email address or phone number.
      */
     suspend fun signIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>? = null): String
-
-    /** @see signIn */
-    fun signIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Authenticates an existing user if one exists, or creates a new user
@@ -168,9 +146,6 @@ interface DescopeOtp {
      */
     suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>? = null): String
 
-    /** @see signUpOrIn*/
-    fun signUpOrIn(method: DeliveryMethod, loginId: String, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Verifies an OTP [code] sent to the user.
      *
@@ -180,9 +155,6 @@ interface DescopeOtp {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun verify(method: DeliveryMethod, loginId: String, code: String): AuthenticationResponse
-
-    /** @see verify */
-    fun verify(method: DeliveryMethod, loginId: String, code: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Updates an existing user by adding an email address.
@@ -201,9 +173,6 @@ interface DescopeOtp {
      * @return masked email address the OTP was sent to.
      */
     suspend fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions? = null): String
-
-    /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding a phone number.
@@ -225,9 +194,6 @@ interface DescopeOtp {
      * @return masked phone number the OTP was sent to.
      */
     suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions? = null): String
-
-    /** @see updatePhone */
-    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 }
 
 /**
@@ -237,7 +203,6 @@ interface DescopeOtp {
  * can produce TOTP codes.
  */
 interface DescopeTotp {
-
     /**
      * Authenticates a new user using a TOTP.
      *
@@ -252,9 +217,6 @@ interface DescopeTotp {
      * @return a [TotpResponse] to be used by authenticator apps.
      */
     suspend fun signUp(loginId: String, details: SignUpDetails? = null): TotpResponse
-
-    /** @see signUp */
-    fun signUp(loginId: String, details: SignUpDetails? = null, callback: (Result<TotpResponse>) -> Unit)
 
     /**
      * Updates an existing user by adding TOTP as an authentication method.
@@ -271,9 +233,6 @@ interface DescopeTotp {
      */
     suspend fun update(loginId: String, refreshJwt: String): TotpResponse
 
-    /** @see update */
-    suspend fun update(loginId: String, refreshJwt: String, callback: (Result<TotpResponse>) -> Unit)
-
     /**
      * Verifies a TOTP code that was generated by an authenticator app.
      *
@@ -286,9 +245,6 @@ interface DescopeTotp {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun verify(loginId: String, code: String, options: List<SignInOptions>? = null): AuthenticationResponse
-
-    /** @see verify */
-    fun verify(loginId: String, code: String, options: List<SignInOptions>? = null, callback: (Result<AuthenticationResponse>) -> Unit)
 }
 
 /**
@@ -300,7 +256,6 @@ interface DescopeTotp {
  * on the appended token URL parameter.
  */
 interface DescopeMagicLink {
-
     /**
      * Authenticates a new user using a magic link.
      *
@@ -314,9 +269,6 @@ interface DescopeMagicLink {
      * @return masked version of the delivery method used, i.e. a masked email address or phone number.
      */
     suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null, uri: String? = null): String
-
-    /** @see signUp */
-    fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null, uri: String? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Authenticates an existing user using a magic link.
@@ -332,10 +284,6 @@ interface DescopeMagicLink {
      */
     suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): String
 
-
-    /** @see signIn */
-    fun signIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Authenticates an existing user if one exists, or creates a new user
      * using a magic link.
@@ -350,9 +298,6 @@ interface DescopeMagicLink {
      * @return masked version of the delivery method used, i.e. a masked email address or phone number.
      */
     suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): String
-
-    /** @see signUpOrIn */
-    fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding an [email] address.
@@ -372,9 +317,6 @@ interface DescopeMagicLink {
      * @return masked email address the magic link was sent to.
      */
     suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): String
-
-    /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Updates an existing user by adding a [phone] number.
@@ -396,9 +338,6 @@ interface DescopeMagicLink {
      */
     suspend fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): String
 
-    /** @see updatePhone */
-    fun updatePhone(phone: String, method: DeliveryMethod, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Verifies a magic link [token].
      *
@@ -410,9 +349,6 @@ interface DescopeMagicLink {
      * @return an [AuthenticationResponse] upon successful verification
      */
     suspend fun verify(token: String): AuthenticationResponse
-
-    /** @see verify */
-    fun verify(token: String, callback: (Result<AuthenticationResponse>) -> Unit)
 }
 
 /**
@@ -427,7 +363,6 @@ interface DescopeMagicLink {
  * official Descope docs.
  */
 interface DescopeEnchantedLink {
-
     /**
      * Authenticates a new user using an enchanted link, sent via email.
      *
@@ -445,9 +380,6 @@ interface DescopeEnchantedLink {
      */
     suspend fun signUp(loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
 
-    /** @see signUp */
-    fun signUp(loginId: String, details: SignUpDetails? = null, uri: String? = null, callback: (Result<EnchantedLinkResponse>) -> Unit)
-
     /**
      * Authenticates an existing user using an enchanted link, sent via email.
      *
@@ -463,9 +395,6 @@ interface DescopeEnchantedLink {
      */
     suspend fun signIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
-    /** @see signIn */
-    fun signIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null, callback: (Result<EnchantedLinkResponse>) -> Unit)
-
     /**
      * Authenticates an existing user if one exists, or create a new user using an
      * enchanted link, sent via email.
@@ -480,9 +409,6 @@ interface DescopeEnchantedLink {
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
     suspend fun signUpOrIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
-
-    /** @see signUpOrIn */
-    fun signUpOrIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null, callback: (Result<EnchantedLinkResponse>) -> Unit)
 
     /**
      * Updates an existing user by adding an [email] address.
@@ -506,9 +432,6 @@ interface DescopeEnchantedLink {
      */
     suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): EnchantedLinkResponse
 
-    /** @see updateEmail */
-    fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null, callback: (Result<EnchantedLinkResponse>) -> Unit)
-
     /**
      * Checks if an enchanted link authentication has been verified by the user.
      *
@@ -525,9 +448,6 @@ interface DescopeEnchantedLink {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun checkForSession(pendingRef: String): AuthenticationResponse
-
-    /** @see checkForSession */
-    fun checkForSession(pendingRef: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Waits until an enchanted link authentication has been verified by the user.
@@ -551,9 +471,6 @@ interface DescopeEnchantedLink {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun pollForSession(pendingRef: String, timeoutMilliseconds: Long? = null): AuthenticationResponse
-
-    /** @see pollForSession */
-    fun pollForSession(pendingRef: String, timeoutMilliseconds: Long? = null, callback: (Result<AuthenticationResponse>) -> Unit)
 }
 
 /**
@@ -568,7 +485,6 @@ interface DescopeEnchantedLink {
  * See examples for more information on how to handle deep links.
  */
 interface DescopeOAuth {
-
     /**
      * Authenticates a new user using an OAuth redirect chain.
      *
@@ -592,9 +508,6 @@ interface DescopeOAuth {
      */
     suspend fun signUp(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
 
-    /** @see signUp */
-    fun signUp(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Authenticates an existing user using an OAuth redirect chain.
      *
@@ -617,9 +530,6 @@ interface DescopeOAuth {
      * @return a URL that starts the OAuth redirect chain
      */
     suspend fun signIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
-
-    /** @see signIn */
-    fun signIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
 
     /**
      * Authenticate an existing user if one exists, or create a new user using an
@@ -645,9 +555,6 @@ interface DescopeOAuth {
      */
     suspend fun signUpOrIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
 
-    /** @see signUpOrIn */
-    fun signUpOrIn(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-    
     /**
      * Starts an OAuth redirect chain to authenticate a user.
      *
@@ -672,10 +579,6 @@ interface DescopeOAuth {
     @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options)"))
     suspend fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null): String
 
-    /** @see start */
-    @Deprecated(message = "Use signUpOrIn instead", replaceWith = ReplaceWith("signUpOrIn(provider, redirectUrl, options, callback)"))
-    fun start(provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Completes an OAuth redirect chain.
      *
@@ -691,9 +594,6 @@ interface DescopeOAuth {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun exchange(code: String): AuthenticationResponse
-
-    /** @see exchange */
-    fun exchange(code: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Authenticates the user using the native Sign in with Google dialog.
@@ -725,9 +625,6 @@ interface DescopeOAuth {
      * @return an [AuthenticationResponse] upon successful authentication.
      */
     suspend fun native(context: Context, provider: OAuthProvider, options: List<SignInOptions>? = null): AuthenticationResponse
-
-    /** @see native */
-    fun native(context: Context, provider: OAuthProvider, options: List<SignInOptions>? = null, callback: (Result<AuthenticationResponse>) -> Unit)
 }
 
 /**
@@ -742,7 +639,6 @@ interface DescopeOAuth {
  * See examples for more information on how to handle deep links.
  */
 interface DescopeSso {
-
     /**
      * Starts an SSO redirect chain to authenticate a user.
      *
@@ -760,9 +656,6 @@ interface DescopeSso {
      */
     suspend fun start(emailOrTenantId: String, redirectUrl: String?, options: List<SignInOptions>? = null): String
 
-    /** @see start */
-    fun start(emailOrTenantId: String, redirectUrl: String?, options: List<SignInOptions>? = null, callback: (Result<String>) -> Unit)
-
     /**
      * Completes an SSO redirect chain.
      *
@@ -773,10 +666,6 @@ interface DescopeSso {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun exchange(code: String): AuthenticationResponse
-
-    /** @see exchange */
-    fun exchange(code: String, callback: (Result<AuthenticationResponse>) -> Unit)
-
 }
 
 /**
@@ -862,9 +751,6 @@ interface DescopePassword {
      */
     suspend fun signUp(loginId: String, password: String, details: SignUpDetails? = null): AuthenticationResponse
 
-    /** @see signUp */
-    fun signUp(loginId: String, password: String, details: SignUpDetails? = null, callback: (Result<AuthenticationResponse>) -> Unit)
-
     /**
      * Authenticates an existing user using a password.
      *
@@ -873,9 +759,6 @@ interface DescopePassword {
      * @return an [AuthenticationResponse] upon successful authentication.
      */
     suspend fun signIn(loginId: String, password: String): AuthenticationResponse
-
-    /** @see signIn */
-    fun signIn(loginId: String, password: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Updates a user's password.
@@ -893,8 +776,6 @@ interface DescopePassword {
      */
     suspend fun update(loginId: String, newPassword: String, refreshJwt: String)
 
-    fun update(loginId: String, newPassword: String, refreshJwt: String, callback: (Result<Unit>) -> Unit)
-
     /**
      * Replaces a user's password by providing their current password.
      *
@@ -908,9 +789,6 @@ interface DescopePassword {
      * @return an [AuthenticationResponse] upon successful replacement and verification.
      */
     suspend fun replace(loginId: String, oldPassword: String, newPassword: String): AuthenticationResponse
-
-    /** @see replace */
-    fun replace(loginId: String, oldPassword: String, newPassword: String, callback: (Result<AuthenticationResponse>) -> Unit)
 
     /**
      * Sends a password reset email to the user.
@@ -929,9 +807,6 @@ interface DescopePassword {
      */
     suspend fun sendReset(loginId: String, redirectUrl: String? = null)
 
-    /** @see sendReset */
-    fun sendReset(loginId: String, redirectUrl: String? = null, callback: (Result<Unit>) -> Unit)
-
     /**
      * Fetches the rules for valid passwords.
      *
@@ -944,9 +819,6 @@ interface DescopePassword {
      * @return the [PasswordPolicy] for this project.
      */
     suspend fun getPolicy(): PasswordPolicy
-
-    /** @see getPolicy */
-    fun getPolicy(callback: (Result<PasswordPolicy>) -> Unit)
 }
 
 /**
@@ -1011,9 +883,6 @@ interface DescopeFlow {
          */
         suspend fun start(context: Context)
 
-        /** @see start */
-        fun start(context: Context, callback: (Result<Unit>) -> Unit)
-
         /**
          * Resumes an ongoing flow after a redirect back to the app.
          * This is required for *Magic Link only* at this stage.
@@ -1037,9 +906,6 @@ interface DescopeFlow {
          * @return an [AuthenticationResponse] upon successful verification.
          */
         suspend fun exchange(incomingUri: Uri): AuthenticationResponse
-
-        /** @see exchange */
-        fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit)
     }
 
     /**
