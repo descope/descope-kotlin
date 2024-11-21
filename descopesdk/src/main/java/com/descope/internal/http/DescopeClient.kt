@@ -466,6 +466,16 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
+    suspend fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String): TenantsResponse = post(
+        route = "auth/me/tenants",
+        decoder = TenantsResponse::fromJson,
+        headers = authorization(refreshJwt),
+        body = mapOf(
+            "dct" to dct,
+            "ids" to tenantIds, 
+        )
+    )
+
     suspend fun refresh(refreshJwt: String): JwtServerResponse = post(
         route = "auth/refresh",
         decoder = JwtServerResponse::fromJson,

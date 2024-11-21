@@ -1,7 +1,9 @@
 package com.descope.internal.routes
 
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.http.TenantsResponse
 import com.descope.sdk.DescopeAuth
+import com.descope.types.DescopeTenant
 import com.descope.types.DescopeUser
 import com.descope.types.RevokeType
 import com.descope.types.RefreshResponse
@@ -14,6 +16,13 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
 
     override fun me(refreshJwt: String, callback: (Result<DescopeUser>) -> Unit) = wrapCoroutine(callback) {
         me(refreshJwt)
+    }
+
+    override suspend fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String): List<DescopeTenant> =
+        client.tenants(dct, tenantIds, refreshJwt).convert()
+
+    override fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String, callback: (Result<List<DescopeTenant>>) -> Unit) = wrapCoroutine(callback) {
+        tenants(dct, tenantIds, refreshJwt)
     }
 
     override suspend fun refreshSession(refreshJwt: String): RefreshResponse =
@@ -41,4 +50,14 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
     override fun logout(refreshJwt: String, callback: (Result<Unit>) -> Unit) = 
         revokeSessions(RevokeType.CurrentSession, refreshJwt, callback)
 
+}
+
+internal fun TenantsResponse.convert(): List<DescopeTenant> {
+    return tenants.map { 
+        DescopeTenant(
+            tenantId = it.tenantId,
+            name = it.name,
+            customAttributes = it.customAttributes,
+        )
+    }
 }

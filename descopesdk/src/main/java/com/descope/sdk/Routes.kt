@@ -8,6 +8,7 @@ import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
+import com.descope.types.DescopeTenant
 import com.descope.types.DescopeUser
 import com.descope.types.EnchantedLinkResponse
 import com.descope.types.RevokeType
@@ -38,6 +39,22 @@ interface DescopeAuth {
 
     /** @see me */
     fun me(refreshJwt: String, callback: (Result<DescopeUser>) -> Unit)
+
+    /**
+     * Returns the current session user tenants.
+     * 
+     * @param dct Set this to `true` and leave [tenantIds] empty to request the current
+     * tenant for the user as set in the `dct` claim. This will fail if a tenant
+     * hasn't already been selected.
+     * @param tenantIds Provide a non-empty array of tenant IDs and set `dct` to `false`
+     * to request a specific list of tenants for the user.
+     * @param refreshJwt The refreshJwt from an active [DescopeSession].
+     * @return A list of one or more [DescopeTenant] values.
+     */
+    suspend fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String): List<DescopeTenant>
+
+    /** @see tenants */
+    fun tenants(dct: Boolean, tenantIds: List<String>, refreshJwt: String, callback: (Result<List<DescopeTenant>>) -> Unit)
 
     /**
      * Refreshes a [DescopeSession].

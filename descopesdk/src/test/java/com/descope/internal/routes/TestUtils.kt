@@ -26,6 +26,14 @@ internal class MockClient : DescopeClient(DescopeConfig("p1")) {
         response?.run { return this as T }
         throw Exception("Test did not configure response")
     }
+
+    override suspend fun <T> get(route: String, decoder: (String, List<HttpCookie>) -> T, headers: Map<String, String>, params: Map<String, String?>): T {
+        calls += 1
+        assert?.invoke(route, emptyMap(), headers, params)
+        error?.run { throw this }
+        response?.run { return this as T }
+        throw Exception("Test did not configure response")
+    }
 }
 
 internal fun SignUpDetails.validate(body: Map<String, Any?>) {

@@ -3,6 +3,7 @@ package com.descope.internal.http
 import com.descope.internal.others.optionalMap
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.stringOrEmptyAsNull
+import com.descope.internal.others.toObjectList
 import com.descope.internal.others.toStringList
 import org.json.JSONObject
 import java.net.HttpCookie
@@ -74,6 +75,30 @@ internal data class UserResponse(
                 middleName = stringOrEmptyAsNull("middleName"),
                 familyName = stringOrEmptyAsNull("familyName"),
             )
+        }
+    }
+}
+
+internal data class TenantsResponse(
+    val tenants: List<Tenant>,
+) {
+
+    data class Tenant(
+        val tenantId: String,
+        val name: String,
+        val customAttributes: Map<String, Any>,
+    )
+
+    companion object {
+        @Suppress("UNUSED_PARAMETER")
+        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            TenantsResponse(tenants = getJSONArray("tenants").toObjectList().map {
+                Tenant(
+                    tenantId = it.getString("id"),
+                    name = it.getString("name"),
+                    customAttributes = it.optionalMap("customAttributes"),
+                )
+            })
         }
     }
 }
