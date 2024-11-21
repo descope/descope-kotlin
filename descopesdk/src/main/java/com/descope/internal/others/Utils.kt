@@ -62,6 +62,14 @@ internal fun JSONArray.toStringList(): List<String> {
     return list
 }
 
+internal fun JSONArray.toObjectList(): List<JSONObject> {
+    val list = mutableListOf<JSONObject>()
+    for (i in 0 until length()) {
+        list.add(getJSONObject(i))
+    }
+    return list
+}
+
 internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
     this@toJsonArray.forEach {
         when {
