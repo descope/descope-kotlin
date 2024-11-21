@@ -10,7 +10,6 @@ import com.descope.sdk.DescopeFlow
 import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
-import com.descope.types.Result
 import java.security.MessageDigest
 import kotlin.random.Random
 
@@ -45,10 +44,6 @@ internal class Flow(
             startFlowViaBrowser(codeChallenge, context)
         }
 
-        override fun start(context: Context, callback: (Result<Unit>) -> Unit) = wrapCoroutine(callback) {
-            start(context)
-        }
-
         override fun resume(context: Context, incomingUriString: String) {
             // create the redirect flow URL by copying all url parameters received from the incoming URI
             val incomingUri = Uri.parse(incomingUriString)
@@ -69,10 +64,6 @@ internal class Flow(
             log(Info, "Exchanging flow authorization code for session", authorizationCode)
             if (currentRunner === this) currentRunner = null
             return client.flowExchange(authorizationCode, codeVerifier).convert()
-        }
-
-        override fun exchange(incomingUri: Uri, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
-            exchange(incomingUri)
         }
 
         // Internal

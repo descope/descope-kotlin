@@ -13,10 +13,6 @@ import com.descope.types.DeliveryMethod
 import com.descope.types.DescopeException
 import com.descope.types.DescopeUser
 import com.descope.types.RefreshResponse
-import com.descope.types.Result
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 internal interface Route {
     val client: DescopeClient
@@ -65,17 +61,4 @@ internal fun JwtServerResponse.toRefreshResponse(): RefreshResponse {
 internal fun MaskedAddressServerResponse.convert(method: DeliveryMethod) = when (method) {
     DeliveryMethod.Email -> maskedEmail ?: throw DescopeException.decodeError.with(message = "masked email not received")
     DeliveryMethod.Sms, DeliveryMethod.Whatsapp -> maskedPhone ?: throw DescopeException.decodeError.with(message = "masked phone not received")
-}
-
-@Suppress("OPT_IN_USAGE")
-internal fun <T> wrapCoroutine(callback: (Result<T>) -> Unit, coroutine: suspend () -> T) {
-    GlobalScope.launch(Dispatchers.Main) {
-        val result = try {
-            val result = coroutine()
-            Result.Success(result)
-        } catch (e: Exception) {
-            Result.Failure(e)
-        }
-        callback(result)
-    }
 }

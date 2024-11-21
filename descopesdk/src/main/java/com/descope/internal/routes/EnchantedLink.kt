@@ -8,7 +8,6 @@ import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.EnchantedLinkResponse
-import com.descope.types.Result
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
@@ -21,37 +20,17 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
     override suspend fun signUp(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkResponse =
         client.enchantedLinkSignUp(loginId, details, uri).convert()
 
-    override fun signUp(loginId: String, details: SignUpDetails?, uri: String?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        signUp(loginId, details, uri)
-    }
-
     override suspend fun signIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
         client.enchantedLinkSignIn(loginId, uri, options).convert()
-
-    override fun signIn(loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        signIn(loginId, uri, options)
-    }
 
     override suspend fun signUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
         client.enchantedLinkSignUpOrIn(loginId, uri, options).convert()
 
-    override fun signUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        signUpOrIn(loginId, uri, options)
-    }
-
     override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
         client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert()
 
-    override fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?, callback: (Result<EnchantedLinkResponse>) -> Unit) = wrapCoroutine(callback) {
-        updateEmail(email, loginId, uri, refreshJwt, options)
-    }
-
     override suspend fun checkForSession(pendingRef: String): AuthenticationResponse =
         client.enchantedLinkCheckForSession(pendingRef).convert()
-
-    override fun checkForSession(pendingRef: String, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
-        checkForSession(pendingRef)
-    }
 
     override suspend fun pollForSession(pendingRef: String, timeoutMilliseconds: Long?): AuthenticationResponse {
         val pollingEndsAt = System.currentTimeMillis() + (timeoutMilliseconds ?: DEFAULT_POLL_DURATION)
@@ -77,10 +56,6 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
                 }
             }
         }
-    }
-
-    override fun pollForSession(pendingRef: String, timeoutMilliseconds: Long?, callback: (Result<AuthenticationResponse>) -> Unit) = wrapCoroutine(callback) {
-        pollForSession(pendingRef, timeoutMilliseconds)
     }
 }
 
