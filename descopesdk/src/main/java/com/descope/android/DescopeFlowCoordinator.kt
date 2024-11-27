@@ -62,13 +62,13 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.settings.setSupportZoom(false)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
-            fun onReady() {
+            fun onReady(tag: String) {
                 if (state != State.Started) {
                     logger?.log(Info, "Flow onReady called in state $state - ignoring")
                     return
                 }
                 state = State.Ready
-                logger?.log(Info, "Flow is ready")
+                logger?.log(Info, "Flow is ready ($tag)")
                 handler.post {
                     listener?.onReady()
                 }
@@ -276,7 +276,7 @@ private fun setupScript(
     magicLinkRedirect: String,
     isWebAuthnSupported: Boolean
 ) = """
-function waitWebComponent() {
+function flowBridgeWaitWebComponent() {
     const styles = `
         * {
           user-select: none;
@@ -292,12 +292,21 @@ function waitWebComponent() {
         wc = document.getElementsByTagName('descope-wc')[0]
         if (wc) {
             clearInterval(id)
-            prepareWebComponent(wc)
+            flowBridgePrepareWebComponent(wc)
         }
     }, 20)
 }
 
-function prepareWebComponent(wc) {
+function flowBridgeIsReady(wc, tag) {
+    if (!wc.bridgeVersion) {
+        flow.onError('Hosted flow uses unsupported web-component SDK version');
+        return
+    }
+    wc.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
+    flow.onReady(tag);
+}
+
+function flowBridgePrepareWebComponent(wc) {
     wc.nativeOptions = {
         bridgeVersion: 1,
         platform: 'android',
@@ -308,14 +317,13 @@ function prepareWebComponent(wc) {
         origin: '$origin',
     }
 
-    wc.addEventListener('ready', () => {
-        if (!wc.bridgeVersion) {
-            flow.onError('Hosted flow uses unsupported web-component SDK version');
-            return
-        }
-        wc.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
-        flow.onReady();
-    })
+    if (document.querySelector('descope-wc')?.shadowRoot?.querySelector('descope-container')) {
+        flowBridgeIsReady(wc, 'immediate')
+    } else {
+        wc.addEventListener('ready', () => {
+            flowBridgeIsReady(wc, 'event')
+        })
+    }
     
     wc.addEventListener('success', (e) => {
         flow.onSuccess(JSON.stringify(e.detail), window.location.href);
@@ -330,7 +338,7 @@ function prepareWebComponent(wc) {
     })
 }
 
-waitWebComponent();
+flowBridgeWaitWebComponent();
     """.trimIndent()
 
 private fun String.escapeForBackticks() = replace("\\", "\\\\")
