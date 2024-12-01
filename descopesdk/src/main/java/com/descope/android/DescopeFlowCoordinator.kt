@@ -321,7 +321,7 @@ function flowBridgePrepareWebComponent(wc) {
         flowBridgeIsReady(wc, 'immediate')
     } else {
         wc.addEventListener('ready', () => {
-            flowBridgeIsReady(wc, 'event')
+            flowBridgeIsReady(wc, 'listener')
         })
     }
     
