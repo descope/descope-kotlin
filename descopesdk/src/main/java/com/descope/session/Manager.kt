@@ -73,12 +73,11 @@ class DescopeSessionManager(
     private val lifecycle: DescopeSessionLifecycle,
 ) {
 
-    var session: DescopeSession?
-        private set
+    val session: DescopeSession?
+        get() = lifecycle.session
 
     init {
-        session = storage.loadSession()
-        lifecycle.session = session
+        lifecycle.session = storage.loadSession()
     }
 
     /**
@@ -100,9 +99,8 @@ class DescopeSessionManager(
      * @param session the session to manage
      */
     fun manageSession(session: DescopeSession) {
-        this.session = session
         lifecycle.session = session
-        storage.saveSession(session)
+        saveSession()
     }
 
     /**
@@ -120,9 +118,20 @@ class DescopeSessionManager(
      *     each other's saved sessions.
      */
     fun clearSession() {
-        session = null
         lifecycle.session = null
         storage.removeSession()
+    }
+
+    /**
+     * Saves the active [DescopeSession] to the storage.
+     *
+     * - **Important**: There is usually no need to call this method directly.
+     *     The session is automatically saved when it's refreshed or updated,
+     *     unless you're using a session manager with custom `stroage` and
+     *     `lifecycle` objects.
+     */
+    fun saveSession() {
+        session?.run { storage.saveSession(this) }
     }
 
     /**
@@ -136,9 +145,8 @@ class DescopeSessionManager(
      *     here depends on the `storage` and `lifecycle` objects.
      */
     suspend fun refreshSessionIfNeeded() {
-        val session = session ?: return
-        lifecycle.refreshSessionIfNeeded()
-        storage.saveSession(session)
+        val refreshed = lifecycle.refreshSessionIfNeeded()
+        if (refreshed) saveSession()
     }
 
     /**
@@ -159,10 +167,8 @@ class DescopeSessionManager(
      * @param refreshResponse the response after calling `Descope.auth.refreshSession`
      */
     fun updateTokens(refreshResponse: RefreshResponse) {
-        session?.run {
-            updateTokens(refreshResponse)
-            storage.saveSession(this)
-        }
+        session?.updateTokens(refreshResponse)
+        saveSession()
     }
 
     /**
@@ -181,10 +187,8 @@ class DescopeSessionManager(
      * @param user the [DescopeUser] to update.
      */
     fun updateUser(user: DescopeUser) {
-        session?.run {
-            updateUser(user)
-            storage.saveSession(this)
-        }
+        session?.updateUser(user)
+        saveSession()
     }
-
+    
 }

@@ -1,9 +1,15 @@
 package com.descope.session
 
+import android.annotation.SuppressLint
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.descope.sdk.DescopeAuth
+import com.descope.sdk.DescopeLogger
+import com.descope.sdk.DescopeLogger.Level.Debug
+import com.descope.sdk.DescopeLogger.Level.Error
+import com.descope.sdk.DescopeLogger.Level.Info
+import com.descope.types.DescopeException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -19,11 +25,11 @@ const val SECOND = 1000L
  * manages its [DescopeSession] while the application is running.
  */
 interface DescopeSessionLifecycle {
-    /** Set by the session manager whenever the current active session changes. */
+    /** Holds the latest session value for the session manager. */
     var session: DescopeSession?
 
-    /** Called the session manager to conditionally refresh the active session. */
-    suspend fun refreshSessionIfNeeded()
+    /** Called by the session manager to conditionally refresh the active session. */
+    suspend fun refreshSessionIfNeeded(): Boolean
 }
 
 /**
@@ -36,10 +42,15 @@ interface DescopeSessionLifecycle {
  *
  * @property auth used to refresh the session when needed
  */
-class SessionLifecycle(private val auth: DescopeAuth) : DescopeSessionLifecycle {
+class SessionLifecycle(
+    private val auth: DescopeAuth,
+    private val storage: DescopeSessionStorage,
+    private val logger: DescopeLogger?,
+) : DescopeSessionLifecycle {
 
+    var shouldSaveAfterPeriodicRefresh: Boolean = true
     var stalenessAllowedInterval: Long = 60L /* seconds */ * SECOND
-    var stalenessCheckFrequency: Long = 30L /* seconds */ * SECOND
+    var periodicCheckFrequency: Long = 30L /* seconds */ * SECOND
 
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
@@ -64,15 +75,23 @@ class SessionLifecycle(private val auth: DescopeAuth) : DescopeSessionLifecycle 
             } else {
                 startTimer()
             }
-        }
-
-    override suspend fun refreshSessionIfNeeded() {
-        session?.run {
-            if (shouldRefresh(this)) {
-                val response = auth.refreshSession(refreshJwt) // TODO check for refresh failure to not try again and again after expiry
-                updateTokens(response)
+            if (value?.refreshToken?.isExpired == true) {
+                logger?.log(Info, "Session has an expired refresh token", session?.refreshToken?.expiresAt)
             }
         }
+
+    override suspend fun refreshSessionIfNeeded(): Boolean {
+        val session = this.session ?: return false
+        return if (shouldRefresh(session)) {
+            logger?.log(Info, "Refreshing session that is about to expire", session.sessionToken.expiresAt)
+            val response = auth.refreshSession(session.refreshJwt)
+            if (this.session?.sessionJwt != session.sessionJwt) {
+                logger?.log(Info, "Skipping refresh because session has changed in the meantime")
+                return false
+            }
+            session.updateTokens(response)
+            true
+        } else false
     }
 
     // Internal
@@ -85,10 +104,11 @@ class SessionLifecycle(private val auth: DescopeAuth) : DescopeSessionLifecycle 
 
     private var timer: Timer? = null
 
+    @SuppressLint("DiscouragedApi")
     @OptIn(DelicateCoroutinesApi::class)
     private fun startTimer(runImmediately: Boolean = false) {
         val weakRef = WeakReference(this)
-        val delay = if (runImmediately) 0L else stalenessCheckFrequency
+        val delay = if (runImmediately) 0L else periodicCheckFrequency
         timer?.run { cancel(); purge() }
         timer = Timer().apply {
             scheduleAtFixedRate(timerTask {
@@ -97,13 +117,33 @@ class SessionLifecycle(private val auth: DescopeAuth) : DescopeSessionLifecycle 
                     stopTimer()
                     return@timerTask
                 }
+                if (session?.refreshToken?.isExpired != false) {
+                    logger?.log(Debug, "Stopping periodic refresh for session with expired refresh token")
+                    stopTimer()
+                    return@timerTask
+                }
                 GlobalScope.launch(Dispatchers.Main) {
                     try {
-                        ref.refreshSessionIfNeeded()
-                    } catch (ignored: Exception) {
+                        val refreshed = ref.refreshSessionIfNeeded()
+                        val session = session
+                        if (refreshed && shouldSaveAfterPeriodicRefresh && session != null) {
+                            logger?.log(Debug, "Saving refresh session after periodic refresh")
+                            storage.saveSession(session)
+                        }
+                    } catch (descopeException: DescopeException) {
+                        // allow retries on network errors
+                        if (descopeException != DescopeException.networkError) {
+                            logger?.log(Error, "Stopping periodic refresh after failure", descopeException)
+                            stopTimer()
+                        } else {
+                            logger?.log(Debug, "Ignoring network error in periodic refresh")
+                        }
+                    } catch (e: Exception) {
+                        logger?.log(Error, "Stopping periodic refresh after unexpected failure", e)
+                        stopTimer()
                     }
                 }
-            }, delay, stalenessCheckFrequency)
+            }, delay, periodicCheckFrequency)
         }
     }
 

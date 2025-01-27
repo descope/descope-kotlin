@@ -57,16 +57,17 @@ open class DescopeLogger(private val level: Level = Level.Debug) {
      * @param message the message to print
      * @param values any associated values. _**IMPORTANT** - sensitive information may be printed here. Enable logs only when debugging._
      */
-    open fun output(level: Level, message: String, vararg values: Any) {
+    open fun output(level: Level, message: String, vararg values: Any?) {
         var text = "[${DescopeSdk.name}] $message"
-        if (values.isNotEmpty()) {
-            text += """ (${values.joinToString(", ") { v -> v.toString() }})"""
+        val filtered = values.filterNotNull()
+        if (filtered.isNotEmpty()) {
+            text += """ (${filtered.joinToString(", ") { v -> v.toString() }})"""
         }
         println(text);
     }
 
     // Called by other code in the Descope SDK to output log messages.
-    fun log(level: Level, message: String, vararg values: Any) {
+    fun log(level: Level, message: String, vararg values: Any?) {
         if (level <= this.level) {
             output(level, message, *values)
         }
