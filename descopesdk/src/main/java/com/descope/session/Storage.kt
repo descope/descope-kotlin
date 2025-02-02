@@ -71,36 +71,36 @@ interface DescopeSessionStorage {
 class SessionStorage(context: Context, private val projectId: String, logger: DescopeLogger? = null, store: Store? = null) : DescopeSessionStorage {
 
     private val store: Store
-    private var lastValue: Value? = null
+    private var lastSaved: EncodedSession? = null
 
     init {
         this.store = store ?: createEncryptedStore(context, projectId, logger)
     }
 
     override fun saveSession(session: DescopeSession) {
-        val value = Value(
+        val encodedSession = EncodedSession(
             sessionJwt = session.sessionJwt,
             refreshJwt = session.refreshJwt,
             user = session.user
         )
-        if (value == lastValue) return
-        store.saveItem(key = projectId, data = value.serialized)
-        lastValue = value
+        if (encodedSession == lastSaved) return
+        store.saveItem(key = projectId, data = encodedSession.serialized)
+        lastSaved = encodedSession
     }
 
     override fun loadSession(): DescopeSession? =
         store.loadItem(projectId)?.run {
-            val value = tryOrNull { Value.deserialize(this) } ?: return null
-            lastValue = value
+            val encodedSession = tryOrNull { EncodedSession.deserialize(this) } ?: return null
+            lastSaved = encodedSession
             DescopeSession(
-                sessionJwt = value.sessionJwt,
-                refreshJwt = value.refreshJwt,
-                user = value.user,
+                sessionJwt = encodedSession.sessionJwt,
+                refreshJwt = encodedSession.refreshJwt,
+                user = encodedSession.user,
             )
         }
 
     override fun removeSession() {
-        lastValue = null
+        lastSaved = null
         store.removeItem(projectId)
     }
 
@@ -122,7 +122,7 @@ class SessionStorage(context: Context, private val projectId: String, logger: De
         }
     }
 
-    private data class Value(
+    private data class EncodedSession(
         val sessionJwt: String,
         val refreshJwt: String,
         val user: DescopeUser,
@@ -135,8 +135,8 @@ class SessionStorage(context: Context, private val projectId: String, logger: De
             }.toString()
 
         companion object {
-            fun deserialize(string: String): Value = JSONObject(string).run {
-                Value(
+            fun deserialize(string: String): EncodedSession = JSONObject(string).run {
+                EncodedSession(
                     sessionJwt = getString("sessionJwt"),
                     refreshJwt = getString("refreshJwt"),
                     user = deserializeDescopeUser(getJSONObject("user"))

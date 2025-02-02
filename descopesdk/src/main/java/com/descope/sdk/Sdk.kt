@@ -60,7 +60,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
 
     private fun initDefaultManager(context: Context, config: DescopeConfig): DescopeSessionManager {
         val storage = SessionStorage(context.applicationContext, config.projectId, config.logger)
-        val lifecycle = SessionLifecycle(auth)
+        val lifecycle = SessionLifecycle(auth, storage, config.logger)
         return DescopeSessionManager(storage, lifecycle)
     }
 
@@ -71,6 +71,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         const val name = "DescopeAndroid"
 
         /** The Descope SDK version */
-        const val version = "0.12.2"
+        const val version = "0.12.3"
     }
 }
