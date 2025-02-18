@@ -19,6 +19,11 @@ import com.descope.Descope
 import com.descope.android.DescopeFlowView.NavigationStrategy.DoNothing
 import com.descope.android.DescopeFlowView.NavigationStrategy.Inline
 import com.descope.android.DescopeFlowView.NavigationStrategy.OpenBrowser
+import com.descope.android.DescopeFlowView.State.Initial
+import com.descope.android.DescopeFlowView.State.Started
+import com.descope.android.DescopeFlowView.State.Ready
+import com.descope.android.DescopeFlowView.State.Finished
+import com.descope.android.DescopeFlowView.State.Failed
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
@@ -44,9 +49,9 @@ import java.net.HttpCookie
 internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     internal var listener: DescopeFlowView.Listener? = null
+    internal var state: DescopeFlowView.State = Initial
     
     private lateinit var flow: DescopeFlow
-    private var state: State = State.Initial
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
@@ -63,11 +68,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady(tag: String) {
-                if (state != State.Started) {
+                if (state != Started) {
                     logger?.log(Info, "Flow onReady called in state $state - ignoring")
                     return
                 }
-                state = State.Ready
+                state = Ready
                 logger?.log(Info, "Flow is ready ($tag)")
                 handler.post {
                     listener?.onReady()
@@ -76,11 +81,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onSuccess(success: String, url: String) {
-                if (state != State.Ready) {
+                if (state != Ready) {
                     logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
-                state = State.Finished
+                state = Finished
                 logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
@@ -95,11 +100,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onError(error: String) {
-                if (state != State.Ready) {
+                if (state != Ready) {
                     logger?.log(Info, "Flow onError called in state $state - ignoring")
                     return
                 }
-                state = State.Failed
+                state = Failed
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
                     listener?.onError(DescopeException.flowFailed.with(desc = error))
@@ -208,7 +213,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
-        state = State.Started
+        state = Started
         webView.loadUrl(flow.uri.toString())
     }
 
@@ -256,14 +261,6 @@ internal sealed class NativePayload {
             }
         }
     }
-}
-
-private enum class State {
-    Initial,
-    Started,
-    Ready,
-    Failed,
-    Finished,
 }
 
 // JS

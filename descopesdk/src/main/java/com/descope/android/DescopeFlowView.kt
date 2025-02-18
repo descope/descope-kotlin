@@ -22,11 +22,11 @@ import com.descope.types.OAuthProvider
  * @property uri The URI where the flow is hosted
  */
 data class DescopeFlow(val uri: Uri) {
-    
+
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
-    /** 
+    /**
      * The ID of the oauth provider that is configured to correctly "Sign In with Google".
      * Will likely be "google" if the Descope "Google" provider was customized,
      * or alternatively a custom provider ID.
@@ -34,8 +34,8 @@ data class DescopeFlow(val uri: Uri) {
     var oauthProvider: OAuthProvider? = null
 
     /**
-     * An optional deep link link URL to use when performing OAuth authentication, overriding 
-     * whatever is configured in the flow or project. 
+     * An optional deep link link URL to use when performing OAuth authentication, overriding
+     * whatever is configured in the flow or project.
      * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
      * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
      * It is possible to circumvent this issue by providing a custom scheme based URL via [oauthRedirectCustomScheme].
@@ -46,7 +46,7 @@ data class DescopeFlow(val uri: Uri) {
      * An optional custom scheme based URL, e.g. `mycustomscheme://myhost`,
      * to use when performing OAuth authentication overriding whatever is configured in the flow or project.
      * Functionally, this URL is exactly the same as [oauthRedirect], and will be used in its stead, only
-     * when the user has a default browser that does not honor App Links by default. 
+     * when the user has a default browser that does not honor App Links by default.
      * That means the `https` based App Links are opened inline in the browser, instead
      * of being handled by the application.
      */
@@ -100,12 +100,12 @@ data class DescopeFlow(val uri: Uri) {
 
 /**
  * Authenticate a user using Descope Flows.
- * 
- * Embed this view into your UI to be able to run flows built with the 
+ *
+ * Embed this view into your UI to be able to run flows built with the
  * [Descope Flow builder](https://app.descope.com/flows)
- * 
+ *
  * **Setup**
- * 
+ *
  * - As a prerequisite, the flow itself must be defined and hosted.
  * It's possible to use Descope's auth hosting solution, or host it
  * yourself. Read more [here.](https://docs.descope.com/auth-hosting-app)
@@ -114,17 +114,17 @@ data class DescopeFlow(val uri: Uri) {
  * to configure the desired authentication methods in the [Descope console.](https://app.descope.com/settings/authentication)
  * Some of the default configurations might be OK to start out with,
  * but it is likely that modifications will be required before release.
- *  
+ *
  *    - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
  *      deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
  *      It is possible to circumvent this issue by using a custom scheme, albeit less secure.
- * 
+ *
  * - Beyond that, in order to use navigation / redirection based authentication,
  * namely `Magic Link`, `OAuth (social)` and SSO, it's required to set up app links.
  * App Links allow the application to receive navigation to specific URLs,
  * instead of opening the browser. Follow the [Android official documentation](https://developer.android.com/training/app-links)
  * to set up App link in your application.
- * 
+ *
  * - Finally, it is possible for users to authenticate using the Google account or accounts they are logged into
  * on their Android devices. If you haven't already configured your app to support `Sign in with Google` you'll
  * probably need to set up your [Google APIs console project](https://developer.android.com/identity/sign-in/credential-manager-siwg#set-google)
@@ -135,14 +135,14 @@ data class DescopeFlow(val uri: Uri) {
  * For more details about configuring your app see the [Credential Manager documentation](https://developer.android.com/identity/sign-in/credential-manager).
  *
  * **Usage**
- * 
+ *
  * Add a [DescopeFlowView] to your UI via XML, compose, or code.
- * 
+ *
  * Running a flow requires providing an instance of [DescopeFlow] to the [DescopeFlowView].
  * The [DescopeFlow] object defines where and how a flow is run.
  * Read the [DescopeFlow] documentation for a detailed,
  * explanation of the available required and optional configurations.
- * 
+ *
  *     descopeFlowView.listener = object : DescopeFlowView.Listener {
  *         override fun onReady() {
  *             // present the flow view via animation, or however you see fit
@@ -150,13 +150,13 @@ data class DescopeFlow(val uri: Uri) {
  *
  *         override fun onSuccess(response: AuthenticationResponse) {
  *             // optionally hide the flow UI
- *             
+ *
  *             // manage the incoming session
-*              Descope.sessionManager.manageSession(DescopeSession(response))
- *             
+ *              Descope.sessionManager.manageSession(DescopeSession(response))
+ *
  *             // launch the "logged in" UI of your app
  *         }
- *             
+ *
  *         override fun onError(exception: DescopeException) {
  *             // handle any errors here
  *         }
@@ -166,20 +166,23 @@ data class DescopeFlow(val uri: Uri) {
  *             // in a custom tab (default behavior), inline, or do nothing.
  *         }
  *     }
- *     
+ *
  *     val descopeFlow = DescopeFlow(Uri.parse("https://example.com"))
  *     // set the OAuth provider ID that is configured to "sign in with Google"
  *     descopeFlow.oauthProvider = OAuthProvider.Google
- *     // set the oauth redirect URI to use your app's deep link 
+ *     // set the oauth redirect URI to use your app's deep link
  *     descopeFlow.oauthRedirect = "my-redirect-deep-link"
  *     // customize the flow presentation further
  *     descopeFlow.presentation = flowPresentation
- *     
+ *
  *     // run the flow
  *     descopeFlowView.run(descopeFlow)
  *
  */
 class DescopeFlowView : ViewGroup {
+
+    val state: State
+        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.state else State.Initial
 
     /** The [Listener] property is called according to the Flow's state */
     var listener: Listener?
@@ -189,7 +192,7 @@ class DescopeFlowView : ViewGroup {
                 flowCoordinator.listener = value
             }
         }
-    
+
     private lateinit var flowCoordinator: DescopeFlowCoordinator
 
     constructor(context: Context) : super(context, null, 0) {
@@ -213,7 +216,7 @@ class DescopeFlowView : ViewGroup {
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
         this.flowCoordinator = DescopeFlowCoordinator(webView)
     }
-    
+
     // API
 
     /**
@@ -229,7 +232,7 @@ class DescopeFlowView : ViewGroup {
     /**
      * Resume an already running flow after a deep link
      * event. This function should be called to complete `Magic Link`
-     * and web-based `OAuth` authentication. 
+     * and web-based `OAuth` authentication.
      *
      * @param deepLink The incoming deep link URI
      */
@@ -245,7 +248,7 @@ class DescopeFlowView : ViewGroup {
             child.layout(0, 0, width, height);
         }
     }
-    
+
     // Helper Classes
 
     /**
@@ -285,6 +288,22 @@ class DescopeFlowView : ViewGroup {
          * @return The [NavigationStrategy] to act upon
          */
         fun onNavigation(uri: Uri): NavigationStrategy = NavigationStrategy.OpenBrowser
+    }
+
+    /**
+     * Represents the state the flow is in.
+     */
+    enum class State {
+        /** Initial state - when the [DescopeFlowView] is initially create. */
+        Initial,
+        /** Started state - a flow has begun but not yet ready to be displayed. */
+        Started,
+        /** Ready state - the [DescopeFlowView] is ready to be presented and interacted with. */
+        Ready,
+        /** Failed state - the flow finished unsuccessfully. This state cannot be recovered from. */
+        Failed,
+        /** Finished state - the final state when a flow has completed successfully. */
+        Finished,
     }
 
     /**
