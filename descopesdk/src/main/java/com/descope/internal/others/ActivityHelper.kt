@@ -19,7 +19,6 @@ internal val activityHelper = object : ActivityHelper {
     override var customTabsIntent: CustomTabsIntent? = null
 
     override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri) {
-        println("here: $url")
         this.customTabsIntent = customTabsIntent
         (context as? Activity)?.let { activity ->
             activity.startActivity(Intent(activity, DescopeHelperActivity::class.java).apply { putExtra(CUSTOM_TAB_URL, url); flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP })

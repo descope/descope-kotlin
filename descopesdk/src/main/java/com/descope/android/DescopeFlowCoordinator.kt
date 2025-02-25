@@ -16,9 +16,15 @@ import android.webkit.WebViewClient
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.descope.Descope
+import com.descope.android.DescopeFlowHook.Event
 import com.descope.android.DescopeFlowView.NavigationStrategy.DoNothing
 import com.descope.android.DescopeFlowView.NavigationStrategy.Inline
 import com.descope.android.DescopeFlowView.NavigationStrategy.OpenBrowser
+import com.descope.android.DescopeFlowView.State.Failed
+import com.descope.android.DescopeFlowView.State.Finished
+import com.descope.android.DescopeFlowView.State.Initial
+import com.descope.android.DescopeFlowView.State.Ready
+import com.descope.android.DescopeFlowView.State.Started
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
@@ -41,12 +47,12 @@ import org.json.JSONObject
 import java.net.HttpCookie
 
 @SuppressLint("SetJavaScriptEnabled")
-internal class DescopeFlowCoordinator(private val webView: WebView) {
+class DescopeFlowCoordinator(val webView: WebView) {
 
     internal var listener: DescopeFlowView.Listener? = null
-    
+    internal var state: DescopeFlowView.State = Initial
+
     private lateinit var flow: DescopeFlow
-    private var state: State = State.Initial
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
@@ -59,28 +65,27 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         webView.settings.javaScriptEnabled = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.domStorageEnabled = true
-        webView.settings.setSupportZoom(false)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady(tag: String) {
-                if (state != State.Started) {
+                if (state != Started) {
                     logger?.log(Info, "Flow onReady called in state $state - ignoring")
                     return
                 }
-                state = State.Ready
                 logger?.log(Info, "Flow is ready ($tag)")
                 handler.post {
+                    handleReady()
                     listener?.onReady()
                 }
             }
 
             @JavascriptInterface
             fun onSuccess(success: String, url: String) {
-                if (state != State.Ready) {
+                if (state != Ready) {
                     logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
-                state = State.Finished
+                state = Finished
                 logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
@@ -95,11 +100,11 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
 
             @JavascriptInterface
             fun onError(error: String) {
-                if (state != State.Ready) {
+                if (state != Ready) {
                     logger?.log(Info, "Flow onError called in state $state - ignoring")
                     return
                 }
-                state = State.Failed
+                state = Failed
                 logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
                     listener?.onError(DescopeException.flowFailed.with(desc = error))
@@ -185,6 +190,7 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
+                handleLoaded()
                 view?.run {
                     val isWebAuthnSupported = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
                     val origin = if (isWebAuthnSupported) getPackageOrigin(context) else ""
@@ -204,11 +210,36 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         }
     }
 
-    // API
+    // Public API
+
+    fun runJavaScript(code: String) {
+        val javascript = anonymousFunction(code)
+        webView.evaluateJavascript(javascript) {}
+    }
+
+    fun addStyles(css: String) {
+        runJavaScript("""
+const styles = `${css.escapeForBackticks()}`
+const element = document.createElement('style')
+element.textContent = styles
+document.head.appendChild(element)
+"""
+        )
+    }
+
+    private fun anonymousFunction(body: String): String {
+        return """
+            (function() {
+                $body
+            })()
+        """
+    }
+
+    // Internal API
 
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
-        state = State.Started
+        handleStarted()
         webView.loadUrl(flow.uri.toString())
     }
 
@@ -218,6 +249,36 @@ internal class DescopeFlowCoordinator(private val webView: WebView) {
         val response = JSONObject().apply { put("url", deepLink.toString()) }
         val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
         webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${response.toString().escapeForBackticks()}`)") {}
+    }
+
+    // Hooks
+
+    private fun executeHooks(event: Event) {
+        val hooks = mutableListOf<DescopeFlowHook>().apply {
+            addAll(DescopeFlowHook.defaults)
+            if (this@DescopeFlowCoordinator::flow.isInitialized) addAll(flow.hooks)
+        }
+        hooks.filter { it.events.contains(event) }
+            .forEach { it.execute(event, this) }
+    }
+
+    // Events
+
+    private fun handleStarted() {
+        if (state != Initial) return
+        state = Started
+        executeHooks(Event.Started)
+    }
+
+    private fun handleLoaded() {
+        if (state != Started) return
+        executeHooks(Event.Loaded)
+    }
+
+    private fun handleReady() {
+        if (state != Started) return
+        state = Ready
+        executeHooks(Event.Ready)
     }
 
 }
@@ -258,14 +319,6 @@ internal sealed class NativePayload {
     }
 }
 
-private enum class State {
-    Initial,
-    Started,
-    Ready,
-    Failed,
-    Finished,
-}
-
 // JS
 
 private fun setupScript(
@@ -274,7 +327,7 @@ private fun setupScript(
     oauthRedirect: String,
     ssoRedirect: String,
     magicLinkRedirect: String,
-    isWebAuthnSupported: Boolean
+    isWebAuthnSupported: Boolean,
 ) = """
 function flowBridgeWaitWebComponent() {
     const styles = `
@@ -385,11 +438,13 @@ private fun String.toUri(): Uri? {
 private fun shouldUseCustomSchemeUrl(context: Context): Boolean {
     val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-    return when(resolveInfo?.loadLabel(context.packageManager).toString().lowercase()){
+    return when (resolveInfo?.loadLabel(context.packageManager).toString().lowercase()) {
         "opera",
         "opera mini",
         "duckduckgo",
-        "mi browser" -> true
+        "mi browser",
+            -> true
+
         else -> false
     }
 }
