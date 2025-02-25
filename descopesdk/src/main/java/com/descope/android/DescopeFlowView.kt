@@ -26,6 +26,14 @@ data class DescopeFlow(val uri: Uri) {
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
+    /** 
+     * A list of hooks that customize how the flow webpage looks or behaves.
+     *
+     * You can use the built-in hooks or create custom ones. See the documentation
+     * for [DescopeFlowHook] for more details.
+     */
+    var hooks: List<DescopeFlowHook> = emptyList()
+
     /**
      * The ID of the oauth provider that is configured to correctly "Sign In with Google".
      * Will likely be "google" if the Descope "Google" provider was customized,
@@ -152,7 +160,7 @@ data class DescopeFlow(val uri: Uri) {
  *             // optionally hide the flow UI
  *
  *             // manage the incoming session
- *              Descope.sessionManager.manageSession(DescopeSession(response))
+ *             Descope.sessionManager.manageSession(DescopeSession(response))
  *
  *             // launch the "logged in" UI of your app
  *         }
@@ -177,10 +185,9 @@ data class DescopeFlow(val uri: Uri) {
  *
  *     // run the flow
  *     descopeFlowView.run(descopeFlow)
- *
  */
 class DescopeFlowView : ViewGroup {
-
+    /** The state the flow view is in. See [State] for more details. */
     val state: State
         get() = if (this::flowCoordinator.isInitialized) flowCoordinator.state else State.Initial
 
