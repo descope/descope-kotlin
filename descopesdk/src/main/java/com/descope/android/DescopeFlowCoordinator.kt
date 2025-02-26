@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -207,6 +208,19 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     ) {}
                 }
             }
+
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                state = Failed
+                val exception = when (error?.errorCode) {
+                    ERROR_HOST_LOOKUP,
+                    ERROR_CONNECT,
+                    ERROR_TIMEOUT,
+                        -> DescopeException.networkError
+
+                    else -> DescopeException.flowFailed
+                }
+                listener?.onError(exception.with(message = "Received an error during flow ${if (error != null) "(${error.description})" else ""}"))
+            }
         }
     }
 
@@ -218,7 +232,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     fun addStyles(css: String) {
-        runJavaScript("""
+        runJavaScript(
+            """
 const styles = `${css.escapeForBackticks()}`
 const element = document.createElement('style')
 element.textContent = styles
@@ -265,7 +280,7 @@ document.head.appendChild(element)
     // Events
 
     private fun handleStarted() {
-        if (state != Initial) return
+        if (state != Initial && state != Failed && state != Finished) return
         state = Started
         executeHooks(Event.Started)
     }
