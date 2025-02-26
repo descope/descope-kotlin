@@ -1,6 +1,5 @@
 package com.descope.session
 
-import android.annotation.SuppressLint
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -16,9 +15,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 import java.util.Timer
-import kotlin.concurrent.timerTask
-
-const val SECOND = 1000L
+import java.util.TimerTask
+import kotlin.concurrent.timer
 
 /**
  * This interface can be used to customize how a [DescopeSessionManager] object
@@ -49,18 +47,16 @@ class SessionLifecycle(
 ) : DescopeSessionLifecycle {
 
     var shouldSaveAfterPeriodicRefresh: Boolean = true
-    var stalenessAllowedInterval: Long = 60L /* seconds */ * SECOND
-    var periodicCheckFrequency: Long = 30L /* seconds */ * SECOND
+    var refreshTriggerInterval: Long = 60 /* seconds */ * SECOND
+    var periodicCheckFrequency: Long = 30 /* seconds */ * SECOND
 
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                // application in foreground
-                if (session != null) startTimer(runImmediately = true)
+                resetTimer()
             }
 
             override fun onStop(owner: LifecycleOwner) {
-                // application in background
                 stopTimer()
             }
         })
@@ -68,88 +64,112 @@ class SessionLifecycle(
 
     override var session: DescopeSession? = null
         set(value) {
-            if (field == value) return
+            if (value?.refreshToken == field?.refreshToken) {
+                field = value
+                return
+            }
+
             field = value
-            if (value == null) {
-                stopTimer()
-            } else {
-                startTimer()
+            if (value != null && value.refreshToken.isExpired) {
+                logger?.log(Info, "Session has an expired refresh token", value.refreshToken.expiresAt)
             }
-            if (value?.refreshToken?.isExpired == true) {
-                logger?.log(Info, "Session has an expired refresh token", session?.refreshToken?.expiresAt)
-            }
+            resetTimer()
         }
 
     override suspend fun refreshSessionIfNeeded(): Boolean {
-        val session = this.session ?: return false
-        return if (shouldRefresh(session)) {
-            logger?.log(Info, "Refreshing session that is about to expire", session.sessionToken.expiresAt)
-            val response = auth.refreshSession(session.refreshJwt)
-            if (this.session?.sessionJwt != session.sessionJwt) {
-                logger?.log(Info, "Skipping refresh because session has changed in the meantime")
-                return false
-            }
-            session.updateTokens(response)
-            true
-        } else false
+        val current = session
+        if (current == null || !shouldRefresh(current)) {
+            return false
+        }
+        
+        logger?.log(Info, "Refreshing session that is about to expire", current.sessionToken.expiresAt)
+        val response = auth.refreshSession(current.refreshJwt)
+        if (session?.sessionJwt != current.sessionJwt) {
+            logger?.log(Info, "Skipping refresh because session has changed in the meantime")
+            return false
+        }
+        
+        session?.updateTokens(response)
+        return true
     }
 
     // Internal
 
     private fun shouldRefresh(session: DescopeSession): Boolean {
-        return session.sessionToken.expiresAt - System.currentTimeMillis() <= stalenessAllowedInterval
+        val isRefreshValid = !session.refreshToken.isExpired  
+        val isSessionAlmostExpired = session.sessionToken.expiresAt - System.currentTimeMillis() <= refreshTriggerInterval
+        return isRefreshValid && isSessionAlmostExpired
     }
 
     // Timer
 
     private var timer: Timer? = null
-
-    @SuppressLint("DiscouragedApi")
-    @OptIn(DelicateCoroutinesApi::class)
-    private fun startTimer(runImmediately: Boolean = false) {
-        val weakRef = WeakReference(this)
-        val delay = if (runImmediately) 0L else periodicCheckFrequency
-        timer?.run { cancel(); purge() }
-        timer = Timer().apply {
-            scheduleAtFixedRate(timerTask {
-                val ref = weakRef.get()
-                if (ref == null) {
-                    stopTimer()
-                    return@timerTask
-                }
-                if (session?.refreshToken?.isExpired != false) {
-                    logger?.log(Debug, "Stopping periodic refresh for session with expired refresh token")
-                    stopTimer()
-                    return@timerTask
-                }
-                GlobalScope.launch(Dispatchers.Main) {
-                    try {
-                        val refreshed = ref.refreshSessionIfNeeded()
-                        val session = session
-                        if (refreshed && shouldSaveAfterPeriodicRefresh && session != null) {
-                            logger?.log(Debug, "Saving refresh session after periodic refresh")
-                            storage.saveSession(session)
-                        }
-                    } catch (descopeException: DescopeException) {
-                        // allow retries on network errors
-                        if (descopeException != DescopeException.networkError) {
-                            logger?.log(Error, "Stopping periodic refresh after failure", descopeException)
-                            stopTimer()
-                        } else {
-                            logger?.log(Debug, "Ignoring network error in periodic refresh")
-                        }
-                    } catch (e: Exception) {
-                        logger?.log(Error, "Stopping periodic refresh after unexpected failure", e)
-                        stopTimer()
-                    }
-                }
-            }, delay, periodicCheckFrequency)
+    
+    private fun resetTimer() {
+        val refreshToken = session?.refreshToken
+        if (refreshTriggerInterval > 0 && refreshToken != null && !refreshToken.isExpired) {
+            startTimer()
+        } else {
+            stopTimer()
         }
     }
 
-    private fun stopTimer() {
-        timer?.run { cancel(); purge() }
-        timer = null
+    private fun startTimer() {
+        stopTimer()
+        
+        val ref = WeakReference(this)
+        val action = createTimerAction(ref)
+        timer = timer(name = "DescopeSessionLifecycle", period = periodicCheckFrequency, action = action)
     }
 
+    private fun stopTimer() {
+        timer?.cancel()
+        timer = null
+    }
+    
+    // Periodic Refresh
+    
+    internal suspend fun periodicRefresh() {
+        val refreshToken = session?.refreshToken
+
+        if (refreshToken == null || refreshToken.isExpired) {
+            logger?.log(Debug, "Stopping periodic refresh for session with expired refresh token")
+            stopTimer()
+            return
+        }
+        
+        try {
+            val refreshed = refreshSessionIfNeeded()
+            if (refreshed && shouldSaveAfterPeriodicRefresh) {
+                logger?.log(Debug, "Saving refresh session after periodic refresh")
+                session?.let { storage.saveSession(it) }
+            }
+        } catch (e: DescopeException) {
+            if (e == DescopeException.networkError) {
+                logger?.log(Debug, "Ignoring network error in periodic refresh")
+            } else {
+                logger?.log(Error, "Stopping periodic refresh after failure", e)
+                stopTimer()
+            }
+        } catch (e: Exception) {
+            logger?.log(Error, "Stopping periodic refresh after unexpected failure", e)
+            stopTimer()
+        }
+    }
+}
+
+private const val SECOND = 1000L
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun createTimerAction(ref: WeakReference<SessionLifecycle>): (TimerTask.() -> Unit) {
+    return {
+        val lifecycle = ref.get()
+        if (lifecycle == null) {
+            cancel()
+        } else {
+            GlobalScope.launch(Dispatchers.Main) {
+                lifecycle.periodicRefresh()
+            }
+        }
+    }
 }
