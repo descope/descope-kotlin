@@ -211,15 +211,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 state = Failed
-                val exception = when (error?.errorCode) {
-                    ERROR_HOST_LOOKUP,
-                    ERROR_CONNECT,
-                    ERROR_TIMEOUT,
-                        -> DescopeException.networkError
-
-                    else -> DescopeException.flowFailed
-                }
-                listener?.onError(exception.with(message = "Received an error during flow ${if (error != null) "(${error.description})" else ""}"))
+                listener?.onError(DescopeException.networkError.with(message = error?.description?.toString()))
             }
         }
     }
