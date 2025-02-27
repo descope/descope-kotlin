@@ -25,8 +25,8 @@ import com.descope.session.DescopeSession
  * returns a new `DescopeUser` value.
  *
  *     val session = Descope.sessionManager.session ?: return
- *     val descopeUser = Descope.auth.me(refreshJwt = session.refreshJwt)
- *     session.updateUser(descopeUser)
+ *     val user = Descope.auth.me(refreshJwt = session.refreshJwt)
+ *     Descope.sessionManager.updateUser(user)
  *
  * In the code above we check that there's an active [DescopeSession] in the shared
  * session manager. If so we ask the Descope server for the latest user details and
