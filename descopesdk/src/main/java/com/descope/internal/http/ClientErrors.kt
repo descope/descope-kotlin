@@ -16,15 +16,19 @@ internal fun parseServerError(response: String): DescopeException? = try {
 }
 
 internal fun exceptionFromResponseCode(code: Int): DescopeException? {
-    val desc = when (code) {
+    val desc = failureFromResponseCode(code) ?: return null
+    return DescopeException.httpError.with(desc = desc)
+}
+
+internal fun failureFromResponseCode(code: Int): String? {
+    return when (code) {
         in 200..299 -> null
         400 -> "The request was invalid"
         401 -> "The request was unauthorized"
         403 -> "The request was forbidden"
         404 -> "The resource was not found"
-        500, 503 -> "The server failed with status code $code"
-        in 500..<600 -> "The server was unreachable"
+        500, 503 -> "The request failed with status code $code"
+        in 500..599 -> "The server was unreachable"
         else -> "The server returned status code $code"
     }
-    return desc?.run { DescopeException.httpError.with(desc = this) }
 }
