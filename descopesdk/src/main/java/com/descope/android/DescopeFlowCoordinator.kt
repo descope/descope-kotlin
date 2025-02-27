@@ -210,8 +210,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                state = Failed
-                listener?.onError(DescopeException.networkError.with(message = error?.description?.toString()))
+                if (request?.isForMainFrame == true && state != Failed) {
+                    state = Failed
+                    listener?.onError(DescopeException.networkError.with(message = error?.description?.toString()))
+                }
             }
         }
     }
