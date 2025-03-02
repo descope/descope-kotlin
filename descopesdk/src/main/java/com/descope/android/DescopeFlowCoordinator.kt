@@ -186,8 +186,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 return when (listener?.onNavigation(uri) ?: OpenBrowser) {
                     Inline -> false
                     DoNothing -> true
-                    OpenBrowser -> {
-                        launchCustomTab(webView.context, uri, flow.presentation?.createCustomTabsIntent(webView.context))
+                    OpenBrowser -> { 
+                        try {
+                            launchCustomTab(webView.context, uri, flow.presentation?.createCustomTabsIntent(webView.context))
+                        } catch (e: DescopeException) {
+                            logger?.log(Error, "Failed to open URL in browser", e)
+                        }
                         true
                     }
                 }
@@ -202,7 +206,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     evaluateJavascript(
                         setupScript(
                             origin = origin,
-                            oauthNativeProvider = flow.oauthProvider?.name ?: "",
+                            oauthNativeProvider = flow.oauthNativeProvider?.name ?: "",
                             oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback),
                             ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback),
                             magicLinkRedirect = flow.magicLinkRedirect ?: "",
