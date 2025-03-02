@@ -275,7 +275,7 @@ descopeFlowView.listener = object : DescopeFlowView.Listener {
 
 val descopeFlow = DescopeFlow("<URL_FOR_FLOW_IN_SETUP_#1>")
 // set the OAuth provider ID that is configured to "sign in with Google"
-descopeFlow.oauthProvider = OAuthProvider.Google
+descopeFlow.oauthNativeProvider = OAuthProvider.Google
 // set the oauth redirect URI to use your app's deep link 
 descopeFlow.oauthRedirect = "<URL_FOR_APP_LINK_IN_SETUP_#2>"
 // customize the flow presentation further

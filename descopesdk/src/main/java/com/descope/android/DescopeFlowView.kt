@@ -36,11 +36,11 @@ class DescopeFlow {
     var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
-     * The ID of the oauth provider that is configured to correctly "Sign In with Google".
+     * The ID of the oauth provider that is configured to natively "Sign In with Google".
      * Will likely be "google" if the Descope "Google" provider was customized,
      * or alternatively a custom provider ID.
      */
-    var oauthProvider: OAuthProvider? = null
+    var oauthNativeProvider: OAuthProvider? = null
 
     /**
      * An optional deep link link URL to use when performing OAuth authentication, overriding
@@ -119,6 +119,16 @@ class DescopeFlow {
          */
         fun createCustomTabsIntent(context: Context): CustomTabsIntent?
     }
+
+    /**
+     * Has been renamed and replaced by [oauthNativeProvider]. Use it instead.
+     */
+    @Deprecated(message = "Use oauthNativeProvider instead", replaceWith = ReplaceWith("oauthNativeProvider"))
+    var oauthProvider: OAuthProvider?
+        get() = oauthNativeProvider
+        set(value) {
+            oauthNativeProvider = value
+        }
 }
 
 /**
@@ -192,7 +202,7 @@ class DescopeFlow {
  *
  *     val descopeFlow = DescopeFlow("https://example.com")
  *     // set the OAuth provider ID that is configured to "sign in with Google"
- *     descopeFlow.oauthProvider = OAuthProvider.Google
+ *     descopeFlow.oauthNativeProvider = OAuthProvider.Google
  *     // set the oauth redirect URI to use your app's deep link
  *     descopeFlow.oauthRedirect = "my-redirect-deep-link"
  *     // customize the flow presentation further

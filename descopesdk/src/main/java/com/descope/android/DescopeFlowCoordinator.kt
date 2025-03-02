@@ -202,7 +202,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     evaluateJavascript(
                         setupScript(
                             origin = origin,
-                            oauthNativeProvider = flow.oauthProvider?.name ?: "",
+                            oauthNativeProvider = flow.oauthNativeProvider?.name ?: "",
                             oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback),
                             ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback),
                             magicLinkRedirect = flow.magicLinkRedirect ?: "",
