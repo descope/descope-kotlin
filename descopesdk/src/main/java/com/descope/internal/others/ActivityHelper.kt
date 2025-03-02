@@ -20,20 +20,32 @@ internal val activityHelper = object : ActivityHelper {
 
     override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri) {
         this.customTabsIntent = customTabsIntent
-        (context as? Activity)?.let { activity ->
-            activity.startActivity(Intent(activity, DescopeHelperActivity::class.java).apply { putExtra(CUSTOM_TAB_URL, url); flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP })
-            return
+        if (!isBrowserSupported(context, url)) {
+            throw DescopeException.customTabFailed.with(message = "No browser application was found")
         }
-        throw DescopeException.customTabFailed.with(message = "Custom tabs require the given context to be an Activity")
+        if (context !is Activity) {
+            throw DescopeException.customTabFailed.with(message = "Custom tabs require the given context to be an Activity")
+        }
+        val intent = Intent(context, DescopeHelperActivity::class.java)
+        intent.putExtra(CUSTOM_TAB_URL, url)
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        context.startActivity(intent)
     }
 
     override fun closeCustomTab(context: Context) {
         if (this.customTabsIntent == null) return
         this.customTabsIntent = null
-        (context as? Activity)?.let { activity ->
-            activity.startActivity(Intent(activity, DescopeHelperActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP })
-            return
+        if (context !is Activity) {
+            throw DescopeException.customTabFailed.with(message = "Custom tabs require the given context to be an Activity")
         }
-        throw DescopeException.customTabFailed.with(message = "Custom tabs require the given context to be an Activity")
+        val intent = Intent(context, DescopeHelperActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        context.startActivity(intent)
+    }
+
+    private fun isBrowserSupported(context: Context, uri: Uri): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        val component = intent.resolveActivity(context.packageManager)
+        return component != null
     }
 }
