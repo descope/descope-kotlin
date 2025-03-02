@@ -271,7 +271,7 @@ document.head.appendChild(element)
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
         handleStarted()
-        webView.loadUrl(flow.uri.toString())
+        webView.loadUrl(flow.url)
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
