@@ -48,19 +48,9 @@ Descope.otp.signUp(method = DeliveryMethod.Email, loginId = "andy@example.com")
 Finish the authentication by verifying the OTP code the user entered:
 
 ```kotlin
-try {
+val authResponse = try {
     // if the user entered the right code the authentication is successful
-    val authResponse = Descope.otp.verify(
-        method = DeliveryMethod.Email,
-        loginId = "andy@example.com",
-        code = code
-    )
-    // we create a DescopeSession object that represents an authenticated user session
-    val session = DescopeSession(authResponse)
-    
-    // the session manager automatically takes care of persisting the session
-    // and refreshing it as needed
-    Descope.sessionManager.manageSession(session)
+    Descope.otp.verify(method = DeliveryMethod.Email, loginId = "andy@example.com", code = code)
 } catch (e: DescopeException) {
     // Here's an example of how a typical error would be handled
     when(e) {
@@ -83,6 +73,12 @@ try {
         }
     }    
 }
+// we create a DescopeSession object that represents an authenticated user session
+val session = DescopeSession(authResponse)
+
+// the session manager automatically takes care of persisting the session
+// and refreshing it as needed
+Descope.sessionManager.manageSession(session)
 ```
 
 On the next application launch check if there's a logged in user to
@@ -141,13 +137,13 @@ Once the user completes a sign in flow successfully you should set the
 `DescopeSession` object as the active session of the session manager.
 
 ```kotlin
-try {
-    val authResponse = Descope.otp.verify(DeliverMethod.Email, "andy@example.com", "123456")
-    val session = DescopeSession(authResponse)
-    Descope.sessionManager.manageSession(session)
+val authResponse = try {
+    Descope.otp.verify(DeliverMethod.Email, "andy@example.com", "123456")
 } catch (e: DescopeException) {
     // Handle errors here
 }
+val session = DescopeSession(authResponse)
+Descope.sessionManager.manageSession(session)
 ```
 
 The session manager can then be used at any time to ensure the session
