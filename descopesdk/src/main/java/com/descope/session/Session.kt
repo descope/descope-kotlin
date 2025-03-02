@@ -53,7 +53,7 @@ class DescopeSession {
         private set
 
     /**
-     * Creates a new [DescopeSession] object from an [AuthenticationResponse].
+     * Creates a new [DescopeSession] object.
      *
      * @param sessionToken the short lived session token from an [AuthenticationResponse].
      * @param refreshToken the long lived refresh token from an [AuthenticationResponse].
