@@ -68,9 +68,9 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
 
     companion object {
         /** The Descope SDK name */
-        const val name = "DescopeAndroid"
+        const val NAME = "DescopeAndroid"
 
         /** The Descope SDK version */
-        const val version = "0.12.3"
+        const val VERSION = "0.13.0"
     }
 }

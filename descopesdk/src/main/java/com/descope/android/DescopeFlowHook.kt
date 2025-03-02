@@ -20,7 +20,7 @@ import com.descope.android.DescopeFlowHook.Event
  * in one place:
  *
  *     fun showFlow() {
- *         val flow = DescopeFlow(Uri.parse("https://example.com/myflow"))
+ *         val flow = DescopeFlow("https://example.com/myflow")
  *         flow.hooks = listOf(setMaxWidth(), removeFooter(), hideScrollBar())
  *         flowView.run(flow)
  *     }
