@@ -48,13 +48,31 @@ Descope.otp.signUp(method = DeliveryMethod.Email, loginId = "andy@example.com")
 Finish the authentication by verifying the OTP code the user entered:
 
 ```kotlin
-// if the user entered the right code the authentication is successful
-val authResponse = Descope.otp.verify(
-    method = DeliveryMethod.Email,
-    loginId = "andy@example.com",
-    code = code
-)
+val authResponse = try {
+    // if the user entered the right code the authentication is successful
+    Descope.otp.verify(method = DeliveryMethod.Email, loginId = "andy@example.com", code = code)
+} catch (e: DescopeException) {
+    // Here's an example of how a typical error would be handled
+    when(e) {
+        // handle one or more kinds of errors where we don't
+        // need to use the actual error object
+        DescopeException.wrongOtpCode,
+        DescopeException.invalidRequest -> showBadCodeAlert()
 
+        // handle a specific kind of error and do something
+        // with the [DescopeException] object
+        DescopeException.networkError -> {
+            logError("A network error has occurred", e.desc, e.cause)
+            showNetworkErrorRetry()
+        }
+
+        // handle any other scenario
+        else -> {
+            logError("Unexpected authentication failure: $e")
+            showUnexpectedErrorAlert(e)
+        }
+    }    
+}
 // we create a DescopeSession object that represents an authenticated user session
 val session = DescopeSession(authResponse)
 
@@ -68,7 +86,8 @@ decide which screen to show:
 
 ```kotlin
 // check if we have a valid session from a previous launch and that it hasn't expired yet
-if (Descope.sessionManager.session?.refreshToken?.isExpired == true) {
+val session = Descope.sessionManager.session
+if (session != null && !session.refreshToken.isExpired) {
     // Show main UI
 } else {
     // Show login UI
@@ -79,9 +98,22 @@ Use the active session to authenticate outgoing API requests to the
 application's backend:
 
 ```kotlin
-val connection = url.openConnection() as HttpsURLConnection
-connection.setAuthorization(Descope.sessionManager)
+try {
+    val connection = url.openConnection() as HttpsURLConnection
+    connection.setAuthorization(Descope.sessionManager)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
+
+## Error Handling
+
+Any and all API calls performed by the Descope SDK can fail for various
+reasons. In the event of either a technical, i.e. network related, or
+logical error occur, a `DescopeException` will be thrown. It's Important
+to always take error handling into account. A good example can be seen
+at the [quickstart section](#quickstart), and further details can be read
+via the [DescopeException class documentation](https://github.com/descope/descope-kotlin/blob/main/descopesdk/src/main/java/com/descope/types/Error.kt)
 
 ## Session Management
 
@@ -105,7 +137,11 @@ Once the user completes a sign in flow successfully you should set the
 `DescopeSession` object as the active session of the session manager.
 
 ```kotlin
-val authResponse = Descope.otp.verify(DeliverMethod.Email, "andy@example.com", "123456")
+val authResponse = try {
+    Descope.otp.verify(DeliverMethod.Email, "andy@example.com", "123456")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 val session = DescopeSession(authResponse)
 Descope.sessionManager.manageSession(session)
 ```
@@ -125,7 +161,11 @@ add another extension function on `URLRequest` such as the one above, or you
 can do the following.
 
 ```kotlin
-Descope.sessionManager.refreshSessionIfNeeded()
+try {
+    Descope.sessionManager.refreshSessionIfNeeded()
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 Descope.sessionManager.session?.sessionJwt?.apply {
     connection.setRequestProperty("X-Auth-Token", this)
 } ?: throw ServerError.unauthorized
@@ -146,13 +186,21 @@ override fun onCreate() {
 }
 ```
 
-When the user wants to sign out of the application we revoke the
-active session and clear it from the session manager:
+When the user wants to sign out of the application we clear it 
+from the session manager and revoke the active session:
 
 ```kotlin
- Descope.sessionManager.session?.refreshJwt?.run {
-    Descope.auth.revokeSessions(RevokeType.CurrentSession, this)
-    Descope.sessionManager.clearSession()
+Descope.sessionManager.clearSession()
+Descope.sessionManager.session?.refreshJwt?.let { refreshJwt ->
+    // revoke can be called without waiting for the response or 
+    // any error handling since it's not a required measure
+    // to log the user out
+    myScope.launch(Dispatchers.Main) {
+        try {
+            Descope.auth.revokeSessions(RevokeType.CurrentSession, refreshJwt)
+        } catch (ignored: Exception) {
+        }
+    }
 }
 ```
 
@@ -300,18 +348,26 @@ The user can either `sign up`, `sign in` or `sign up or in`
 
 ```kotlin
 // Every user must have a loginId. All other user details are optional:
-Descope.otp.signUp(
-    DeliveryMethod.Email, "andy@example.com", SignUpDetails(
-        name = "Andy Rhoads"
+try {
+    Descope.otp.signUp(
+        DeliveryMethod.Email, "andy@example.com", SignUpDetails(
+            name = "Andy Rhoads"
+        )
     )
-)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 The user will receive a code using the selected delivery method. Verify
 that code using:
 
 ```kotlin
-val authResponse = Descope.otp.verify(DeliveryMethod.Email, "andy@example.com", "123456")
+try {
+    val authResponse = Descope.otp.verify(DeliveryMethod.Email, "andy@example.com", "123456")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 ### Magic Link
@@ -326,14 +382,22 @@ The user can either `sign up`, `sign in` or `sign up or in`
 ```kotlin
 // If configured globally, the redirect URI is optional. If provided however, it will be used
 // instead of any global configuration
-Descope.magiclink.signUp(DeliveryMethod.Email, "andy@example.com")
+try {
+    Descope.magiclink.signUp(DeliveryMethod.Email, "andy@example.com")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 To verify a magic link, your redirect page must call the validation function
 on the token (`t`) parameter (`https://your-redirect-address.com/verify?t=<token>`):
 
 ```kotlin
-val authResponse = Descope.magiclink.verify("<token>")
+try {
+    val authResponse = Descope.magiclink.verify("<token>")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 ### OAuth
@@ -347,7 +411,11 @@ To start a flow call:
 // If configured globally, the redirect URL is optional. If provided however, it will be used
 // instead of any global configuration.
 // Redirect the user to the returned URL to start the OAuth redirect chain
-val authURL = Descope.oauth.signUpOrIn(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+try {
+    val authURL = Descope.oauth.signUpOrIn(OAuthProvider.Github, redirectUrl = "exampleauthschema://my-app.com/handle-oauth")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 Take the generated URL and authenticate the user using `Chrome Custom Tabs`
@@ -362,11 +430,16 @@ override fun onCreate(savedInstanceState: Bundle?) {
     val incomingUri: Uri = intent?.data ?: return
     val code = incomingUri.getQueryParameter("code")
 
+    // could be any scope that makes sense in your application
     GlobalScope.launch {
-        // Exchange code for session
-        val authResponse = Descope.oauth.exchange(code)
-        val session = DescopeSession(authResponse)
-        Descope.sessionManager.manageSession(session)
+        try {
+            // Exchange code for session
+            val authResponse = Descope.oauth.exchange(code)
+            val session = DescopeSession(authResponse)
+            Descope.sessionManager.manageSession(session)
+        } catch (e: DescopeException) {
+            // Handle errors here
+        }
     }
 }
 ```
@@ -397,11 +470,16 @@ override fun onCreate(savedInstanceState: Bundle?) {
     val incomingUri: Uri = intent?.data ?: return
     val code = incomingUri.getQueryParameter("code")
 
+    // could be any scope that makes sense in your application
     GlobalScope.launch {
-        // Exchange code for session
-        val authResponse = Descope.sso.exchange(code)
-        val session = DescopeSession(authResponse)
-        Descope.sessionManager.manageSession(session)
+        try {
+            // Exchange code for session
+            val authResponse = Descope.sso.exchange(code)
+            val session = DescopeSession(authResponse)
+            Descope.sessionManager.manageSession(session)
+        } catch (e: DescopeException) {
+            // Handle errors here
+        }
     }
 }
 ```
@@ -423,9 +501,13 @@ the authentication view is not being displayed.
 ```kotlin
 // Enter loading state...
 
-val authResponse = Descope.passkey.signUpOrIn(this@MyActivity, loginId)
-val session = DescopeSession(authResponse)
-Descope.sessionManager.manageSession(session)
+try {
+    val authResponse = Descope.passkey.signUpOrIn(this@MyActivity, loginId)
+    val session = DescopeSession(authResponse)
+    Descope.sessionManager.manageSession(session)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 
 // Exit loading state...
 ```
@@ -441,13 +523,17 @@ on the link provided by the `provisioningURL`.
 Existing users can add TOTP using the `update` function.
 
 ```kotlin
-// Every user must have a loginId. All other user information is optional
-val totpResponse = Descope.totp.signUp(loginId = "andy@example.com")
+try {
+    // Every user must have a loginId. All other user information is optional
+    val totpResponse = Descope.totp.signUp(loginId = "andy@example.com")
 
-// Use one of the provided options to have the user add their credentials to the authenticator
-// totpResponse.provisioningURL
-// totpResponse.image
-// totpResponse.key
+    // Use one of the provided options to have the user add their credentials to the authenticator
+    // totpResponse.provisioningURL
+    // totpResponse.image
+    // totpResponse.key
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 There are 3 different ways to allow the user to save their credentials in their
@@ -456,7 +542,11 @@ image or inserting the key manually. After that, signing in is done using the
 code the app produces.
 
 ```kotlin
-val authResponse = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
+try {
+    val authResponse = Descope.totp.verify(loginId = "andy@example.com", code = "987654")
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 ### Password Authentication
@@ -468,13 +558,17 @@ Authenticate users using a password.
 To create a new user that can later sign in with a password:
 
 ```kotlin
-val authResponse = Descope.password.signUp(
-    "andy@example.com",
-    "securePassword123!",
-    SignUpDetails(
-        name = "Andy Rhoads"
+try {
+    val authResponse = Descope.password.signUp(
+        "andy@example.com",
+        "securePassword123!",
+        SignUpDetails(
+            name = "Andy Rhoads"
+        )
     )
-)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 #### Sign In with Password
@@ -482,10 +576,14 @@ val authResponse = Descope.password.signUp(
 Authenticate an existing user using a password:
 
 ```kotlin
-val authResponse = Descope.password.signIn(
-    "andy@example.com",
-    "securePassword123!"
-)
+try {
+    val authResponse = Descope.password.signIn(
+        "andy@example.com",
+        "securePassword123!"
+    )
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 #### Update Password
@@ -493,11 +591,15 @@ val authResponse = Descope.password.signIn(
 If you need to update a user's password:
 
 ```kotlin
-Descope.password.update(
-    "andy@example.com",
-    "newSecurePassword456!",
-    "user-refresh-jwt"
-)
+try {
+    Descope.password.update(
+        "andy@example.com",
+        "newSecurePassword456!",
+        "user-refresh-jwt"
+    )
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 #### Replace Password
@@ -505,11 +607,15 @@ Descope.password.update(
 To replace a user's password by providing their current password:
 
 ```kotlin
-val authResponse = Descope.password.replace(
-    "andy@example.com",
-    "securePassword123!",
-    "newSecurePassword456!"
-)
+try {
+    val authResponse = Descope.password.replace(
+        "andy@example.com",
+        "securePassword123!",
+        "newSecurePassword456!"
+    )
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 #### Send Password Reset Email
@@ -517,10 +623,14 @@ val authResponse = Descope.password.replace(
 Initiate a password reset by sending an email:
 
 ```kotlin
-Descope.password.sendReset(
-    "andy@example.com",
-    "exampleauthschema://my-app.com/handle-reset"
-)
+try {
+    Descope.password.sendReset(
+        "andy@example.com",
+        "exampleauthschema://my-app.com/handle-reset"
+    )
+} catch (e: DescopeException) {
+    // Handle errors here
+}
 ```
 
 ## Additional Information

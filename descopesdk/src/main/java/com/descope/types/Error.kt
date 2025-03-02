@@ -30,7 +30,7 @@ private const val API_DESC = "Descope API error"
  *             // handle any other scenario
  *             else -> {
  *                 logError("Unexpected authentication failure: $e")
- *                 showUnexpectedErrorAlert(with: error)
+ *                 showUnexpectedErrorAlert(e)
  *             }
  *         }
  *     } 
