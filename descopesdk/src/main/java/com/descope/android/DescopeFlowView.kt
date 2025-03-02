@@ -190,7 +190,7 @@ class DescopeFlow {
  *         }
  *     }
  *
- *     val descopeFlow = DescopeFlow(Uri.parse("https://example.com"))
+ *     val descopeFlow = DescopeFlow("https://example.com")
  *     // set the OAuth provider ID that is configured to "sign in with Google"
  *     descopeFlow.oauthProvider = OAuthProvider.Google
  *     // set the oauth redirect URI to use your app's deep link
