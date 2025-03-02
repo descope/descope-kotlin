@@ -498,7 +498,7 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
     override val defaultHeaders: Map<String, String> = mapOf(
         "Authorization" to "Bearer ${config.projectId}",
         "x-descope-sdk-name" to "android",
-        "x-descope-sdk-version" to DescopeSdk.version,
+        "x-descope-sdk-version" to DescopeSdk.VERSION,
     )
 
     override fun exceptionFromResponse(response: String): Exception? = parseServerError(response)

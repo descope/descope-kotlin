@@ -1,6 +1,5 @@
 package com.descope.sdk
 
-import com.descope.session.DescopeSessionManager
 import java.net.URL
 
 /**
@@ -58,7 +57,7 @@ open class DescopeLogger(private val level: Level = Level.Debug) {
      * @param values any associated values. _**IMPORTANT** - sensitive information may be printed here. Enable logs only when debugging._
      */
     open fun output(level: Level, message: String, vararg values: Any?) {
-        var text = "[${DescopeSdk.name}] $message"
+        var text = "[${DescopeSdk.NAME}] $message"
         val filtered = values.filterNotNull()
         if (filtered.isNotEmpty()) {
             text += """ (${filtered.joinToString(", ") { v -> v.toString() }})"""
