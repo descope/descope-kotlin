@@ -18,11 +18,12 @@ import com.descope.types.OAuthProvider
  * The configuration class required to run a Flow. Provide an instance
  * of this class when calling [DescopeFlowView.run] to run a flow
  * according to the properties provided here.
- *
- * @property uri The URI where the flow is hosted
  */
-data class DescopeFlow(val uri: Uri) {
-
+class DescopeFlow {
+    
+    /** The URL where the flow is hosted. */
+    var url: String
+    
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
@@ -89,6 +90,20 @@ data class DescopeFlow(val uri: Uri) {
      * Customize the [DescopeFlowView] presentation by providing a [Presentation] implementation
      */
     var presentation: Presentation? = null
+
+    /**
+     * Creates a new [DescopeFlow] object.
+     */
+    constructor(url: String) {
+        this.url = url
+    }
+    
+    /**
+     * Creates a new [DescopeFlow] object from a parsed `Uri` instance.
+     * */
+    constructor(uri: Uri) {
+        this.url = uri.toString()
+    }
 
     /**
      * Customize the flow's presentation by implementing the [Presentation] interface.

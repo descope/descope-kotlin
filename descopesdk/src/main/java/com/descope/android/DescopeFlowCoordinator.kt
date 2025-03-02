@@ -12,6 +12,7 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.lifecycle.findViewTreeLifecycleOwner
@@ -29,6 +30,7 @@ import com.descope.android.DescopeFlowView.State.Started
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
+import com.descope.internal.http.failureFromResponseCode
 import com.descope.internal.others.activityHelper
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
@@ -39,6 +41,7 @@ import com.descope.internal.routes.performRegister
 import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
+import com.descope.sdk.DescopeLogger.Level.Debug
 import com.descope.sdk.DescopeSdk
 import com.descope.session.Token
 import com.descope.types.DescopeException
@@ -70,7 +73,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onReady(tag: String) {
                 if (state != Started) {
-                    logger?.log(Info, "Flow onReady called in state $state - ignoring")
+                    logger?.log(Debug, "Flow onReady called in state $state - ignoring")
                     return
                 }
                 logger?.log(Info, "Flow is ready ($tag)")
@@ -83,7 +86,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onSuccess(success: String, url: String) {
                 if (state != Ready) {
-                    logger?.log(Info, "Flow onSuccess called in state $state - ignoring")
+                    logger?.log(Debug, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
                 state = Finished
@@ -102,7 +105,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onError(error: String) {
                 if (state != Ready) {
-                    logger?.log(Info, "Flow onError called in state $state - ignoring")
+                    logger?.log(Debug, "Flow onError called in state $state - ignoring")
                     return
                 }
                 state = Failed
@@ -210,9 +213,28 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                if (request?.isForMainFrame == true && state != Failed) {
-                    state = Failed
-                    listener?.onError(DescopeException.networkError.with(message = error?.description?.toString()))
+                if (request?.isForMainFrame == true) {
+                    logger?.log(Error, "Error loading flow page", error?.errorCode, error?.description)
+                    val code = error?.errorCode ?: 0
+                    val failure = error?.description?.toString() ?: ""
+                    val message = when (code) {
+                        ERROR_HOST_LOOKUP -> if ("INTERNET_DISCONNECTED" in failure) "The Internet connection appears to be offline" else "The server could not be found"
+                        ERROR_CONNECT -> "Failed to connect to the server"
+                        ERROR_TIMEOUT -> "The connection timed out"
+                        else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
+                    }                    
+                    val exception = DescopeException.networkError.with(message = message)
+                    handleLoadError(exception)
+                }
+            }
+
+            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                if (request?.isForMainFrame == true) {
+                    logger?.log(Error, "Flow page failed to load", errorResponse?.statusCode)
+                    val statusCode = errorResponse?.statusCode ?: 0
+                    val message = failureFromResponseCode(statusCode)
+                    val exception = DescopeException.networkError.with(message = message)
+                    handleLoadError(exception)
                 }
             }
         }
@@ -249,7 +271,7 @@ document.head.appendChild(element)
     internal fun run(flow: DescopeFlow) {
         this.flow = flow
         handleStarted()
-        webView.loadUrl(flow.uri.toString())
+        webView.loadUrl(flow.url)
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
@@ -282,6 +304,16 @@ document.head.appendChild(element)
     private fun handleLoaded() {
         if (state != Started) return
         executeHooks(Event.Loaded)
+    }
+
+    private fun handleLoadError(exception: DescopeException) {
+        if (state != Started) {
+            logger?.log(Debug, "Flow onLoadError called in state $state - ignoring")
+            return
+        }
+        state = Failed
+        logger?.log(Error, "Flow failed to load", exception)
+        listener?.onError(exception)
     }
 
     private fun handleReady() {
