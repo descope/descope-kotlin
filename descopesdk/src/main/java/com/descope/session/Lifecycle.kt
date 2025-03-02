@@ -89,7 +89,7 @@ class SessionLifecycle(
             return false
         }
         
-        session?.updateTokens(response)
+        session = session?.withUpdatedTokens(response)
         return true
     }
 

@@ -167,7 +167,7 @@ class DescopeSessionManager(
      * @param refreshResponse the response after calling `Descope.auth.refreshSession`
      */
     fun updateTokens(refreshResponse: RefreshResponse) {
-        session?.updateTokens(refreshResponse)
+        lifecycle.session = session?.withUpdatedTokens(refreshResponse)
         saveSession()
     }
 
@@ -187,7 +187,7 @@ class DescopeSessionManager(
      * @param user the [DescopeUser] to update.
      */
     fun updateUser(user: DescopeUser) {
-        session?.updateUser(user)
+        lifecycle.session = session?.withUpdatedUser(user)
         saveSession()
     }
     

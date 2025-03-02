@@ -1,6 +1,7 @@
 package com.descope.session
 
 import android.text.format.DateFormat
+import androidx.annotation.CheckResult
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeUser
 import com.descope.types.RefreshResponse
@@ -31,34 +32,34 @@ import java.util.Objects
  * it's recommended to let a [DescopeSessionManager] object manage it instead,
  * and the code examples above are only slightly different. See the documentation
  * for [DescopeSessionManager] for more details.
- *
- * @constructor `DescopeSession` can be constructed either by using [DescopeToken]s,
- * or by providing an [AuthenticationResponse], or using the JWT strings.
- *
- * @param sessionToken the short lived session token received inside an [AuthenticationResponse].
- * @param refreshToken the long lived refresh token received inside an [AuthenticationResponse].
- * @param user the authenticated user received from an [AuthenticationResponse] or a `me` request.
  */
-class DescopeSession(sessionToken: DescopeToken, refreshToken: DescopeToken, user: DescopeUser) {
+class DescopeSession {
     /**
      * The wrapper for the short lived JWT that can be sent with every server
      * request that requires authentication.
      */
     var sessionToken: DescopeToken
-        internal set
+        private set
 
     /**
      * The wrapper for the longer lived JWT that is used to create
      * new session JWTs until it expires.
      */
     var refreshToken: DescopeToken
-        internal set
+        private set
 
     /** The user to whom the [DescopeSession] belongs to. */
     var user: DescopeUser
-        internal set
+        private set
 
-    init {
+    /**
+     * Creates a new [DescopeSession] object.
+     *
+     * @param sessionToken the short lived session token from an [AuthenticationResponse].
+     * @param refreshToken the long lived refresh token from an [AuthenticationResponse].
+     * @param user the authenticated user from an [AuthenticationResponse] or a `me` request.
+     */
+    constructor(sessionToken: DescopeToken, refreshToken: DescopeToken, user: DescopeUser) {
         this.sessionToken = sessionToken
         this.refreshToken = refreshToken
         this.user = user
@@ -123,40 +124,76 @@ class DescopeSession(sessionToken: DescopeToken, refreshToken: DescopeToken, use
     //
 
     /**
-     * Updates the underlying JWTs with those from a `RefreshResponse`.
+     * Returns a copy of the session object with updated JWTs from a [RefreshResponse].
      *
      *     if (session.sessionToken.isExpired) {
      *         val refreshResponse = Descope.auth.refreshSession(session.refreshJwt)
-     *         session.updateTokens(refreshResponse)
+     *         session = session.withUpdatedTokens(refreshResponse)
      *     }
      *
-     * Important: It's recommended to use a `DescopeSessionManager` to manage sessions,
+     * Important: It's recommended to use a [DescopeSessionManager] to manage sessions,
      * in which case you should call `updateTokens` on the manager itself, or
      * just call `refreshSessionIfNeeded` to do everything for you.
      *
      * @param refreshResponse the response to manually update from.
+     * @return a new session object with updated tokens.
      */
+    @CheckResult
+    fun withUpdatedTokens(refreshResponse: RefreshResponse): DescopeSession {
+        return DescopeSession(refreshResponse.sessionToken, refreshResponse.refreshToken ?: refreshToken, user)
+    }
+
+    /**
+     * Returns a copy of the session object with updated user details.
+     *
+     *     val userResponse = Descope.auth.me(session.refreshJwt)
+     *     session = session.withUpdatedUser(userResponse)
+     *
+     * Important: It's recommended to use a [DescopeSessionManager] to manage sessions,
+     * in which case you should call `updateUser` on the manager itself instead
+     * to ensure that the updated user details are saved.
+     *
+     * @param user the user to manually update from.
+     * @return a new session object with updated user details.
+     */
+    @CheckResult
+    fun withUpdatedUser(user: DescopeUser): DescopeSession {
+        return DescopeSession(sessionToken, refreshToken, user)
+    }
+    
+    // Deprecated
+
+    /**
+     * Use the [withUpdatedTokens] method that returns a new [DescopeSession] object to ensure there
+     * are no data races and that sessions can be passed safely across thread boundaries, or use
+     * the [DescopeSessionManager] to manage sessions for you.
+     * 
+     *     // change this:
+     *     session.updateTokens(refreshResponse)
+     *     // to this:
+     *     val newSession = session.withUpdatedTokens(refreshResponse)
+     */
+    @Deprecated(message = "Use withUpdatedTokens instead")
     fun updateTokens(refreshResponse: RefreshResponse) {
         sessionToken = refreshResponse.sessionToken
         refreshToken = refreshResponse.refreshToken ?: refreshToken
     }
 
     /**
-     * Updates the session user's details with those from another `DescopeUser` value.
+     * Use the [withUpdatedUser] method that returns a new [DescopeSession] object to ensure there
+     * are no data races and that sessions can be passed safely across thread boundaries, or use
+     * the [DescopeSessionManager] to manage sessions for you.
      *
-     *     val userResponse = Descope.auth.me(session.refreshJwt)
-     *     session.updateUser(userResponse)
-     *
-     * Important: It's recommended to use a `DescopeSessionManager` to manage sessions,
-     * in which case you should call `updateUser` on the manager itself instead
-     * to ensure that the updated user details are saved.
-     *
-     * @param descopeUser the user to manually update from.
+     *     // change this:
+     *     session.updateUser(user)
+     *     // to this:
+     *     val newSession = session.withUpdatedUser(user)
      */
+    @Deprecated(message = "Use withUpdatedUser instead")
     fun updateUser(descopeUser: DescopeUser) {
         user = descopeUser
     }
-    
+
     // Utilities
     
     override fun equals(other: Any?): Boolean {
