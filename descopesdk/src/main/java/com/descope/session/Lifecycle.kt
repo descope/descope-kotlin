@@ -37,8 +37,6 @@ interface DescopeSessionLifecycle {
  * refreshed (every 30 seconds by default). The [refreshSessionIfNeeded] function
  * will refresh the session if it's about to expire (within 60 seconds by default)
  * or if it's already expired.
- *
- * @property auth used to refresh the session when needed
  */
 class SessionLifecycle(
     private val auth: DescopeAuth,
@@ -107,7 +105,7 @@ class SessionLifecycle(
     
     private fun resetTimer() {
         val refreshToken = session?.refreshToken
-        if (refreshTriggerInterval > 0 && refreshToken != null && !refreshToken.isExpired) {
+        if (periodicCheckFrequency > 0 && refreshToken != null && !refreshToken.isExpired) {
             startTimer()
         } else {
             stopTimer()
