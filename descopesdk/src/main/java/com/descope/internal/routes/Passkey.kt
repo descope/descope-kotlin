@@ -15,6 +15,7 @@ import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.CreateCredentialCancellationException
 import androidx.credentials.exceptions.CreateCredentialInterruptedException
+import androidx.credentials.exceptions.CreateCredentialNoCreateOptionException
 import androidx.credentials.exceptions.CreateCredentialProviderConfigurationException
 import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.exceptions.GetCredentialCancellationException
@@ -124,6 +125,8 @@ internal suspend fun performRegister(context: Context, options: String): String 
         throw DescopeException.passkeyFailed.with(message = "Please try again", cause = e)
     } catch (e: CreateCredentialProviderConfigurationException) {
         throw DescopeException.passkeyFailed.with(message = "Application might be improperly configured", cause = e)
+    } catch (e: CreateCredentialNoCreateOptionException) {
+        throw DescopeException.passkeyFailed.with(message = "No option to create credentials", cause = e)
     } catch (e: CreateCredentialUnknownException) {
         throw DescopeException.passkeyFailed.with(message = "Unknown failure", cause = e)
     } catch (e: Exception) {

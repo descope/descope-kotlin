@@ -117,21 +117,20 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             @JavascriptInterface
             fun native(response: String?, url: String) {
-                if (handlingBridgeCall) return
+                if (handlingBridgeCall || response == null) return
                 handlingBridgeCall = true
                 currentFlowUrl = url.toUri()
                 val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
                 if (scope == null) {
-                    logger?.log(Error, "unable to find lifecycle owner scope")
+                    logger?.log(Error, "Unable to find lifecycle owner coroutine scope")
                     handlingBridgeCall = false
                     return
                 }
                 scope.launch(Dispatchers.Main) {
+                    var type = ""
                     var canceled = false
                     val nativeResponse = JSONObject()
-                    var type = ""
                     try {
-                        if (response == null) return@launch
                         val nativePayload = NativePayload.fromJson(response)
                         type = nativePayload.type
                         when (nativePayload) {
