@@ -1,6 +1,7 @@
 package com.descope.sdk
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Looper
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.routes.Auth
@@ -40,6 +41,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         // init config
         val config = DescopeConfig(projectId = projectId)
         configure(config)
+        config.logger?.isDebug = 0 != context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE
         // init auth methods
         client = DescopeClient(config)
         auth = Auth(client)

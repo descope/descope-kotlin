@@ -1,5 +1,7 @@
 package com.descope.sdk
 
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import java.net.URL
 
 /**
@@ -46,6 +48,8 @@ open class DescopeLogger(private val level: Level = Level.Debug) {
     enum class Level {
         Error, Info, Debug
     }
+    
+    internal var isDebug: Boolean = false
 
     /**
      * Formats the log message and prints it.
@@ -67,10 +71,9 @@ open class DescopeLogger(private val level: Level = Level.Debug) {
 
     // Called by other code in the Descope SDK to output log messages.
     fun log(level: Level, message: String, vararg values: Any?) {
-        if (level <= this.level) {
-            output(level, message, *values)
-        }
-    }
+        if (level > this.level) return
+        output(level, message, *(if (isDebug) values else emptyArray()))
+    }   
 }
 
 /**
