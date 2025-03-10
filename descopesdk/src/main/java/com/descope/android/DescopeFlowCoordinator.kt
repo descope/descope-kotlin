@@ -64,7 +64,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private val logger: DescopeLogger?
         get() = sdk.client.config.logger
     private var currentFlowUrl: Uri? = null
-    private var handlingBridgeCall = false
     private var alreadySetUp = false
 
     init {
@@ -119,16 +118,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             @JavascriptInterface
             fun native(response: String?, url: String) {
-                if (handlingBridgeCall || response == null) {
-                    logger?.log(Info, "Skipping bridge call")
+                if (response == null) {
+                    logger?.log(Info, "Skipping bridge call because response is null")
                     return
                 }
-                handlingBridgeCall = true
                 currentFlowUrl = url.toUri()
                 val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
                 if (scope == null) {
                     logger?.log(Error, "Unable to find lifecycle owner coroutine scope")
-                    handlingBridgeCall = false
                     return
                 }
                 scope.launch(Dispatchers.Main) {
@@ -209,8 +206,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
                             }
                         }
                         nativeResponse.put("failure", failure)
-                    } finally {
-                        handlingBridgeCall = false
                     }
 
                     // we call the callback even when we fail unless the user canceled the operation
@@ -247,6 +242,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 logger?.log(Info, "On page finished", url, view?.progress)
                 if (alreadySetUp) {
                     logger?.log(Error, "Bridge is already set up", url, view?.progress)
+                    return
                 }
                 alreadySetUp = true
                 handleLoaded()
