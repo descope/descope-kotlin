@@ -39,9 +39,9 @@ import com.descope.internal.routes.nativeAuthorization
 import com.descope.internal.routes.performAssertion
 import com.descope.internal.routes.performRegister
 import com.descope.sdk.DescopeLogger
+import com.descope.sdk.DescopeLogger.Level.Debug
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
-import com.descope.sdk.DescopeLogger.Level.Debug
 import com.descope.sdk.DescopeSdk
 import com.descope.session.Token
 import com.descope.types.DescopeException
@@ -62,8 +62,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
     private val logger: DescopeLogger?
         get() = sdk.client.config.logger
-
     private var currentFlowUrl: Uri? = null
+    private var handlingBridgeCall = false
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -117,12 +117,20 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             @JavascriptInterface
             fun native(response: String?, url: String) {
+                if (handlingBridgeCall || response == null) return
+                handlingBridgeCall = true
                 currentFlowUrl = url.toUri()
-                webView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.Main) {
-                    val nativeResponse = JSONObject()
+                val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
+                if (scope == null) {
+                    logger?.log(Error, "Unable to find lifecycle owner coroutine scope")
+                    handlingBridgeCall = false
+                    return
+                }
+                scope.launch(Dispatchers.Main) {
                     var type = ""
+                    var canceled = false
+                    val nativeResponse = JSONObject()
                     try {
-                        if (response == null) return@launch
                         val nativePayload = NativePayload.fromJson(response)
                         type = nativePayload.type
                         when (nativePayload) {
@@ -163,18 +171,28 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         }
                     } catch (e: DescopeException) {
                         val failure = when (e) {
-                            DescopeException.oauthNativeCancelled -> "OAuthNativeCancelled"
+                            DescopeException.oauthNativeCancelled -> {
+                                canceled = true
+                                "OAuthNativeCancelled"
+                            }
                             DescopeException.oauthNativeFailed -> "OAuthNativeFailed"
+                            DescopeException.passkeyCancelled -> {
+                                canceled = true
+                                "PasskeyCanceled"
+                            }
                             DescopeException.passkeyFailed -> "PasskeyFailed"
                             DescopeException.passkeyNoPasskeys -> "PasskeyNoPasskeys"
-                            DescopeException.passkeyCancelled -> "PasskeyCanceled"
                             else -> "NativeFailed"
                         }
                         nativeResponse.put("failure", failure)
+                    } finally {
+                        handlingBridgeCall = false
                     }
 
-                    // we call the callback even when we fail
-                    webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${nativeResponse.toString().escapeForBackticks()}`)") {}
+                    // we call the callback even when we fail unless the user canceled the operation
+                    if (!canceled) {
+                        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${nativeResponse.toString().escapeForBackticks()}`)") {}
+                    }
                 }
             }
         }, "flow")
@@ -226,7 +244,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         ERROR_CONNECT -> "Failed to connect to the server"
                         ERROR_TIMEOUT -> "The connection timed out"
                         else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
-                    }                    
+                    }
                     val exception = DescopeException.networkError.with(message = message)
                     handleLoadError(exception)
                 }
@@ -300,7 +318,7 @@ document.head.appendChild(element)
     // Events
 
     private fun handleStarted() {
-        if (state != Initial && state != Failed && state != Finished) return
+        if (state == Started) return
         state = Started
         executeHooks(Event.Started)
     }
