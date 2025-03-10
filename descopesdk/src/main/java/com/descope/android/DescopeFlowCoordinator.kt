@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -63,7 +64,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private val logger: DescopeLogger?
         get() = sdk.client.config.logger
     private var currentFlowUrl: Uri? = null
-    private var handlingBridgeCall = false
+    private var alreadySetUp = false
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -117,13 +118,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             @JavascriptInterface
             fun native(response: String?, url: String) {
-                if (handlingBridgeCall || response == null) return
-                handlingBridgeCall = true
+                if (response == null) {
+                    logger?.log(Info, "Skipping bridge call because response is null")
+                    return
+                }
                 currentFlowUrl = url.toUri()
                 val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
                 if (scope == null) {
                     logger?.log(Error, "Unable to find lifecycle owner coroutine scope")
-                    handlingBridgeCall = false
                     return
                 }
                 scope.launch(Dispatchers.Main) {
@@ -170,23 +172,40 @@ class DescopeFlowCoordinator(val webView: WebView) {
                             }
                         }
                     } catch (e: DescopeException) {
+                        type = "failure"
                         val failure = when (e) {
                             DescopeException.oauthNativeCancelled -> {
+                                logger?.log(Info, "OAuth native canceled" )
                                 canceled = true
                                 "OAuthNativeCancelled"
                             }
-                            DescopeException.oauthNativeFailed -> "OAuthNativeFailed"
+                            DescopeException.oauthNativeFailed -> {
+                                logger?.log(Error, "OAuth native failed", e)
+                                "OAuthNativeFailed"
+                            }
                             DescopeException.passkeyCancelled -> {
+                                logger?.log(Info, "Passkeys canceled")
                                 canceled = true
                                 "PasskeyCanceled"
                             }
-                            DescopeException.passkeyFailed -> "PasskeyFailed"
-                            DescopeException.passkeyNoPasskeys -> "PasskeyNoPasskeys"
-                            else -> "NativeFailed"
+                            DescopeException.passkeyFailed -> {
+                                logger?.log(Error, "Passkeys failed", e)
+                                "PasskeyFailed"
+                            }
+                            DescopeException.passkeyNoPasskeys -> {
+                                logger?.log(Error, "No passkeys are available", e)
+                                "PasskeyNoPasskeys"
+                            }
+                            DescopeException.customTabFailed -> {
+                                logger?.log(Error, "Failed to launch custom tab", e)
+                                "CustomTabFailure"
+                            }
+                            else -> {
+                                logger?.log(Error, "Native execution failed", e)
+                                "NativeFailed"
+                            }
                         }
                         nativeResponse.put("failure", failure)
-                    } finally {
-                        handlingBridgeCall = false
                     }
 
                     // we call the callback even when we fail unless the user canceled the operation
@@ -215,7 +234,17 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 }
             }
 
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                logger?.log(Info, "On page started", url)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
+                logger?.log(Info, "On page finished", url, view?.progress)
+                if (alreadySetUp) {
+                    logger?.log(Error, "Bridge is already set up", url, view?.progress)
+                    return
+                }
+                alreadySetUp = true
                 handleLoaded()
                 view?.run {
                     val isWebAuthnSupported = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -320,6 +349,7 @@ document.head.appendChild(element)
     private fun handleStarted() {
         if (state == Started) return
         state = Started
+        alreadySetUp = false
         executeHooks(Event.Started)
     }
 
