@@ -1,7 +1,5 @@
 package com.descope.sdk
 
-import android.content.Context
-import android.content.pm.ApplicationInfo
 import java.net.URL
 
 /**

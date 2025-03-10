@@ -41,7 +41,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         // init config
         val config = DescopeConfig(projectId = projectId)
         configure(config)
-        config.logger?.isDebug = 0 != context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE
+        config.logger?.isDebug = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // init auth methods
         client = DescopeClient(config)
         auth = Auth(client)
@@ -73,6 +73,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         const val NAME = "DescopeAndroid"
 
         /** The Descope SDK version */
-        const val VERSION = "0.13.1"
+        const val VERSION = "0.13.2"
     }
 }
