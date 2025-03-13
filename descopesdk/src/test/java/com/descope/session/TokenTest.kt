@@ -45,7 +45,7 @@ class TokenTest {
             cookies.add(HttpCookie("name$i", "value$i"))
         }
         cookies.add(HttpCookie(REFRESH_COOKIE_NAME, jwtForP123))
-        val refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), projectId = "P123", name = REFRESH_COOKIE_NAME)
+        val refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = REFRESH_COOKIE_NAME)
         assertEquals(jwtForP123, refreshJwt)
     }
 
@@ -58,10 +58,7 @@ class TokenTest {
         }
         cookies.add(HttpCookie(REFRESH_COOKIE_NAME, jwtForP123))
 
-        var refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), projectId = "P123", name = REFRESH_COOKIE_NAME)
-        assertEquals(jwtForP123, refreshJwt)
-
-        refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), projectId = "P456", name = REFRESH_COOKIE_NAME)
+        val refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = REFRESH_COOKIE_NAME)
         assertEquals(jwtForP456, refreshJwt)
     }
 
@@ -74,7 +71,7 @@ class TokenTest {
         }
         cookies.add(HttpCookie(SESSION_COOKIE_NAME, jwtForP123))
 
-        var refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), projectId = "P123", name = SESSION_COOKIE_NAME)
+        var refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = SESSION_COOKIE_NAME)
         assertEquals(laterJwtForP123, refreshJwt)
 
         // try again with a different order
@@ -85,7 +82,7 @@ class TokenTest {
         }
         cookies.add(HttpCookie(SESSION_COOKIE_NAME, laterJwtForP123))
 
-        refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), projectId = "P123", name = SESSION_COOKIE_NAME)
+        refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = SESSION_COOKIE_NAME)
         assertEquals(laterJwtForP123, refreshJwt)
     }
 
