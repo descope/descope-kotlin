@@ -99,7 +99,13 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = SESSION_COOKIE_NAME)
                 jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = REFRESH_COOKIE_NAME)
                 handler.post {
-                    listener?.onSuccess(jwtServerResponse.convert())
+                    try {
+                        val authResponse = jwtServerResponse.convert() 
+                        listener?.onSuccess(authResponse)
+                    } catch (e: DescopeException) {
+                        logger?.log(Error, "Failed to parse authentication response", e)
+                        listener?.onError(e)
+                    }
                 }
             }
 
@@ -129,7 +135,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     return
                 }
                 scope.launch(Dispatchers.Main) {
-                    var type = ""
+                    var type: String
                     var canceled = false
                     val nativeResponse = JSONObject()
                     try {
