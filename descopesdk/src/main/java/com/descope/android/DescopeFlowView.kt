@@ -148,7 +148,7 @@ class DescopeFlow {
  * Some of the default configurations might be OK to start out with,
  * but it is likely that modifications will be required before release.
  *
- *    - **IMPORTANT NOTE**: even the Application links are the recommended way to configure
+ *    - **IMPORTANT NOTE**: even though Application links are the recommended way to configure
  *      deep links, some browsers, such as Opera, do not honor them and open the URLs inline.
  *      It is possible to circumvent this issue by using a custom scheme, albeit less secure.
  *
