@@ -59,10 +59,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private lateinit var flow: DescopeFlow
     private val handler: Handler = Handler(Looper.getMainLooper())
-    private val sdk: DescopeSdk
-        get() = if (this::flow.isInitialized) flow.sdk ?: Descope.sdk else Descope.sdk
+    private val globalSdk: DescopeSdk?
+        get() = if (Descope.isInitialized) Descope.sdk else null
+    private val sdk: DescopeSdk?
+        get() = if (this::flow.isInitialized) flow.sdk ?: globalSdk else globalSdk
     private val logger: DescopeLogger?
-        get() = sdk.client.config.logger
+        get() = sdk?.client?.config?.logger
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
 
@@ -95,7 +97,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
                 val cookieString = CookieManager.getInstance().getCookie(url)
-                val projectId = sdk.client.config.projectId
+                val projectId = sdk?.client?.config?.projectId
                 jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = SESSION_COOKIE_NAME)
                 jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, projectId = projectId, name = REFRESH_COOKIE_NAME)
                 handler.post {
@@ -499,7 +501,7 @@ private fun String.escapeForBackticks() = replace("\\", "\\\\")
 
 // Cookies
 
-internal fun findJwtInCookies(cookieString: String?, projectId: String, name: String): String? {
+internal fun findJwtInCookies(cookieString: String?, projectId: String?, name: String): String? {
     // split and aggregate all cookies 
     val cookies = mutableListOf<HttpCookie>().apply {
         cookieString?.split("; ")?.forEach {
@@ -510,7 +512,7 @@ internal fun findJwtInCookies(cookieString: String?, projectId: String, name: St
         }
     }
 
-    return cookies.filter { it.name == name } // filter according cookie name
+    var filtered = cookies.filter { it.name == name } // filter according cookie name
         .mapNotNull { httpCookie -> // parse token
             try {
                 Token(httpCookie.value)
@@ -518,8 +520,10 @@ internal fun findJwtInCookies(cookieString: String?, projectId: String, name: St
                 null
             }
         }
-        .filter { it.projectId == projectId } // enforce projectId
-        .maxByOrNull { it.issuedAt }?.jwt // take latest
+    projectId?.let { pId ->
+        filtered = filtered.filter { it.projectId == projectId } // enforce projectId
+    }
+    return filtered.maxByOrNull { it.issuedAt }?.jwt // take latest
 }
 
 // URI
