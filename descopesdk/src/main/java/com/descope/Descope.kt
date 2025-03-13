@@ -118,7 +118,7 @@ object Descope {
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
     internal lateinit var sdk: DescopeSdk
     
-    // Initialization check
+    // Used internally to check if the singleton object has an actual sdk value.
     internal val isInitialized
         get() = this::sdk.isInitialized
 }

@@ -57,14 +57,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
     internal var listener: DescopeFlowView.Listener? = null
     internal var state: DescopeFlowView.State = Initial
 
-    private lateinit var flow: DescopeFlow
+    private var flow: DescopeFlow? = null
     private val handler: Handler = Handler(Looper.getMainLooper())
-    private val globalSdk: DescopeSdk?
-        get() = if (Descope.isInitialized) Descope.sdk else null
     private val sdk: DescopeSdk?
-        get() = if (this::flow.isInitialized) flow.sdk ?: globalSdk else globalSdk
+        get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
     private val logger: DescopeLogger?
-        get() = sdk?.client?.config?.logger
+        get() = sdk?.client.config.logger
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
 
@@ -154,13 +152,13 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
                             is NativePayload.OAuthWeb -> {
                                 logger?.log(Info, "Launching custom tab for web-based oauth")
-                                launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
+                                launchCustomTab(webView.context, nativePayload.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
                             is NativePayload.Sso -> {
                                 logger?.log(Info, "Launching custom tab for sso")
-                                launchCustomTab(webView.context, nativePayload.startUrl, flow.presentation?.createCustomTabsIntent(webView.context))
+                                launchCustomTab(webView.context, nativePayload.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
@@ -232,7 +230,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     DoNothing -> true
                     OpenBrowser -> { 
                         try {
-                            launchCustomTab(webView.context, uri, flow.presentation?.createCustomTabsIntent(webView.context))
+                            launchCustomTab(webView.context, uri, flow?.presentation?.createCustomTabsIntent(webView.context))
                         } catch (e: DescopeException) {
                             logger?.log(Error, "Failed to open URL in browser", e)
                         }
@@ -260,10 +258,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     evaluateJavascript(
                         setupScript(
                             origin = origin,
-                            oauthNativeProvider = flow.oauthNativeProvider?.name ?: "",
-                            oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback),
-                            ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback),
-                            magicLinkRedirect = flow.magicLinkRedirect ?: "",
+                            oauthNativeProvider = flow?.oauthNativeProvider?.name ?: "",
+                            oauthRedirect = pickRedirectUrl(flow?.oauthRedirect, flow?.oauthRedirectCustomScheme, useCustomSchemeFallback),
+                            ssoRedirect = pickRedirectUrl(flow?.ssoRedirect, flow?.ssoRedirectCustomScheme, useCustomSchemeFallback),
+                            magicLinkRedirect = flow?.magicLinkRedirect ?: "",
                             isWebAuthnSupported = isWebAuthnSupported,
                         )
                     ) {}
@@ -333,7 +331,10 @@ document.head.appendChild(element)
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
-        if (!this::flow.isInitialized) throw DescopeException.flowFailed.with(desc = "`resumeFromDeepLink` cannot be called before `startFlow`")
+        if (flow == null) {
+            logger?.log(Error, "resumeFromDeepLink cannot be called before startFlow")
+            return
+        }
         activityHelper.closeCustomTab(webView.context)
         val response = JSONObject().apply { put("url", deepLink.toString()) }
         val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
@@ -345,7 +346,7 @@ document.head.appendChild(element)
     private fun executeHooks(event: Event) {
         val hooks = mutableListOf<DescopeFlowHook>().apply {
             addAll(DescopeFlowHook.defaults)
-            if (this@DescopeFlowCoordinator::flow.isInitialized) addAll(flow.hooks)
+            flow?.let { addAll(it.hooks) }
         }
         hooks.filter { it.events.contains(event) }
             .forEach { it.execute(event, this) }
