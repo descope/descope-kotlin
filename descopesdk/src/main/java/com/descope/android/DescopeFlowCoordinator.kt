@@ -346,7 +346,7 @@ document.head.appendChild(element)
     private fun executeHooks(event: Event) {
         val hooks = mutableListOf<DescopeFlowHook>().apply {
             addAll(DescopeFlowHook.defaults)
-            flow?.let { addAll(it.hooks) }
+            addAll(flow?.hooks ?: emptyList())
         }
         hooks.filter { it.events.contains(event) }
             .forEach { it.execute(event, this) }
