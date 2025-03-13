@@ -62,7 +62,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private val sdk: DescopeSdk?
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
     private val logger: DescopeLogger?
-        get() = sdk?.client.config.logger
+        get() = sdk?.client?.config?.logger
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
 
