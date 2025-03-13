@@ -103,6 +103,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         val authResponse = jwtServerResponse.convert() 
                         listener?.onSuccess(authResponse)
                     } catch (e: DescopeException) {
+                        logger?.log(Error, "Failed to parse authentication response", e)
                         listener?.onError(e)
                     }
                 }
