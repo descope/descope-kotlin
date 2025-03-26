@@ -43,7 +43,13 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         configure(config)
         config.logger?.isDebug = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // init auth methods
-        client = DescopeClient(config)
+        val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
+        val appVersion = try {
+            context.packageManager.getPackageInfo(context.packageName, 0)?.versionName
+        } catch (ignored: Exception) {
+            null
+        }
+        client = DescopeClient(config = config, appVersion = appVersion, appName = appName)
         auth = Auth(client)
         otp = Otp(client)
         totp = Totp(client)

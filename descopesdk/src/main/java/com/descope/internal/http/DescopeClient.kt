@@ -1,5 +1,6 @@
 package com.descope.internal.http
 
+import android.os.Build
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
@@ -12,7 +13,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
-internal open class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
+internal open class DescopeClient(internal val config: DescopeConfig, private val appVersion: String?, appName: String) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
 
     // OTP
 
@@ -495,12 +496,18 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
 
     override val basePath = "/v1/"
 
-    override val defaultHeaders: Map<String, String> = mapOf(
+    override val defaultHeaders: Map<String, String> = mutableMapOf(
         "Authorization" to "Bearer ${config.projectId}",
         "x-descope-sdk-name" to "android",
         "x-descope-sdk-version" to DescopeSdk.VERSION,
-    )
-
+        "x-descope-platform-name" to "android",
+        "x-descope-platform-version" to Build.VERSION.RELEASE,
+        "x-descope-app-name" to appName,
+    ).apply {
+        appVersion?.run { put("x-descope-app-version", this) }
+        deviceHeaderValue?.run { put("x-descope-device", this) }
+    }
+        
     override fun exceptionFromResponse(response: String): Exception? = parseServerError(response)
 
     // Internal
@@ -565,3 +572,11 @@ private fun DeliveryMethod.route() = this.name.lowercase()
 // Utilities
 
 private val emptyResponse: (String, List<HttpCookie>) -> Unit = { _, _ -> }
+
+private val deviceHeaderValue: String? = run {
+    val build = setOf(Build.BRAND, Build.MANUFACTURER, Build.MODEL, Build.PRODUCT)
+    val values = build.mapNotNull { it?.replace(",", "_") }
+        .filter { it.isNotBlank() && it != Build.UNKNOWN }
+        .toSet()
+    values.joinToString(", ").ifBlank { null }
+}

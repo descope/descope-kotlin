@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import java.net.HttpCookie
 
 @Suppress("UNCHECKED_CAST")
-internal class MockClient : DescopeClient(DescopeConfig("p1")) {
+internal class MockClient : DescopeClient(DescopeConfig("p1"), "1.0.0", "Test App") {
 
     var calls = 0
     var assert: ((route: String, body: Map<String, Any?>, headers: Map<String, String>, params: Map<String, String?>) -> Unit)? = null
