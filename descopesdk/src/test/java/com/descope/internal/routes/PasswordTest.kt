@@ -86,7 +86,7 @@ class PasswordTest {
         val uri = "https://mysite.com"
         val client = MockClient()
         val password = Password(client)
-        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/password/reset", route)
             assertEquals(uri, body["redirectUrl"])
         }
