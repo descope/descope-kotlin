@@ -1,9 +1,12 @@
+@file:Suppress("DEPRECATION")
+
 package com.descope.sdk
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Looper
 import com.descope.internal.http.DescopeClient
+import com.descope.internal.http.DescopeSystemInfo
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
 import com.descope.internal.routes.Flow
@@ -43,13 +46,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         configure(config)
         config.logger?.isDebug = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // init auth methods
-        val appName = context.applicationInfo.loadLabel(context.packageManager).toString()
-        val appVersion = try {
-            context.packageManager.getPackageInfo(context.packageName, 0)?.versionName
-        } catch (ignored: Exception) {
-            null
-        }
-        client = DescopeClient(config = config, appVersion = appVersion, appName = appName)
+        client = DescopeClient(config, DescopeSystemInfo(context))
         auth = Auth(client)
         otp = Otp(client)
         totp = Totp(client)
