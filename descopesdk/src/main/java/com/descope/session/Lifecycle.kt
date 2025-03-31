@@ -25,6 +25,9 @@ import kotlin.concurrent.timer
 interface DescopeSessionLifecycle {
     /** Holds the latest session value for the session manager. */
     var session: DescopeSession?
+    
+    /** The [DescopeSessionLifecycle] will notify the session manager of any changes. */
+    var listener: DescopeSessionManager.Listener?
 
     /** Called by the session manager to conditionally refresh the active session. */
     suspend fun refreshSessionIfNeeded(): Boolean
@@ -44,6 +47,8 @@ class SessionLifecycle(
     private val logger: DescopeLogger?,
 ) : DescopeSessionLifecycle {
 
+    override var listener: DescopeSessionManager.Listener? = null
+    
     var shouldSaveAfterPeriodicRefresh: Boolean = true
     var refreshTriggerInterval: Long = 60 /* seconds */ * SECOND
     var periodicCheckFrequency: Long = 30 /* seconds */ * SECOND
@@ -64,6 +69,7 @@ class SessionLifecycle(
         set(value) {
             if (value?.refreshToken == field?.refreshToken) {
                 field = value
+                listener?.onSessionChanged(value)
                 return
             }
 
@@ -72,6 +78,7 @@ class SessionLifecycle(
                 logger?.log(Info, "Session has an expired refresh token", value.refreshToken.expiresAt)
             }
             resetTimer()
+            listener?.onSessionChanged(value)
         }
 
     override suspend fun refreshSessionIfNeeded(): Boolean {
