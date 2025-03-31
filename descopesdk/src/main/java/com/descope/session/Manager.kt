@@ -73,6 +73,30 @@ class DescopeSessionManager(
     private val lifecycle: DescopeSessionLifecycle,
 ) {
 
+    /**
+     * The [DescopeSessionManager.Listener] interface can be used to listen for
+     * session changes.
+     *
+     * The listener is called when the session is set or cleared, and when the
+     * session is refreshed.
+     */
+    interface Listener {
+        /**
+         * Called when the session is set, refreshed or cleared.
+         *
+         * @param session the new session, or null if the session was cleared
+         */
+        fun onSessionChanged(session: DescopeSession?)
+    }
+
+    /** Set a [Listener] to listen for session changes. */
+    var listener: Listener?
+        get() = lifecycle.listener
+        set(value) {
+            lifecycle.listener = value
+        }
+    
+    /** The current [DescopeSession] managed by this session manager. */
     val session: DescopeSession?
         get() = lifecycle.session
 
