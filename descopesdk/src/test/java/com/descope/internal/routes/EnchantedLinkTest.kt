@@ -33,7 +33,7 @@ class EnchantedLinkTest {
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
         val client = MockClient()
         val enchantedLink = EnchantedLink(client)
-        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/enchantedlink/signin/email", route)
             assertEquals(loginId, body["loginId"])
             assertEquals(uri, body["uri"])

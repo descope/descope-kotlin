@@ -36,7 +36,7 @@ class MagicLinkTest {
         val client = MockClient()
         val magicLink = MagicLink(client)
         val maskedAddress = MaskedAddressServerResponse("maskedEmail", "maskedPhone")
-        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/magiclink/signin/sms", route)
             assertEquals(loginId, body["loginId"])
             assertEquals(uri, body["uri"])
@@ -105,7 +105,6 @@ class MagicLinkTest {
 
     @Test
     fun verify() = runTest {
-        val loginId = "test@test.com"
         val token = "token"
         val client = MockClient()
         val magicLink = MagicLink(client)
