@@ -1,5 +1,6 @@
 package com.descope.session
 
+import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeUser
 import com.descope.types.RefreshResponse
 import java.net.URLConnection

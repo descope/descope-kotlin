@@ -62,6 +62,27 @@ interface DescopeAuth {
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
 
     /**
+     * Same as [refreshSession] but based on an external token.
+     * 
+     * - **Important:** This function is only available if the Descope console
+     * was configured to allow external tokens. If not, this function will fail.
+     * 
+     * Call this function with an external token and exchange it like so:
+     * 
+     *     try {
+     *       val authResponse = Descope.auth.migrateSession(externalToken)
+     *       val descopeSession = DescopeSession(authResponse)
+     *       Descope.sessionManager.manageSession(descopeSession)
+     *     } catch (e: DescopeException) {
+     *       // handle error
+     *     }
+     *
+     * @param externalToken the external token to exchange.
+     * @return an [AuthenticationResponse] if the exchange was successful.
+     */
+    suspend fun migrateSession(externalToken: String): AuthenticationResponse
+
+    /**
      * It's a good security practice to remove refresh JWTs from the Descope servers if
      * they become redundant before expiry. This function will usually be called with `.currentSession`
      * when the user wants to sign out of the application. For example:

@@ -116,6 +116,8 @@ class DescopeException(
         
         val customTabFailed = DescopeException(code = "K130001", desc = "Custom Tab failed to open")
 
+        val externalTokenError = DescopeException(code = "K140001", desc = "Failed to exchange external token")
+        
         // Internal
 
         // These errors are not expected to happen in common usage and there shouldn't be
