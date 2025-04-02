@@ -476,10 +476,11 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         )
     )
 
-    suspend fun refresh(refreshJwt: String): JwtServerResponse = post(
+    suspend fun refresh(refreshJwt: String? = null, externalToken: String? = null): JwtServerResponse = post(
         route = "auth/refresh",
         decoder = JwtServerResponse::fromJson,
         headers = authorization(refreshJwt),
+        body = externalToken?.run { mapOf<String, Any?>("externalToken" to this) } ?: emptyMap()
     )
 
     suspend fun logout(refreshJwt: String, revokeType: RevokeType) = post(

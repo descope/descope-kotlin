@@ -3,6 +3,7 @@ package com.descope.session
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.descope.internal.others.with
 import com.descope.sdk.DescopeAuth
 import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeLogger.Level.Debug
@@ -28,6 +29,9 @@ interface DescopeSessionLifecycle {
 
     /** Called by the session manager to conditionally refresh the active session. */
     suspend fun refreshSessionIfNeeded(): Boolean
+    
+    /** Called by the session manager to exchange an external token for a session. */
+    suspend fun createSessionFromExternalToken(externalToken: String): DescopeSession
 }
 
 /**
@@ -89,6 +93,16 @@ class SessionLifecycle(
         
         session = session?.withUpdatedTokens(response)
         return true
+    }
+
+    override suspend fun createSessionFromExternalToken(externalToken: String): DescopeSession {
+        logger?.log(Info,"Exchanging an external token for a Descope session")
+        val refreshResponse = auth.exchangeExternalToken(externalToken)
+        if (refreshResponse.refreshToken == null) {
+            throw DescopeException.externalTokenError.with(message = "External token exchange did not return a refresh token")
+        }
+        val user = auth.me(refreshResponse.refreshToken.jwt)
+        return DescopeSession(sessionJwt = refreshResponse.sessionToken.jwt, refreshJwt = refreshResponse.refreshToken.jwt, user = user)
     }
 
     // Internal
