@@ -104,6 +104,19 @@ class DescopeSessionManager(
     }
 
     /**
+     * Same as [manageSession] but accepts an external token as the base for the [DescopeSession].
+     *
+     * - **Important:** This function is only available if the Descope console
+     * was configured to allow external tokens. If not, this function will fail.
+     *      
+     * @param externalToken an external token to use as the base for the session
+     */
+    suspend fun manageSessionFromExternalToken(externalToken: String) {
+        lifecycle.session = lifecycle.createSessionFromExternalToken(externalToken)
+        saveSession()
+    }
+
+    /**
      * Clears any active [DescopeSession] from this manager and removes it
      * from the storage.
      *

@@ -17,7 +17,10 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
         client.tenants(dct, tenantIds, refreshJwt).convert()
 
     override suspend fun refreshSession(refreshJwt: String): RefreshResponse =
-        client.refresh(refreshJwt).toRefreshResponse()
+        client.refresh(refreshJwt = refreshJwt).toRefreshResponse()
+
+    override suspend fun exchangeExternalToken(externalToken: String): RefreshResponse =
+        client.refresh(externalToken = externalToken).toRefreshResponse()
 
     override suspend fun revokeSessions(revokeType: RevokeType, refreshJwt: String) {
         client.logout(refreshJwt, revokeType)

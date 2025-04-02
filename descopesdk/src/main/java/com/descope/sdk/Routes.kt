@@ -62,6 +62,17 @@ interface DescopeAuth {
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
 
     /**
+     * Same as [refreshSession] but based on an external token.
+     * 
+     * - **Important:** This function is only available if the Descope console
+     * was configured to allow external tokens. If not, this function will fail.
+     *
+     * @param externalToken the external token to exchange.
+     * @return a [RefreshResponse] if the exchange was successful.
+     */
+    suspend fun exchangeExternalToken(externalToken: String): RefreshResponse
+
+    /**
      * It's a good security practice to remove refresh JWTs from the Descope servers if
      * they become redundant before expiry. This function will usually be called with `.currentSession`
      * when the user wants to sign out of the application. For example:
