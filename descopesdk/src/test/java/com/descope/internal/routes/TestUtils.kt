@@ -2,6 +2,7 @@ package com.descope.internal.routes
 
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.JwtServerResponse
+import com.descope.internal.http.SystemInfo
 import com.descope.internal.http.UserResponse
 import com.descope.sdk.DescopeConfig
 import com.descope.types.SignInOptions
@@ -12,7 +13,7 @@ import org.junit.Assert.assertTrue
 import java.net.HttpCookie
 
 @Suppress("UNCHECKED_CAST")
-internal class MockClient : DescopeClient(DescopeConfig("p1")) {
+internal class MockClient : DescopeClient(DescopeConfig("p1"), MockInfo) {
 
     var calls = 0
     var assert: ((route: String, body: Map<String, Any?>, headers: Map<String, String>, params: Map<String, String?>) -> Unit)? = null
@@ -98,3 +99,10 @@ internal val mockJwtResponse = JwtServerResponse(
         familyName = "familyName",
     )
 )
+
+private object MockInfo: SystemInfo {
+    override val appName = "appName"
+    override val appVersion = "appVersion"
+    override val platformVersion = "platformVersion"
+    override val device = "device"
+}

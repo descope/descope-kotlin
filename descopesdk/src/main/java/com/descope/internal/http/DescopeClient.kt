@@ -12,7 +12,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import java.net.HttpCookie
 
-internal open class DescopeClient(internal val config: DescopeConfig) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
+internal open class DescopeClient(internal val config: DescopeConfig, systemInfo: SystemInfo) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
 
     // OTP
 
@@ -482,6 +482,12 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
         headers = authorization(refreshJwt),
     )
 
+    suspend fun exchangeExternalToken(externalToken: String): JwtServerResponse = post(
+        route = "auth/refresh",
+        decoder = JwtServerResponse::fromJson,
+        body = mapOf("externalToken" to externalToken)
+    )
+
     suspend fun logout(refreshJwt: String, revokeType: RevokeType) = post(
         route = when (revokeType) {
             CurrentSession -> "auth/logout"
@@ -495,12 +501,8 @@ internal open class DescopeClient(internal val config: DescopeConfig) : HttpClie
 
     override val basePath = "/v1/"
 
-    override val defaultHeaders: Map<String, String> = mapOf(
-        "Authorization" to "Bearer ${config.projectId}",
-        "x-descope-sdk-name" to "android",
-        "x-descope-sdk-version" to DescopeSdk.VERSION,
-    )
-
+    override val defaultHeaders: Map<String, String> = makeDefaultHeaders(config, systemInfo)
+        
     override fun exceptionFromResponse(response: String): Exception? = parseServerError(response)
 
     // Internal
@@ -565,3 +567,17 @@ private fun DeliveryMethod.route() = this.name.lowercase()
 // Utilities
 
 private val emptyResponse: (String, List<HttpCookie>) -> Unit = { _, _ -> }
+
+private fun makeDefaultHeaders(config: DescopeConfig, systemInfo: SystemInfo): Map<String, String> {
+    return mutableMapOf(
+        "Authorization" to "Bearer ${config.projectId}",
+        "x-descope-sdk-name" to "android",
+        "x-descope-sdk-version" to DescopeSdk.VERSION,
+        "x-descope-platform-name" to "android",
+        "x-descope-platform-version" to systemInfo.platformVersion,
+    ).apply {
+        systemInfo.appName?.let { put("x-descope-app-name", it) }
+        systemInfo.appVersion?.let { put("x-descope-app-version", it) }
+        systemInfo.device?.let { put("x-descope-device", it) }
+    }
+}

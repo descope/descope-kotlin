@@ -62,6 +62,32 @@ interface DescopeAuth {
     suspend fun refreshSession(refreshJwt: String): RefreshResponse
 
     /**
+     * Migrates an external token to a [DescopeSession].
+     *
+     * This function migrates an active user authentication that was done with a different
+     * authentication provider so it can be used with Descope, allowing the user
+     * to continue using the app without requiring them to sign in again or notice
+     * any change in behavior.
+     *
+     * Example usage:
+     *
+     *     suspend fun migrateUserAuthentication() {
+     *       // Assume we have an active login from an authentication that was done with another auth provider
+     *       val externalToken = otherAuthProvider.authToken ?: return
+     *
+     *       // Exchange the external token and get a Descope authentication in return
+     *       val authResponse = Descope.auth.migrateSession(externalToken)
+     *
+     *       // We now have an AuthenticationResponse as if the user went through a Descope sign-in call
+     *       val session = DescopeSession(authResponse)
+     *       Descope.sessionManager.manageSession(session)
+     *       
+     * @param externalToken the token from the external authentication provider.
+     * @return an [AuthenticationResponse] if the migration was successful.
+     */       
+    suspend fun migrateSession(externalToken: String): AuthenticationResponse
+
+    /**
      * It's a good security practice to remove refresh JWTs from the Descope servers if
      * they become redundant before expiry. This function will usually be called with `.currentSession`
      * when the user wants to sign out of the application. For example:
