@@ -74,36 +74,58 @@ class DescopeSessionManager(
 ) {
 
     /**
-     * The [DescopeSessionManager.Listener] interface can be used to listen for
-     * session changes.
-     *
-     * The listener is called when the session is set or cleared, and when the
-     * session is refreshed.
+     * A set of listener methods for events about the session managed by a [DescopeSessionManager].
      */
     interface Listener {
         /**
-         * Called when the session is set, refreshed or cleared.
+         * Called after the session tokens are updated due to a successful refresh or by
+         * a call to [updateTokens].
          *
-         * @param session the new session, or null if the session was cleared
+         * @param session the updated session
          */
-        fun onSessionChanged(session: DescopeSession?)
+        fun onUpdateTokens(session: DescopeSession)
+
+        /**
+         * Called after the session is updated via [updateUser]
+         *
+         * @param session the updated session
+         */
+        fun onUpdateUser(session: DescopeSession)
     }
 
-    /** Set a [Listener] to listen for session changes. */
-    var listener: Listener?
-        get() = lifecycle.listener
-        set(value) {
-            lifecycle.listener = value
-        }
-    
-    /** The current [DescopeSession] managed by this session manager. */
+    /** The [DescopeSession] managed by this session manager. */
     val session: DescopeSession?
         get() = lifecycle.session
-
+    
     init {
         lifecycle.session = storage.loadSession()
+        lifecycle.onPeriodicRefresh = {
+            onUpdateTokens()
+        }
     }
 
+    /**
+     * Adds a listener to the session manager.
+     *
+     * The listener will be notified of session updates and user updates.
+     *
+     * @param listener the listener to add
+     */
+    fun addListener(listener: Listener) {
+        listeners.add(listener)
+    }
+    
+    /**
+     * Removes a listener from the session manager.
+     *
+     * The listener will no longer receive updates.
+     *
+     * @param listener the listener to remove
+     */
+    fun removeListener(listener: Listener) {
+        listeners.remove(listener)
+    }
+    
     /**
      * Set an active [DescopeSession] in this manager.
      *
@@ -124,7 +146,7 @@ class DescopeSessionManager(
      */
     fun manageSession(session: DescopeSession) {
         lifecycle.session = session
-        saveSession()
+        storage.saveSession(session)
     }
 
     /**
@@ -147,18 +169,6 @@ class DescopeSessionManager(
     }
 
     /**
-     * Saves the active [DescopeSession] to the storage.
-     *
-     * - **Important**: There is usually no need to call this method directly.
-     *     The session is automatically saved when it's refreshed or updated,
-     *     unless you're using a session manager with custom `stroage` and
-     *     `lifecycle` objects.
-     */
-    fun saveSession() {
-        session?.run { storage.saveSession(this) }
-    }
-
-    /**
      * Ensures that the session is valid and refreshes it if needed.
      *
      * The session manager checks whether there's an active [DescopeSession] and if
@@ -170,7 +180,9 @@ class DescopeSessionManager(
      */
     suspend fun refreshSessionIfNeeded() {
         val refreshed = lifecycle.refreshSessionIfNeeded()
-        if (refreshed) saveSession()
+        if (refreshed) {
+            onUpdateTokens()
+        }
     }
 
     /**
@@ -192,7 +204,7 @@ class DescopeSessionManager(
      */
     fun updateTokens(refreshResponse: RefreshResponse) {
         lifecycle.session = session?.withUpdatedTokens(refreshResponse)
-        saveSession()
+        onUpdateTokens()
     }
 
     /**
@@ -212,7 +224,24 @@ class DescopeSessionManager(
      */
     fun updateUser(user: DescopeUser) {
         lifecycle.session = session?.withUpdatedUser(user)
-        saveSession()
+        onUpdateUser()
     }
     
+    // Internal
+
+    private val listeners = mutableSetOf<Listener>()
+    
+    private fun onUpdateTokens() {
+        session?.let { session ->
+            storage.saveSession(session)
+            listeners.forEach { it.onUpdateTokens(session) }
+        }
+    }
+
+    private fun onUpdateUser() {
+        session?.let { session ->
+            storage.saveSession(session)
+            listeners.forEach { it.onUpdateUser(session) }
+        }
+    }
 }
