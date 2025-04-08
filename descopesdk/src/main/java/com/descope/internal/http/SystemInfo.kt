@@ -27,7 +27,7 @@ internal class DescopeSystemInfo private constructor(context: Context) : SystemI
     override val platformVersion: String = Build.VERSION.RELEASE
     
     override val device: String? = runCatching {
-        val build = setOf<String?>(Build.BRAND, Build.MANUFACTURER, Build.MODEL, Build.PRODUCT)
+        val build = setOf<String?>(Build.MANUFACTURER, Build.MODEL)
         val values = build.mapNotNull { it?.replace(",", "_") }
             .filter { it.isNotBlank() && it != Build.UNKNOWN }
             .toSet()

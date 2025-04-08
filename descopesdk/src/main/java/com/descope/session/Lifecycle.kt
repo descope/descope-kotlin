@@ -25,9 +25,12 @@ import kotlin.concurrent.timer
 interface DescopeSessionLifecycle {
     /** Holds the latest session value for the session manager. */
     var session: DescopeSession?
-
+    
     /** Called by the session manager to conditionally refresh the active session. */
     suspend fun refreshSessionIfNeeded(): Boolean
+    
+    /** The session manager sets this function so it can be notified of successful periodic refreshes. */
+    var onPeriodicRefresh: (() -> Unit)?
 }
 
 /**
@@ -40,11 +43,11 @@ interface DescopeSessionLifecycle {
  */
 class SessionLifecycle(
     private val auth: DescopeAuth,
-    private val storage: DescopeSessionStorage,
     private val logger: DescopeLogger?,
 ) : DescopeSessionLifecycle {
 
-    var shouldSaveAfterPeriodicRefresh: Boolean = true
+    override var onPeriodicRefresh: (() -> Unit)? = null
+    
     var refreshTriggerInterval: Long = 60 /* seconds */ * SECOND
     var periodicCheckFrequency: Long = 30 /* seconds */ * SECOND
 
@@ -138,9 +141,9 @@ class SessionLifecycle(
         
         try {
             val refreshed = refreshSessionIfNeeded()
-            if (refreshed && shouldSaveAfterPeriodicRefresh) {
+            if (refreshed) {
                 logger?.log(Debug, "Saving refresh session after periodic refresh")
-                session?.let { storage.saveSession(it) }
+                onPeriodicRefresh?.invoke()
             }
         } catch (e: DescopeException) {
             if (e == DescopeException.networkError) {

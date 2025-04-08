@@ -73,11 +73,57 @@ class DescopeSessionManager(
     private val lifecycle: DescopeSessionLifecycle,
 ) {
 
+    /**
+     * A set of listener methods for events about the session managed by a [DescopeSessionManager].
+     */
+    interface Listener {
+        /**
+         * Called after the session tokens are updated due to a successful refresh or by
+         * a call to [updateTokens].
+         *
+         * @param session the updated session
+         */
+        fun onUpdateTokens(session: DescopeSession)
+
+        /**
+         * Called after the session is updated via [updateUser]
+         *
+         * @param session the updated session
+         */
+        fun onUpdateUser(session: DescopeSession)
+    }
+
+    /** The [DescopeSession] managed by this session manager. */
     val session: DescopeSession?
         get() = lifecycle.session
 
     init {
         lifecycle.session = storage.loadSession()
+        lifecycle.onPeriodicRefresh = {
+            onUpdateTokens()
+        }
+    }
+
+    /**
+     * Adds a listener to the session manager.
+     *
+     * The listener will be notified of session updates and user updates.
+     *
+     * @param listener the listener to add
+     */
+    fun addListener(listener: Listener) {
+        listeners.add(listener)
+    }
+
+    /**
+     * Removes a listener from the session manager.
+     *
+     * The listener will no longer receive updates.
+     *
+     * @param listener the listener to remove
+     */
+    fun removeListener(listener: Listener) {
+        listeners.remove(listener)
     }
 
     /**
@@ -100,7 +146,7 @@ class DescopeSessionManager(
      */
     fun manageSession(session: DescopeSession) {
         lifecycle.session = session
-        saveSession()
+        storage.saveSession(session)
     }
 
     /**
@@ -123,18 +169,6 @@ class DescopeSessionManager(
     }
 
     /**
-     * Saves the active [DescopeSession] to the storage.
-     *
-     * - **Important**: There is usually no need to call this method directly.
-     *     The session is automatically saved when it's refreshed or updated,
-     *     unless you're using a session manager with custom `stroage` and
-     *     `lifecycle` objects.
-     */
-    fun saveSession() {
-        session?.run { storage.saveSession(this) }
-    }
-
-    /**
      * Ensures that the session is valid and refreshes it if needed.
      *
      * The session manager checks whether there's an active [DescopeSession] and if
@@ -146,7 +180,9 @@ class DescopeSessionManager(
      */
     suspend fun refreshSessionIfNeeded() {
         val refreshed = lifecycle.refreshSessionIfNeeded()
-        if (refreshed) saveSession()
+        if (refreshed) {
+            onUpdateTokens()
+        }
     }
 
     /**
@@ -168,7 +204,7 @@ class DescopeSessionManager(
      */
     fun updateTokens(refreshResponse: RefreshResponse) {
         lifecycle.session = session?.withUpdatedTokens(refreshResponse)
-        saveSession()
+        onUpdateTokens()
     }
 
     /**
@@ -188,7 +224,22 @@ class DescopeSessionManager(
      */
     fun updateUser(user: DescopeUser) {
         lifecycle.session = session?.withUpdatedUser(user)
-        saveSession()
+        onUpdateUser()
     }
-    
+
+    // Internal
+
+    private val listeners = mutableSetOf<Listener>()
+
+    private fun onUpdateTokens() {
+        val session = session ?: return
+        storage.saveSession(session)
+        listeners.forEach { it.onUpdateTokens(session) }
+    }
+
+    private fun onUpdateUser() {
+        val session = session ?: return
+        storage.saveSession(session)
+        listeners.forEach { it.onUpdateUser(session) }
+    }
 }
