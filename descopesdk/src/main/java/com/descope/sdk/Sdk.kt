@@ -46,7 +46,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         configure(config)
         config.logger?.isDebug = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // init auth methods
-        client = DescopeClient(config, DescopeSystemInfo(context))
+        client = DescopeClient(config, DescopeSystemInfo.getInstance(context))
         auth = Auth(client)
         otp = Otp(client)
         totp = Totp(client)

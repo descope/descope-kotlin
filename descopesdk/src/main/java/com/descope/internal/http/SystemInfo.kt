@@ -10,7 +10,7 @@ interface SystemInfo {
     val device: String?
 }
 
-class DescopeSystemInfo(context: Context) : SystemInfo {
+class DescopeSystemInfo private constructor(context: Context) : SystemInfo {
     
     override val appName: String = context.applicationInfo.loadLabel(context.packageManager).toString()
     
@@ -30,4 +30,11 @@ class DescopeSystemInfo(context: Context) : SystemInfo {
         values.joinToString(", ").ifBlank { null }
     }
     
+    companion object {
+        private var instance: SystemInfo? = null
+        
+        fun getInstance(context: Context): SystemInfo {
+            return instance ?: DescopeSystemInfo(context).apply { instance = this }
+        }
+    }
 }
