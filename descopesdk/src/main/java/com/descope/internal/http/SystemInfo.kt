@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Build
 
 internal interface SystemInfo {
-    val appName: String
+    val appName: String?
     val appVersion: String?
     val platformVersion: String
     val device: String?
@@ -12,7 +12,11 @@ internal interface SystemInfo {
 
 internal class DescopeSystemInfo private constructor(context: Context) : SystemInfo {
     
-    override val appName: String = context.applicationInfo.loadLabel(context.packageManager).toString()
+    override val appName: String? = try {
+        context.applicationInfo.loadLabel(context.packageManager).toString()
+    } catch (ignored: Exception) {
+        null
+    }
     
     override val appVersion: String? = try {
         context.packageManager.getPackageInfo(context.packageName, 0)?.versionName
@@ -22,13 +26,13 @@ internal class DescopeSystemInfo private constructor(context: Context) : SystemI
     
     override val platformVersion: String = Build.VERSION.RELEASE
     
-    override val device: String? = run {
-        val build = setOf(Build.BRAND, Build.MANUFACTURER, Build.MODEL, Build.PRODUCT)
+    override val device: String? = runCatching {
+        val build = setOf<String?>(Build.BRAND, Build.MANUFACTURER, Build.MODEL, Build.PRODUCT)
         val values = build.mapNotNull { it?.replace(",", "_") }
             .filter { it.isNotBlank() && it != Build.UNKNOWN }
             .toSet()
         values.joinToString(", ").ifBlank { null }
-    }
+    }.getOrNull()
     
     companion object {
         private var instance: SystemInfo? = null
