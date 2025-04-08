@@ -96,7 +96,7 @@ class DescopeSessionManager(
     /** The [DescopeSession] managed by this session manager. */
     val session: DescopeSession?
         get() = lifecycle.session
-    
+
     init {
         lifecycle.session = storage.loadSession()
         lifecycle.onPeriodicRefresh = {
@@ -114,7 +114,7 @@ class DescopeSessionManager(
     fun addListener(listener: Listener) {
         listeners.add(listener)
     }
-    
+
     /**
      * Removes a listener from the session manager.
      *
@@ -125,7 +125,7 @@ class DescopeSessionManager(
     fun removeListener(listener: Listener) {
         listeners.remove(listener)
     }
-    
+
     /**
      * Set an active [DescopeSession] in this manager.
      *
@@ -226,22 +226,20 @@ class DescopeSessionManager(
         lifecycle.session = session?.withUpdatedUser(user)
         onUpdateUser()
     }
-    
+
     // Internal
 
     private val listeners = mutableSetOf<Listener>()
-    
+
     private fun onUpdateTokens() {
-        session?.let { session ->
-            storage.saveSession(session)
-            listeners.forEach { it.onUpdateTokens(session) }
-        }
+        val session = session ?: return
+        storage.saveSession(session)
+        listeners.forEach { it.onUpdateTokens(session) }
     }
 
     private fun onUpdateUser() {
-        session?.let { session ->
-            storage.saveSession(session)
-            listeners.forEach { it.onUpdateUser(session) }
-        }
+        val session = session ?: return
+        storage.saveSession(session)
+        listeners.forEach { it.onUpdateUser(session) }
     }
 }
