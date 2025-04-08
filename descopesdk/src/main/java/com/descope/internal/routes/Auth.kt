@@ -25,7 +25,7 @@ internal class Auth(private val client: DescopeClient) : DescopeAuth {
     override suspend fun migrateSession(externalToken: String): AuthenticationResponse {
         val refreshResponse = client.exchangeExternalToken(externalToken).toRefreshResponse()
         if (refreshResponse.refreshToken == null) {
-            throw DescopeException.externalTokenError.with(message = "External token exchange did not return a refresh token")
+            throw DescopeException.decodeError.with(message = "External token exchange did not return a refresh token")
         }
         val user = me(refreshResponse.refreshToken.jwt)
         return AuthenticationResponse(
