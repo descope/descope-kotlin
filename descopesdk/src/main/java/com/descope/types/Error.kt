@@ -106,6 +106,7 @@ class DescopeException(
         val enchantedLinkExpired = DescopeException(code = "K060001", desc = "Enchanted link expired")
 
         val flowFailed = DescopeException(code = "K100001", desc = "Flow failed to run")
+        val flowCancelled = DescopeException(code = "K100002", desc = "Flow cancelled")
 
         val passkeyFailed = DescopeException(code = "K110001", desc = "Passkey authentication failed")
         val passkeyCancelled = DescopeException(code = "K110002", desc = "Passkey authentication cancelled")
