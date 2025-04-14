@@ -90,16 +90,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     logger?.log(Debug, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
-                state = Finished
-                logger?.log(Info, "Flow finished successfully")
                 val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
                 // take tokens from cookies if missing
                 val cookieString = CookieManager.getInstance().getCookie(url)
                 jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
                 jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
                 handler.post {
+                    state = Finished
+                    logger?.log(Info, "Flow finished successfully")
                     try {
-                        val authResponse = jwtServerResponse.convert() 
+                        val authResponse = jwtServerResponse.convert()
                         listener?.onSuccess(authResponse)
                     } catch (e: DescopeException) {
                         logger?.log(Error, "Failed to parse authentication response", e)
@@ -114,15 +114,13 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     logger?.log(Debug, "Flow onAbort called in state $state - ignoring")
                     return
                 }
-                state = Failed
-                if (reason.isEmpty()) {
-                    logger?.log(Info, "Flow aborted with cancellation")
-                    handler.post {
+                handler.post {
+                    state = Failed
+                    if (reason.isEmpty()) {
+                        logger?.log(Info, "Flow aborted with cancellation")
                         listener?.onError(DescopeException.flowCancelled)
-                    }
-                } else {
-                    logger?.log(Error, "Flow aborted with a failure", reason)
-                    handler.post {
+                    } else {
+                        logger?.log(Error, "Flow aborted with a failure", reason)
                         listener?.onError(DescopeException.flowFailed.with(message = reason))
                     }
                 }
@@ -134,9 +132,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     logger?.log(Debug, "Flow onError called in state $state - ignoring")
                     return
                 }
-                state = Failed
-                logger?.log(Error, "Flow finished with an exception", error)
                 handler.post {
+                    state = Failed
+                    logger?.log(Error, "Flow finished with an exception", error)
                     listener?.onError(DescopeException.flowFailed.with(desc = error))
                 }
             }
