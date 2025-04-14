@@ -109,6 +109,26 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             @JavascriptInterface
+            fun onAbort(reason: String) {
+                if (state != Started && state != Ready) {
+                    logger?.log(Debug, "Flow onAbort called in state $state - ignoring")
+                    return
+                }
+                state = Failed
+                if (reason.isEmpty()) {
+                    logger?.log(Info, "Flow aborted with cancellation")
+                    handler.post {
+                        listener?.onError(DescopeException.flowCancelled)
+                    }
+                } else {
+                    logger?.log(Error, "Flow aborted with a failure", reason)
+                    handler.post {
+                        listener?.onError(DescopeException.flowFailed.with(message = reason))
+                    }
+                }
+            }
+
+            @JavascriptInterface
             fun onError(error: String) {
                 if (state != Ready) {
                     logger?.log(Debug, "Flow onError called in state $state - ignoring")
@@ -430,6 +450,10 @@ private fun setupScript(
     magicLinkRedirect: String,
     isWebAuthnSupported: Boolean,
 ) = """
+    
+window.descopeBridge = {}
+window.descopeBridge.abortFlow = (reason) => { flow.onAbort(typeof reason == 'string' ? reason : '') }
+
 function flowBridgeWaitWebComponent() {
     const styles = `
         * {
@@ -440,10 +464,16 @@ function flowBridgeWaitWebComponent() {
     const stylesheet = document.createElement("style")
     stylesheet.textContent = styles
     document.head.appendChild(stylesheet)
+
+    const wc = document.getElementsByTagName('descope-wc')[0]
+    if (wc) {
+        flowBridgePrepareWebComponent(wc)
+        return
+    }
     
     let id
     id = setInterval(() => {
-        wc = document.getElementsByTagName('descope-wc')[0]
+        const wc = document.getElementsByTagName('descope-wc')[0]
         if (wc) {
             clearInterval(id)
             flowBridgePrepareWebComponent(wc)
@@ -490,6 +520,9 @@ function flowBridgePrepareWebComponent(wc) {
     wc.addEventListener('bridge', (e) => {
         flow.native(JSON.stringify(e.detail), window.location.href);
     })
+    
+    // ensure we support old web-components without this function
+    wc.lazyInit?.()
 }
 
 flowBridgeWaitWebComponent();
