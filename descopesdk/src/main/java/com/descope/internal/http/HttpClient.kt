@@ -1,12 +1,13 @@
 package com.descope.internal.http
 
 import android.net.Uri
+import com.descope.internal.others.debug
+import com.descope.internal.others.error
+import com.descope.internal.others.info
+import com.descope.internal.others.isUnsafeEnabled
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeLogger
-import com.descope.sdk.DescopeLogger.Level.Debug
-import com.descope.sdk.DescopeLogger.Level.Error
-import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.sdk.DescopeNetworkClient
 import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ internal open class HttpClient(
 
     open val defaultHeaders: Map<String, String> = emptyMap()
 
-    open fun exceptionFromResponse(response: String): Exception? = null
+    open fun exceptionFromResponse(response: String): DescopeException? = null
 
     // Internal
 
@@ -64,29 +65,56 @@ internal open class HttpClient(
             putAll(headers)
         }
 
-        try {
-            logger?.log(Info, "Starting network call", url)
-            val response = networkClient.sendRequest(url, method, body, combinedHeaders)
-            if (response.code == HttpsURLConnection.HTTP_OK) {
-                decoder(response.body, response.headers.cookies)
-            } else {
-                exceptionFromResponse(response.body)?.run {
-                    logger?.log(Error, "Network call failed with server error", url, response.code, this)
-                    throw this
-                }
-                exceptionFromResponseCode(response.code)?.run {
-                    logger?.log(Error, "Network call failed with server error", url, response.code)
-                    throw this
-                }
-                throw Exception("Network error")
-            }
-        } catch (e: Exception) {
-            if (e !is DescopeException) {
-                logger?.log(Error, "Network call failed with network error", url, e)
-                throw DescopeException.networkError.with(cause = e)
-            }
-            throw e
+        logger.info("Starting network call", url)
+        if (logger.isUnsafeEnabled) {
+            logger.info("Starting network call", url)
+        } else {
+            logger.info("Starting network call to $route")
         }
+
+        val result = try {
+            val response = networkClient.sendRequest(url, method, body, combinedHeaders)
+            if (response.code != HttpsURLConnection.HTTP_OK) {
+                exceptionFromResponse(response.body)?.let { e ->
+                    logger.error("Network call failed with server error", url, response.code, e)
+                    if (logger.isUnsafeEnabled) {
+                        logger.error("Network call failed with server error", url, e)
+                    } else {
+                        logger.error("Network call to $route failed with ${e.code} server error")
+                    }
+                    throw e
+                }
+                exceptionFromResponseCode(response.code)?.let { e ->
+                    if (logger.isUnsafeEnabled) {
+                        logger.error("Network call failed with ${response.code} http error", url, e)
+                    } else {
+                        logger.error("Network call to $route failed with ${response.code} http error")
+                    }
+                    throw e
+                }
+                throw Exception("Unexpected response")
+            }
+
+            decoder(response.body, response.headers.cookies)
+        } catch (e: DescopeException) {
+            throw e // just rethrow
+        } catch (e: Exception) {
+            if (logger.isUnsafeEnabled) {
+                logger.error("Network call failed with network error", url, e)
+            } else {
+                val type = e::class.java.simpleName ?: "unknown"
+                logger.error("Network call to $route failed with $type network error")
+            }
+            throw DescopeException.networkError.with(cause = e)
+        }
+
+        if (logger.isUnsafeEnabled) {
+            logger.info("Network call finished", url)
+        } else {
+            logger.info("Network call to $route finished")
+        }
+        
+        result
     }
 
     private fun makeUrl(route: String, params: Map<String, String?>): URL {
@@ -124,13 +152,16 @@ private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetwo
             headers.forEach { connection.setRequestProperty(it.key, it.value) }
 
             // Send body if needed
-            body?.run {
-                logger?.log(Debug, "Sending request body", this)
+            if (body != null) {
+                val data = body.toJsonObject().toString()
+                if (logger.isUnsafeEnabled) {
+                    logger.debug("Sending request body", data)
+                }
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.doOutput = true
                 // Send the request
                 connection.outputStream.bufferedWriter().use {
-                    it.write(toJsonObject().toString())
+                    it.write(data)
                     it.flush()
                 }
             }
@@ -145,10 +176,11 @@ private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetwo
             val responseHeaders = connection.headerFields.filterKeys {
                 !it.isNullOrEmpty() // inexplicably, the keys can be null
             }
-            logger?.log(Debug, "Received response", responseCode, responseBody, responseHeaders)
+            if (logger.isUnsafeEnabled) {
+                logger.debug("Received response body", responseBody)
+            }
             return DescopeNetworkClient.Response(code = responseCode, body = responseBody, headers = responseHeaders)
         } finally {
-            logger?.log(Info, "Network call finished", url)
             connection.disconnect()
         }
     }

@@ -3,11 +3,11 @@ package com.descope.session
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.descope.internal.others.debug
+import com.descope.internal.others.error
+import com.descope.internal.others.info
 import com.descope.sdk.DescopeAuth
 import com.descope.sdk.DescopeLogger
-import com.descope.sdk.DescopeLogger.Level.Debug
-import com.descope.sdk.DescopeLogger.Level.Error
-import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.DescopeException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +72,7 @@ class SessionLifecycle(
 
             field = value
             if (value != null && value.refreshToken.isExpired) {
-                logger?.log(Info, "Session has an expired refresh token", value.refreshToken.expiresAt)
+                logger.info("Session has an expired refresh token", value.refreshToken.expiresAt)
             }
             resetTimer()
         }
@@ -83,10 +83,10 @@ class SessionLifecycle(
             return false
         }
         
-        logger?.log(Info, "Refreshing session that is about to expire", current.sessionToken.expiresAt)
+        logger.info("Refreshing session that is about to expire", current.sessionToken.expiresAt)
         val response = auth.refreshSession(current.refreshJwt)
         if (session?.sessionJwt != current.sessionJwt) {
-            logger?.log(Info, "Skipping refresh because session has changed in the meantime")
+            logger.info("Skipping refresh because session has changed in the meantime")
             return false
         }
         
@@ -134,7 +134,7 @@ class SessionLifecycle(
         val refreshToken = session?.refreshToken
 
         if (refreshToken == null || refreshToken.isExpired) {
-            logger?.log(Debug, "Stopping periodic refresh for session with expired refresh token")
+            logger.debug("Stopping periodic refresh for session with expired refresh token")
             stopTimer()
             return
         }
@@ -142,18 +142,18 @@ class SessionLifecycle(
         try {
             val refreshed = refreshSessionIfNeeded()
             if (refreshed) {
-                logger?.log(Debug, "Saving refresh session after periodic refresh")
+                logger.debug("Saving refresh session after periodic refresh")
                 onPeriodicRefresh?.invoke()
             }
         } catch (e: DescopeException) {
             if (e == DescopeException.networkError) {
-                logger?.log(Debug, "Ignoring network error in periodic refresh")
+                logger.debug("Ignoring network error in periodic refresh")
             } else {
-                logger?.log(Error, "Stopping periodic refresh after failure", e)
+                logger.error("Stopping periodic refresh after failure", e)
                 stopTimer()
             }
         } catch (e: Exception) {
-            logger?.log(Error, "Stopping periodic refresh after unexpected failure", e)
+            logger.error("Stopping periodic refresh after unexpected failure", e)
             stopTimer()
         }
     }

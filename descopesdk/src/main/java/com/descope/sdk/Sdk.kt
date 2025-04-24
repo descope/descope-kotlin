@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.os.Looper
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.DescopeSystemInfo
+import com.descope.internal.others.ConsoleLogger
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
 import com.descope.internal.routes.Flow
@@ -44,7 +45,8 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         // init config
         val config = DescopeConfig(projectId = projectId)
         configure(config)
-        config.logger?.isDebug = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        // init logging debug flag
+        ConsoleLogger.isApplicationDebuggable = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // init auth methods
         client = DescopeClient(config, DescopeSystemInfo.getInstance(context))
         auth = Auth(client)

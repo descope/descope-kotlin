@@ -39,7 +39,7 @@ object Descope {
      *     Descope.setup(applicationContext, projectId = "DESCOPE_PROJECT_ID") {
      *         baseUrl = "https://my.app.com"
      *         if (BuildConfig.DEBUG) {
-     *             logger = DescopeLogger()
+     *             logger = DescopeLogger.debugLogger
      *         }
      *     }
      *      
