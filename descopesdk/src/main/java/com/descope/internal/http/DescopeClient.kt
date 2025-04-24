@@ -3,6 +3,7 @@ package com.descope.internal.http
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
+import com.descope.types.DescopeException
 import com.descope.types.OAuthProvider
 import com.descope.types.RevokeType
 import com.descope.types.RevokeType.AllSessions
@@ -503,7 +504,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     override val defaultHeaders: Map<String, String> = makeDefaultHeaders(config, systemInfo)
         
-    override fun exceptionFromResponse(response: String): Exception? = parseServerError(response)
+    override fun exceptionFromResponse(response: String): DescopeException? = parseServerError(response)
 
     // Internal
 

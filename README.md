@@ -31,7 +31,7 @@ override fun onCreate() {
         baseUrl = "https://my.app.com"
         // enable the logger
         if (BuildConfig.DEBUG) {
-            logger = DescopeLogger()
+            logger = DescopeLogger.debugLogger
         }
     }
 }
