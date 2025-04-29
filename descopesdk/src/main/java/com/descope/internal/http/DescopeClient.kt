@@ -575,6 +575,7 @@ private fun makeDefaultHeaders(config: DescopeConfig, systemInfo: SystemInfo): M
         "x-descope-sdk-version" to DescopeSdk.VERSION,
         "x-descope-platform-name" to "android",
         "x-descope-platform-version" to systemInfo.platformVersion,
+        "x-descope-project-id" to config.projectId,
     ).apply {
         systemInfo.appName?.let { put("x-descope-app-name", it) }
         systemInfo.appVersion?.let { put("x-descope-app-version", it) }
