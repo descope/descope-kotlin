@@ -26,7 +26,7 @@ jobs:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Setup detekt
-      uses: peter-murray/setup-detekt@0b43f17288ecd07eb959696d4302b73bb5659b44 # v2
+      uses: peter-murray/setup-detekt@26449609a63e843a5b9bad8a4b63ef0ee717f7a5 # v3.0.0
       with:
         detekt_version: 1.23
     
