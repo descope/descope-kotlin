@@ -85,21 +85,25 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             @JavascriptInterface
-            fun onSuccess(success: String, url: String) {
+            fun onSuccess(success: String?, url: String) {
                 if (state != Ready) {
                     logger?.log(Debug, "Flow onSuccess called in state $state - ignoring")
                     return
                 }
-                val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
-                // take tokens from cookies if missing
-                val cookieString = CookieManager.getInstance().getCookie(url)
-                jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
-                jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
                 handler.post {
                     state = Finished
                     logger?.log(Info, "Flow finished successfully")
                     try {
-                        val authResponse = jwtServerResponse.convert()
+                        val authResponse = if (success != null) {
+                            val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
+                            // take tokens from cookies if missing
+                            val cookieString = CookieManager.getInstance().getCookie(url)
+                            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
+                            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
+                            jwtServerResponse.convert()
+                        } else {
+                            null
+                        }
                         listener?.onSuccess(authResponse)
                     } catch (e: DescopeException) {
                         logger?.log(Error, "Failed to parse authentication response", e)
@@ -198,7 +202,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         type = "failure"
                         val failure = when (e) {
                             DescopeException.oauthNativeCancelled -> {
-                                logger?.log(Info, "OAuth native canceled" )
+                                logger?.log(Info, "OAuth native canceled")
                                 canceled = true
                                 "OAuthNativeCancelled"
                             }
@@ -275,6 +279,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
                     evaluateJavascript(
                         setupScript(
+                            refreshJwt = flow?.refreshJwt ?: "",
                             origin = origin,
                             oauthNativeProvider = flow?.oauthNativeProvider?.name ?: "",
                             oauthRedirect = pickRedirectUrl(flow?.oauthRedirect, flow?.oauthRedirectCustomScheme, useCustomSchemeFallback),
@@ -441,6 +446,7 @@ internal sealed class NativePayload {
 // JS
 
 private fun setupScript(
+    refreshJwt: String,
     origin: String,
     oauthNativeProvider: String,
     oauthRedirect: String,
@@ -489,6 +495,12 @@ function flowBridgeIsReady(wc, tag) {
 }
 
 function flowBridgePrepareWebComponent(wc) {
+    const refreshJwt = '$refreshJwt';
+    if (refreshJwt) {
+        const storagePrefix = wc.getAttribute('storage-prefix') || ''
+        window.localStorage.setItem(storagePrefix + 'DSR', refreshJwt);
+    }
+    
     wc.nativeOptions = {
         bridgeVersion: 1,
         platform: 'android',
@@ -508,7 +520,7 @@ function flowBridgePrepareWebComponent(wc) {
     }
     
     wc.addEventListener('success', (e) => {
-        flow.onSuccess(JSON.stringify(e.detail), window.location.href);
+        flow.onSuccess(e.detail ? JSON.stringify(e.detail) : null, window.location.href);
     })
     
     wc.addEventListener('error', (e) => {
