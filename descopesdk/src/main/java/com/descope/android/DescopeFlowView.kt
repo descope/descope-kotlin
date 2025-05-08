@@ -34,6 +34,13 @@ class DescopeFlow {
      * for [DescopeFlowHook] for more details.
      */
     var hooks: List<DescopeFlowHook> = emptyList()
+    
+    /**
+     * When this user has a valid session, it's possible to provide the flow
+     * with a refresh JWT to use for authentication. This is useful when
+     * you want the user to already be logged in when the flow is presented.
+     */
+    var refreshJwt: String? = null
 
     /**
      * The ID of the oauth provider that is configured to natively "Sign In with Google".
@@ -295,10 +302,14 @@ class DescopeFlowView : ViewGroup {
         /**
          * Called when a flow has completed successfully. Typically create a [DescopeSession]
          * and manage it using [Descope.sessionManager]
+         * 
+         * - **Note**: Some flows are not designed to return an authentication response, such as
+         * when an authenticated user updates their information. In these cases, the [response]
+         * will be `null`.
          *
-         * @param response The successful authentication response
+         * @param response An authentication response if the flow resulted in a successful authentication
          */
-        fun onSuccess(response: AuthenticationResponse)
+        fun onSuccess(response: AuthenticationResponse?)
 
         /**
          * Called when a flow has encountered an error.
