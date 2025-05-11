@@ -125,6 +125,9 @@ open class DescopeLogger(open val level: Level, open val unsafe: Boolean) {
      */
     open fun output(level: Level, message: String, values: List<Any>) {
     }
+    
+    @Deprecated(message = "Use DescopeLogger.basicLogger or DescopeLogger.debugLogger to diagnose issues during development")
+    constructor(level: Level = Level.Debug) : this(level, false)
 }
 
 /**
