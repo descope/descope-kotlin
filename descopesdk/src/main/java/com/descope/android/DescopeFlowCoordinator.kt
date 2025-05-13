@@ -361,11 +361,10 @@ document.head.appendChild(element)
     }
 
     private fun handleError(e: DescopeException) {
-        if (ensureState(Initial, Started, Ready, Finished)) return
+        if (ensureState(Initial, Started, Ready, Failed)) return
 
         // we allow multiple failure events and swallow them here instead of showing a warning above,
-        // so that the bridge can just delegate any failures to the coordinator without having to
-        // keep its own state to ensure it only reports a single failure
+        // and ensure it only reports a single failure
         if (state == Failed) return
 
         handler.post {
