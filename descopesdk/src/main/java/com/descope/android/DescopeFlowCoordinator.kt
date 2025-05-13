@@ -33,6 +33,9 @@ import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
 import com.descope.internal.others.activityHelper
+import com.descope.internal.others.debug
+import com.descope.internal.others.error
+import com.descope.internal.others.info
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
@@ -40,9 +43,6 @@ import com.descope.internal.routes.nativeAuthorization
 import com.descope.internal.routes.performAssertion
 import com.descope.internal.routes.performRegister
 import com.descope.sdk.DescopeLogger
-import com.descope.sdk.DescopeLogger.Level.Debug
-import com.descope.sdk.DescopeLogger.Level.Error
-import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.sdk.DescopeSdk
 import com.descope.session.Token
 import com.descope.types.DescopeException
@@ -74,10 +74,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onReady(tag: String) {
                 if (state != Started) {
-                    logger?.log(Debug, "Flow onReady called in state $state - ignoring")
+                    logger.debug("Flow onReady called in state $state - ignoring")
                     return
                 }
-                logger?.log(Info, "Flow is ready ($tag)")
+                logger.info("Flow is ready ($tag)")
                 handler.post {
                     handleReady()
                     listener?.onReady()
@@ -87,12 +87,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onSuccess(success: String?, url: String) {
                 if (state != Ready) {
-                    logger?.log(Debug, "Flow onSuccess called in state $state - ignoring")
+                    logger.debug("Flow onSuccess called in state $state - ignoring")
                     return
                 }
                 handler.post {
                     state = Finished
-                    logger?.log(Info, "Flow finished successfully")
+                    logger.info("Flow finished successfully")
                     try {
                         val authResponse = if (success != null) {
                             val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
@@ -106,7 +106,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         }
                         listener?.onSuccess(authResponse)
                     } catch (e: DescopeException) {
-                        logger?.log(Error, "Failed to parse authentication response", e)
+                        logger.error("Failed to parse authentication response", e)
                         listener?.onError(e)
                     }
                 }
@@ -115,16 +115,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onAbort(reason: String) {
                 if (state != Started && state != Ready) {
-                    logger?.log(Debug, "Flow onAbort called in state $state - ignoring")
+                    logger.debug("Flow onAbort called in state $state - ignoring")
                     return
                 }
                 handler.post {
                     state = Failed
                     if (reason.isEmpty()) {
-                        logger?.log(Info, "Flow aborted with cancellation")
+                        logger.info("Flow aborted with cancellation")
                         listener?.onError(DescopeException.flowCancelled)
                     } else {
-                        logger?.log(Error, "Flow aborted with a failure", reason)
+                        logger.error("Flow aborted with a failure", reason)
                         listener?.onError(DescopeException.flowFailed.with(message = reason))
                     }
                 }
@@ -133,12 +133,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun onError(error: String) {
                 if (state != Ready) {
-                    logger?.log(Debug, "Flow onError called in state $state - ignoring")
+                    logger.debug("Flow onError called in state $state - ignoring")
                     return
                 }
                 handler.post {
                     state = Failed
-                    logger?.log(Error, "Flow finished with an exception", error)
+                    logger.error("Flow finished with an exception", error)
                     listener?.onError(DescopeException.flowFailed.with(desc = error))
                 }
             }
@@ -146,13 +146,13 @@ class DescopeFlowCoordinator(val webView: WebView) {
             @JavascriptInterface
             fun native(response: String?, url: String) {
                 if (response == null) {
-                    logger?.log(Info, "Skipping bridge call because response is null")
+                    logger.info("Skipping bridge call because response is null")
                     return
                 }
                 currentFlowUrl = url.toUri()
                 val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
                 if (scope == null) {
-                    logger?.log(Error, "Unable to find lifecycle owner coroutine scope")
+                    logger.error("Unable to find lifecycle owner coroutine scope")
                     return
                 }
                 scope.launch(Dispatchers.Main) {
@@ -164,7 +164,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         type = nativePayload.type
                         when (nativePayload) {
                             is NativePayload.OAuthNative -> {
-                                logger?.log(Info, "Launching system UI for native oauth")
+                                logger.info("Launching system UI for native oauth")
                                 val resp = nativeAuthorization(webView.context, nativePayload.start)
                                 nativeResponse.put("nativeOAuth", JSONObject().apply {
                                     put("stateId", resp.stateId)
@@ -173,26 +173,26 @@ class DescopeFlowCoordinator(val webView: WebView) {
                             }
 
                             is NativePayload.OAuthWeb -> {
-                                logger?.log(Info, "Launching custom tab for web-based oauth")
+                                logger.info("Launching custom tab for web-based oauth")
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
                             is NativePayload.Sso -> {
-                                logger?.log(Info, "Launching custom tab for sso")
+                                logger.info("Launching custom tab for sso")
                                 launchCustomTab(webView.context, nativePayload.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
                                 return@launch
                             }
 
                             is NativePayload.WebAuthnCreate -> {
-                                logger?.log(Info, "Attempting to create new a passkey")
+                                logger.info("Attempting to create new a passkey")
                                 nativeResponse.put("transactionId", nativePayload.transactionId)
                                 val res = performRegister(webView.context, nativePayload.options)
                                 nativeResponse.put("response", res)
                             }
 
                             is NativePayload.WebAuthnGet -> {
-                                logger?.log(Info, "Attempting to use an existing passkey")
+                                logger.info("Attempting to use an existing passkey")
                                 nativeResponse.put("transactionId", nativePayload.transactionId)
                                 val res = performAssertion(webView.context, nativePayload.options)
                                 nativeResponse.put("response", res)
@@ -202,33 +202,33 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         type = "failure"
                         val failure = when (e) {
                             DescopeException.oauthNativeCancelled -> {
-                                logger?.log(Info, "OAuth native canceled")
+                                logger.info("OAuth native canceled" )
                                 canceled = true
                                 "OAuthNativeCancelled"
                             }
                             DescopeException.oauthNativeFailed -> {
-                                logger?.log(Error, "OAuth native failed", e)
+                                logger.error("OAuth native failed", e)
                                 "OAuthNativeFailed"
                             }
                             DescopeException.passkeyCancelled -> {
-                                logger?.log(Info, "Passkeys canceled")
+                                logger.info("Passkeys canceled")
                                 canceled = true
                                 "PasskeyCanceled"
                             }
                             DescopeException.passkeyFailed -> {
-                                logger?.log(Error, "Passkeys failed", e)
+                                logger.error("Passkeys failed", e)
                                 "PasskeyFailed"
                             }
                             DescopeException.passkeyNoPasskeys -> {
-                                logger?.log(Error, "No passkeys are available", e)
+                                logger.error("No passkeys are available", e)
                                 "PasskeyNoPasskeys"
                             }
                             DescopeException.customTabFailed -> {
-                                logger?.log(Error, "Failed to launch custom tab", e)
+                                logger.error("Failed to launch custom tab", e)
                                 "CustomTabFailure"
                             }
                             else -> {
-                                logger?.log(Error, "Native execution failed", e)
+                                logger.error("Native execution failed", e)
                                 "NativeFailed"
                             }
                         }
@@ -246,7 +246,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
                 if (request.isRedirect) return false
-                logger?.log(Info, "Flow attempting to navigate to a URL", uri)
+                logger.info("Flow attempting to navigate to a URL", uri)
                 return when (listener?.onNavigation(uri) ?: OpenBrowser) {
                     Inline -> false
                     DoNothing -> true
@@ -254,7 +254,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         try {
                             launchCustomTab(webView.context, uri, flow?.presentation?.createCustomTabsIntent(webView.context))
                         } catch (e: DescopeException) {
-                            logger?.log(Error, "Failed to open URL in browser", e)
+                            logger.error("Failed to open URL in browser", e)
                         }
                         true
                     }
@@ -262,13 +262,13 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                logger?.log(Info, "On page started", url)
+                logger.info("On page started", url)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                logger?.log(Info, "On page finished", url, view?.progress)
+                logger.info("On page finished", url, view?.progress)
                 if (alreadySetUp) {
-                    logger?.log(Error, "Bridge is already set up", url, view?.progress)
+                    logger.error("Bridge is already set up", url, view?.progress)
                     return
                 }
                 alreadySetUp = true
@@ -293,7 +293,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
-                    logger?.log(Error, "Error loading flow page", error?.errorCode, error?.description)
+                    logger.error("Error loading flow page", error?.errorCode, error?.description)
                     val code = error?.errorCode ?: 0
                     val failure = error?.description?.toString() ?: ""
                     val message = when (code) {
@@ -309,7 +309,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
                 if (request?.isForMainFrame == true) {
-                    logger?.log(Error, "Flow page failed to load", errorResponse?.statusCode)
+                    logger.error("Flow page failed to load", errorResponse?.statusCode)
                     val statusCode = errorResponse?.statusCode ?: 0
                     val message = failureFromResponseCode(statusCode)
                     val exception = DescopeException.networkError.with(message = message)
@@ -355,7 +355,7 @@ document.head.appendChild(element)
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (flow == null) {
-            logger?.log(Error, "resumeFromDeepLink cannot be called before startFlow")
+            logger.error("resumeFromDeepLink cannot be called before startFlow")
             return
         }
         activityHelper.closeCustomTab(webView.context)
@@ -391,11 +391,11 @@ document.head.appendChild(element)
 
     private fun handleLoadError(exception: DescopeException) {
         if (state != Started) {
-            logger?.log(Debug, "Flow onLoadError called in state $state - ignoring")
+            logger.debug("Flow onLoadError called in state $state - ignoring")
             return
         }
         state = Failed
-        logger?.log(Error, "Flow failed to load", exception)
+        logger.error("Flow failed to load", exception)
         listener?.onError(exception)
     }
 
