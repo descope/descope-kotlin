@@ -33,9 +33,9 @@ import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
 import com.descope.internal.others.activityHelper
-import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
+import com.descope.internal.others.isUnsafeEnabled
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
@@ -45,6 +45,7 @@ import com.descope.internal.routes.performRegister
 import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeSdk
 import com.descope.session.Token
+import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,70 +74,34 @@ class DescopeFlowCoordinator(val webView: WebView) {
         webView.addJavascriptInterface(object {
             @JavascriptInterface
             fun onReady(tag: String) {
-                if (state != Started) {
-                    logger.debug("Flow onReady called in state $state - ignoring")
-                    return
-                }
-                logger.info("Flow is ready ($tag)")
-                handler.post {
-                    handleReady()
-                    listener?.onReady()
-                }
+                handleReady(tag)
             }
 
             @JavascriptInterface
-            fun onSuccess(success: String, url: String) {
-                if (state != Ready) {
-                    logger.debug("Flow onSuccess called in state $state - ignoring")
-                    return
-                }
-                val jwtServerResponse = JwtServerResponse.fromJson(success, emptyList())
-                // take tokens from cookies if missing
-                val cookieString = CookieManager.getInstance().getCookie(url)
-                jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
-                jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
-                handler.post {
-                    state = Finished
-                    logger.info("Flow finished successfully")
-                    try {
-                        val authResponse = jwtServerResponse.convert()
-                        listener?.onSuccess(authResponse)
-                    } catch (e: DescopeException) {
-                        logger.error("Failed to parse authentication response", e)
-                        listener?.onError(e)
-                    }
+            fun onSuccess(data: String?, url: String) {
+                val session = flow?.session
+                when {
+                    data != null -> handleAuthentication(data, url)
+                    session != null -> handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false))
+                    else -> handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
                 }
             }
 
             @JavascriptInterface
             fun onAbort(reason: String) {
-                if (state != Started && state != Ready) {
-                    logger.debug("Flow onAbort called in state $state - ignoring")
-                    return
+                val e = if (reason.isNotEmpty()) {
+                    logger.error("Flow aborted with a failure reason", reason)
+                    DescopeException.flowFailed.with(message = reason)
+                } else {
+                    logger.info("Flow aborted with cancellation")
+                    DescopeException.flowCancelled
                 }
-                handler.post {
-                    state = Failed
-                    if (reason.isEmpty()) {
-                        logger.info("Flow aborted with cancellation")
-                        listener?.onError(DescopeException.flowCancelled)
-                    } else {
-                        logger.error("Flow aborted with a failure", reason)
-                        listener?.onError(DescopeException.flowFailed.with(message = reason))
-                    }
-                }
+                handleError(e)
             }
 
             @JavascriptInterface
             fun onError(error: String) {
-                if (state != Ready) {
-                    logger.debug("Flow onError called in state $state - ignoring")
-                    return
-                }
-                handler.post {
-                    state = Failed
-                    logger.error("Flow finished with an exception", error)
-                    listener?.onError(DescopeException.flowFailed.with(desc = error))
-                }
+                handleError(DescopeException.flowFailed.with(message = error))
             }
 
             @JavascriptInterface
@@ -275,6 +240,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
                     evaluateJavascript(
                         setupScript(
+                            refreshJwt = flow?.session?.refreshJwt ?: "",
                             origin = origin,
                             oauthNativeProvider = flow?.oauthNativeProvider?.name ?: "",
                             oauthRedirect = pickRedirectUrl(flow?.oauthRedirect, flow?.oauthRedirectCustomScheme, useCustomSchemeFallback),
@@ -298,7 +264,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
                     }
                     val exception = DescopeException.networkError.with(message = message)
-                    handleLoadError(exception)
+                    handleError(exception)
                 }
             }
 
@@ -308,7 +274,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     val statusCode = errorResponse?.statusCode ?: 0
                     val message = failureFromResponseCode(statusCode)
                     val exception = DescopeException.networkError.with(message = message)
-                    handleLoadError(exception)
+                    handleError(exception)
                 }
             }
         }
@@ -384,22 +350,62 @@ document.head.appendChild(element)
         executeHooks(Event.Loaded)
     }
 
-    private fun handleLoadError(exception: DescopeException) {
-        if (state != Started) {
-            logger.debug("Flow onLoadError called in state $state - ignoring")
-            return
+    private fun handleReady(tag: String) {
+        if (ensureState(Started)) return
+        handler.post {
+            logger.info("Flow is ready ($tag)")
+            state = Ready
+            executeHooks(Event.Ready)
+            listener?.onReady()
         }
-        state = Failed
-        logger.error("Flow failed to load", exception)
-        listener?.onError(exception)
     }
 
-    private fun handleReady() {
-        if (state != Started) return
-        state = Ready
-        executeHooks(Event.Ready)
+    private fun handleError(e: DescopeException) {
+        if (ensureState(Initial, Started, Ready, Failed)) return
+
+        // we allow multiple failure events and swallow them here instead of showing a warning above,
+        // and ensure it only reports a single failure
+        if (state == Failed) return
+
+        handler.post {
+            logger.error("Flow failed with ${e.code}) error", e)
+            state = Failed
+            listener?.onError(e)
+        }
+    }
+    
+    private fun handleSuccess(authResponse: AuthenticationResponse) {
+        if (ensureState(Ready)) return
+        handler.post {
+            val res = if (logger.isUnsafeEnabled) authResponse else null
+            logger.info("Flow finished successfully", res)
+            state = Finished
+            listener?.onSuccess(authResponse)
+        }
+    }
+    
+    private fun handleAuthentication(data: String, url: String) {
+        try {
+            val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
+            // take tokens from cookies if missing
+            val cookieString = CookieManager.getInstance().getCookie(url)
+            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
+            val authResponse = jwtServerResponse.convert()
+            handleSuccess(authResponse)
+        } catch (e: DescopeException) {
+            logger.error("Unexpected error handling authentication response", e, data, url)
+            handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
+        }
     }
 
+    private fun ensureState(vararg allowedStates: DescopeFlowView.State): Boolean {
+        if (allowedStates.contains(state)) {
+            return false
+        }
+        logger.error("Unexpected flow state: ${state.name}", allowedStates)
+        return true
+    }
 }
 
 // Helper Classes
@@ -431,7 +437,7 @@ internal sealed class NativePayload {
                     "sso" -> Sso(startUrl = getString("startUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
-                    else -> throw DescopeException.flowFailed.with(desc = "Unexpected server response in flow")
+                    else -> throw DescopeException.flowFailed.with(message = "Unexpected server response in flow")
                 }
             }
         }
@@ -441,6 +447,7 @@ internal sealed class NativePayload {
 // JS
 
 private fun setupScript(
+    refreshJwt: String,
     origin: String,
     oauthNativeProvider: String,
     oauthRedirect: String,
@@ -489,6 +496,12 @@ function flowBridgeIsReady(wc, tag) {
 }
 
 function flowBridgePrepareWebComponent(wc) {
+    const refreshJwt = '$refreshJwt';
+    if (refreshJwt) {
+        const storagePrefix = wc.getAttribute('storage-prefix') || ''
+        window.localStorage.setItem(storagePrefix + 'DSR', refreshJwt);
+    }
+    
     wc.nativeOptions = {
         bridgeVersion: 1,
         platform: 'android',
@@ -508,7 +521,7 @@ function flowBridgePrepareWebComponent(wc) {
     }
     
     wc.addEventListener('success', (e) => {
-        flow.onSuccess(JSON.stringify(e.detail), window.location.href);
+        flow.onSuccess(e.detail ? JSON.stringify(e.detail) : null, window.location.href);
     })
     
     wc.addEventListener('error', (e) => {
