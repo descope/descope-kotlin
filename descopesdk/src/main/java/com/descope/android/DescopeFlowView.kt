@@ -179,13 +179,9 @@ class DescopeFlowView : ViewGroup {
          * Called when a flow has completed successfully. Typically create a [DescopeSession]
          * and manage it using [Descope.sessionManager]
          * 
-         * - **Note**: Some flows are not designed to return an authentication response, such as
-         * when an authenticated user updates their information. In these cases, the [response]
-         * will be `null`.
-         *
-         * @param response An authentication response if the flow resulted in a successful authentication
+         * @param response The successful authentication response
          */
-        fun onSuccess(response: AuthenticationResponse?)
+        fun onSuccess(response: AuthenticationResponse)
 
         /**
          * Called when a flow has encountered an error.

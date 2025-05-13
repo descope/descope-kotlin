@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.Descope
 import com.descope.sdk.DescopeSdk
+import com.descope.session.DescopeSession
 import com.descope.types.OAuthProvider
 
 /**
@@ -29,11 +30,13 @@ class DescopeFlow {
     var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
-     * When this user has a valid session, it's possible to provide the flow
-     * with a refresh JWT to use for authentication. This is useful when
-     * you want the user to already be logged in when the flow is presented.
-     */
-    var refreshJwt: String? = null
+     * An optional [DescopeSession] to start a flow for an authenticated user.
+     * 
+     * This can be used when running a flow that expects the user to already be signed in
+     * or that does step-up authentication. For example, a flow to update a user’s email
+     * or account recovery details.
+     */ 
+    var session: DescopeSession? = null
 
     /**
      * The ID of the oauth provider that is configured to natively "Sign In with Google".
