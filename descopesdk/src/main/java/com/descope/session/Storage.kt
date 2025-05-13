@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.descope.internal.others.debug
+import com.descope.internal.others.error
 import com.descope.internal.others.optionalMap
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonArray
@@ -11,8 +13,6 @@ import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.toStringList
 import com.descope.internal.others.tryOrNull
 import com.descope.sdk.DescopeLogger
-import com.descope.sdk.DescopeLogger.Level.Debug
-import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.types.DescopeUser
 import org.json.JSONObject
 
@@ -211,15 +211,15 @@ private fun DescopeUser.toJson() = JSONObject().apply {
 private fun createEncryptedStore(context: Context, projectId: String, logger: DescopeLogger?): SessionStorage.Store {
     try {
         val storage = EncryptedSharedPrefs(projectId, context)
-        logger?.log(Debug, "Encrypted storage initialized successfully")
+        logger.debug("Encrypted storage initialized successfully")
         return storage
     } catch (e: Exception) {
         try {
-            logger?.log(Error, "Encrypted storage key unusable")
+            logger.error("Encrypted storage key unusable")
             context.deleteSharedPreferences(projectId)
             return EncryptedSharedPrefs(projectId, context)
         } catch (e: Exception) {
-            logger?.log(Error, "Unable to initialize encrypted storage", e)
+            logger.error("Unable to initialize encrypted storage", e)
             return SessionStorage.Store.none
         }
     }
