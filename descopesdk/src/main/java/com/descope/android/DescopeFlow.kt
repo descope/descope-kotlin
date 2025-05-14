@@ -31,34 +31,34 @@ class DescopeFlow {
     var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
-     *  An object that provides the [DescopeSession] value for the currently authenticated
-     *  user if there is one, or `null` otherwise.
-     * 
-     *  This is used when running a flow that expects the user to already be signed in.
-     *  For example, a flow to update a user's email or account recovery details, or that
-     *  does step-up authentication.
-     * 
-     *  The default behavior is to check whether the [DescopeSessionManager] is currently
-     *  managing a valid session, and return it if that's the case.
-     * 
-     *  - Note: The default behavior checks the [DescopeSessionManager] from the [Descope]
-     *  singleton, or the one from the flow's [sdk] property if it is set.
-     * 
-     *  If you're not using the [DescopeSessionManager] but rather managing the tokens
-     *  manually, and if you also need to start a flow for an authenticated user, then you
-     *  should set your own [sessionProvider]. For example:
-     *  
-     *      // create a flow object with the URL where the flow is hosted
-     *      val flow = DescopeFlow("https://example.com/myflow")
-     *     
-     *      // fetch the latest session from our model layer when needed
-     *      flow.sessionProvider = {
-     *          return modelLayer.fetchDescopeSession()
-     *      }
-     *  
-     *  - **Important**: The provider may be called multiple times to ensure that the flow uses
-     *  the newest tokens, even if the session is refreshed while the flow is running.
-     *  This is especially important for projects that use refresh token rotation.
+     * An object that provides the [DescopeSession] value for the currently authenticated
+     * user if there is one, or `null` otherwise.
+     *
+     * This is used when running a flow that expects the user to already be signed in.
+     * For example, a flow to update a user's email or account recovery details, or that
+     * does step-up authentication.
+     *
+     * The default behavior is to check whether the [DescopeSessionManager] is currently
+     * managing a valid session, and return it if that's the case.
+     *
+     * - **Note**: The default behavior checks the [DescopeSessionManager] from the [Descope]
+     * singleton, or the one from the flow's [sdk] property if it is set.
+     *
+     * If you're not using the [DescopeSessionManager] but rather managing the tokens
+     * manually, and if you also need to start a flow for an authenticated user, then you
+     * should set your own [sessionProvider]. For example:
+     *
+     *     // create a flow object with the URL where the flow is hosted
+     *     val flow = DescopeFlow("https://example.com/myflow")
+     *
+     *     // fetch the latest session from our model layer when needed
+     *     flow.sessionProvider = {
+     *         return modelLayer.fetchDescopeSession()
+     *     }
+     *
+     * - **Important**: The provider may be called multiple times to ensure that the flow uses
+     * the newest tokens, even if the session is refreshed while the flow is running.
+     * This is especially important for projects that use refresh token rotation.
      */ 
     var sessionProvider: (() -> DescopeSession?)? = null
 
