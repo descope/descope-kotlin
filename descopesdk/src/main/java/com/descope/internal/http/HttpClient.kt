@@ -65,7 +65,6 @@ internal open class HttpClient(
             putAll(headers)
         }
 
-        logger.info("Starting network call", url)
         if (logger.isUnsafeEnabled) {
             logger.info("Starting network call", url)
         } else {
@@ -76,7 +75,6 @@ internal open class HttpClient(
             val response = networkClient.sendRequest(url, method, body, combinedHeaders)
             if (response.code != HttpsURLConnection.HTTP_OK) {
                 exceptionFromResponse(response.body)?.let { e ->
-                    logger.error("Network call failed with server error", url, response.code, e)
                     if (logger.isUnsafeEnabled) {
                         logger.error("Network call failed with server error", url, e)
                     } else {

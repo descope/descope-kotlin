@@ -194,7 +194,7 @@ private enum class Claim(val key: String) {
     Roles("roles");
 
     companion object {
-        fun isCustom(name: String): Boolean = Claim.values().find { it.key == name } == null
+        fun isCustom(name: String): Boolean = entries.find { it.key == name } == null
     }
 }
 

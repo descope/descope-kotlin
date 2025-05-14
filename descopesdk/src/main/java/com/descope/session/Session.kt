@@ -173,7 +173,7 @@ class DescopeSession {
      *     // to this:
      *     val newSession = session.withUpdatedTokens(refreshResponse)
      */
-    @Deprecated(message = "Use withUpdatedTokens instead")
+    @Deprecated(message = "Use withUpdatedTokens instead", replaceWith = ReplaceWith("session.withUpdatedTokens"))
     fun updateTokens(refreshResponse: RefreshResponse) {
         sessionToken = refreshResponse.sessionToken
         refreshToken = refreshResponse.refreshToken ?: refreshToken
@@ -189,7 +189,7 @@ class DescopeSession {
      *     // to this:
      *     val newSession = session.withUpdatedUser(user)
      */
-    @Deprecated(message = "Use withUpdatedUser instead")
+    @Deprecated(message = "Use withUpdatedUser instead", replaceWith = ReplaceWith("session.withUpdatedUser"))
     fun updateUser(descopeUser: DescopeUser) {
         user = descopeUser
     }
