@@ -41,8 +41,8 @@ class DescopeFlow {
      *  The default behavior is to check whether the [DescopeSessionManager] is currently
      *  managing a valid session, and return it if that's the case.
      * 
-     *  - **Note**: The default provider uses either the [DescopeSessionManager] from the
-     *  [Descope] singleton, or the one from the [sdk] property if it is set.
+     *  - Note: The default behavior checks the [DescopeSessionManager] from the [Descope]
+     *  singleton, or the one from the flow's [sdk] property if it is set.
      * 
      *  If you're not using the [DescopeSessionManager] but rather managing the tokens
      *  manually, and if you also need to start a flow for an authenticated user, then you
