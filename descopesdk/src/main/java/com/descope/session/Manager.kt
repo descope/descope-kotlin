@@ -145,8 +145,17 @@ class DescopeSessionManager(
      * @param session the session to manage
      */
     fun manageSession(session: DescopeSession) {
+        val current = lifecycle.session
         lifecycle.session = session
         storage.saveSession(session)
+        // notify the listeners if the session has been updated
+        if (current == null) return
+        if (current.sessionJwt != session.sessionJwt || current.refreshJwt != session.refreshJwt) {
+            listeners.forEach { it.onUpdateTokens(session) }
+        }
+        if (current.user != session.user) {
+            listeners.forEach { it.onUpdateUser(session) }
+        }
     }
 
     /**

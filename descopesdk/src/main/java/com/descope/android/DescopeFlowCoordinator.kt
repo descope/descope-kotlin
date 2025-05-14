@@ -33,6 +33,7 @@ import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
 import com.descope.internal.others.activityHelper
+import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
@@ -44,13 +45,19 @@ import com.descope.internal.routes.performAssertion
 import com.descope.internal.routes.performRegister
 import com.descope.sdk.DescopeLogger
 import com.descope.sdk.DescopeSdk
+import com.descope.session.DescopeSession
 import com.descope.session.Token
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.lang.ref.WeakReference
 import java.net.HttpCookie
+import java.util.Timer
+import java.util.TimerTask
+import kotlin.concurrent.timer
 
 @SuppressLint("SetJavaScriptEnabled")
 class DescopeFlowCoordinator(val webView: WebView) {
@@ -64,6 +71,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
     private val logger: DescopeLogger?
         get() = sdk?.client?.config?.logger
+    private val currentSession: DescopeSession?
+        get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
 
@@ -79,12 +88,19 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             @JavascriptInterface
             fun onSuccess(data: String?, url: String) {
-                val session = flow?.session
-                when {
-                    data != null -> handleAuthentication(data, url)
-                    session != null -> handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false))
-                    else -> handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
+                // in case we got an authentication response, use it
+                if (data != null) {
+                    handleAuthentication(data, url)
+                    return
                 }
+                // if we didn't, use the session if it's available
+                val session = currentSession
+                if (session != null) {
+                    handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false))
+                    return
+                }
+                // onSuccess must end with a valid authentication response at this point in time
+                handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
             }
 
             @JavascriptInterface
@@ -240,7 +256,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
                     evaluateJavascript(
                         setupScript(
-                            refreshJwt = flow?.session?.refreshJwt ?: "",
+                            refreshJwt = currentSession?.refreshJwt ?: "",
                             origin = origin,
                             oauthNativeProvider = flow?.oauthNativeProvider?.name ?: "",
                             oauthRedirect = pickRedirectUrl(flow?.oauthRedirect, flow?.oauthRedirectCustomScheme, useCustomSchemeFallback),
@@ -335,6 +351,12 @@ document.head.appendChild(element)
         hooks.filter { it.events.contains(event) }
             .forEach { it.execute(event, this) }
     }
+    
+    internal fun periodicRefreshJwtUpdate() {
+        handler.post {
+            webView.evaluateJavascript("flowBridgeSetRefreshJwt(null, '${currentSession?.refreshJwt?.escapeForBackticks() ?: ""}');") {}
+        }
+    }
 
     // Events
 
@@ -354,6 +376,7 @@ document.head.appendChild(element)
         if (ensureState(Started)) return
         handler.post {
             logger.info("Flow is ready ($tag)")
+            startTimer()
             state = Ready
             executeHooks(Event.Ready)
             listener?.onReady()
@@ -369,6 +392,7 @@ document.head.appendChild(element)
 
         handler.post {
             logger.error("Flow failed with ${e.code}) error", e)
+            stopTimer()
             state = Failed
             listener?.onError(e)
         }
@@ -379,6 +403,7 @@ document.head.appendChild(element)
         handler.post {
             val res = if (logger.isUnsafeEnabled) authResponse else null
             logger.info("Flow finished successfully", res)
+            stopTimer()
             state = Finished
             listener?.onSuccess(authResponse)
         }
@@ -392,6 +417,7 @@ document.head.appendChild(element)
             jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
             jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
             val authResponse = jwtServerResponse.convert()
+            logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
         } catch (e: DescopeException) {
             logger.error("Unexpected error handling authentication response", e, data, url)
@@ -405,6 +431,24 @@ document.head.appendChild(element)
         }
         logger.error("Unexpected flow state: ${state.name}", allowedStates)
         return true
+    }
+    
+    // Timer
+
+    private val periodicUpdateFrequency: Long = 1000L // 1 second
+    private var timer: Timer? = null
+    
+    private fun startTimer() {
+        stopTimer()
+        
+        val ref = WeakReference(this)
+        val action = createTimerAction(ref)
+        timer = timer(name = "DescopeFlowCoordinator", period = periodicUpdateFrequency, action = action)
+    }
+    
+    private fun stopTimer() {
+        timer?.cancel()
+        timer = null
     }
 }
 
@@ -495,13 +539,21 @@ function flowBridgeIsReady(wc, tag) {
     flow.onReady(tag);
 }
 
-function flowBridgePrepareWebComponent(wc) {
-    const refreshJwt = '$refreshJwt';
+function flowBridgeSetRefreshJwt(wc, refreshJwt) {
+    wc = wc || document.getElementsByTagName('descope-wc')[0]
+    if (!wc) {
+        console.debug('Unable to set refresh token, web-component not found')
+        return
+    }
     if (refreshJwt) {
         const storagePrefix = wc.getAttribute('storage-prefix') || ''
         window.localStorage.setItem(storagePrefix + 'DSR', refreshJwt);
     }
-    
+}
+
+function flowBridgePrepareWebComponent(wc) {
+    flowBridgeSetRefreshJwt(wc, '$refreshJwt')
+      
     wc.nativeOptions = {
         bridgeVersion: 1,
         platform: 'android',
@@ -597,4 +649,15 @@ private fun pickRedirectUrl(main: String?, fallback: String?, useFallback: Boole
     var url = main
     if (useFallback && fallback != null) url = fallback
     return url ?: ""
+}
+
+private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (TimerTask.() -> Unit) {
+    return {
+        val coordinator = ref.get()
+        if (coordinator == null) {
+            cancel()
+        } else {
+            coordinator.periodicRefreshJwtUpdate()
+        }
+    }
 }
