@@ -72,7 +72,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private val logger: DescopeLogger?
         get() = sdk?.client?.config?.logger
     private val currentSession: DescopeSession?
-        get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session
+        get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
 
