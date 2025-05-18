@@ -1,2 +1,3 @@
 *gradle* @itaihanski @shilgapira
 *.properties @itaihanski @shilgapira
+libs.versions.toml @itaihanski @shilgapira

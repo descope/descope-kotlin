@@ -1,8 +1,8 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    id "io.github.gradle-nexus.publish-plugin" version "1.3.0"
-    id "com.android.library" version "8.8.2" apply false
-    id "org.jetbrains.kotlin.android" version "1.9.25" apply false
+    alias(libs.plugins.nexus.publish)
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.android) apply false
 }
 
 nexusPublishing {
@@ -11,8 +11,8 @@ nexusPublishing {
             stagingProfileId = "20675571e61bf1" //can reduce execution time by even 10 seconds
             nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
             snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
-            username = System.getenv('MAVEN_USERNAME')
-            password = System.getenv('MAVEN_PASSWORD')
+            username = System.getenv("MAVEN_USERNAME")
+            password = System.getenv("MAVEN_PASSWORD")
         }
     }
 }

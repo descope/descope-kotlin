@@ -1,6 +1,12 @@
 pluginManagement {
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
     }
@@ -13,4 +19,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Descope for Android"
-include ':descopesdk'
+include(":descopesdk")
