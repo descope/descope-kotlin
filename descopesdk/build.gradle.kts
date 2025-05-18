@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.library")
+    id("kotlin-android")
     id("maven-publish")
     id("signing")
 }
@@ -40,18 +40,18 @@ android {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.lifecycle.common)
-    implementation(libs.lifecycle.process)
-    implementation(libs.browser)
-    implementation(libs.androidx.security.crypto)
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.play.services.auth)
-    implementation(libs.googleid)
+    implementation(descopeLibs.kotlinx.coroutines.android)
+    implementation(descopeLibs.androidx.lifecycle.common)
+    implementation(descopeLibs.lifecycle.process)
+    implementation(descopeLibs.browser)
+    implementation(descopeLibs.androidx.security.crypto)
+    implementation(descopeLibs.androidx.credentials)
+    implementation(descopeLibs.androidx.credentials.play.services.auth)
+    implementation(descopeLibs.googleid)
 
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.junit)
-    testImplementation(libs.json)
+    testImplementation(descopeLibs.kotlinx.coroutines.test)
+    testImplementation(descopeLibs.junit)
+    testImplementation(descopeLibs.json)
 }
 
 publishing {
