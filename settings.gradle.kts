@@ -17,6 +17,13 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+    versionCatalogs {
+        create("descopeLibs") {
+            from(files("gradle/libs.versions.toml"))
+        }
+    }
 }
+
 rootProject.name = "Descope for Android"
 include(":descopesdk")
+
