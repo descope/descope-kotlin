@@ -324,7 +324,7 @@ document.head.appendChild(element)
 
     // Internal API
 
-    internal fun run(flow: DescopeFlow) {
+    internal fun startFlow(flow: DescopeFlow) {
         this.flow = flow
         handleStarted()
         webView.loadUrl(flow.url)
