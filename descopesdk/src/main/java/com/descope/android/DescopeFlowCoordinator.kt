@@ -61,6 +61,10 @@ import java.util.Timer
 import java.util.TimerTask
 import kotlin.concurrent.timer
 
+private const val maxLoadingRetries = 3
+private const val retryWindow = 10 * 1000L
+private const val retryInterval = 1500L
+
 @SuppressLint("SetJavaScriptEnabled")
 class DescopeFlowCoordinator(val webView: WebView) {
 
@@ -77,6 +81,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
         get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
     private var currentFlowUrl: Uri? = null
     private var alreadySetUp = false
+    private var startedAt: Long = 0L
+    private var attempts: Int = 0
+    private var loadFailure: Boolean = false
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -241,6 +248,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
+                if (loadFailure) {
+                    logger.info("Page finished after error", url)
+                    loadFailure = false
+                    return
+                }
                 logger.info("On page finished", url, view?.progress)
                 if (alreadySetUp) {
                     logger.error("Bridge is already set up", url, view?.progress)
@@ -269,6 +281,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
                     logger.error("Error loading flow page", error?.errorCode, error?.description)
+                    if (scheduleRetryIfNeeded()) return
                     val code = error?.errorCode ?: 0
                     val failure = error?.description?.toString() ?: ""
                     val message = when (code) {
@@ -286,10 +299,29 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 if (request?.isForMainFrame == true) {
                     logger.error("Flow page failed to load", errorResponse?.statusCode)
                     val statusCode = errorResponse?.statusCode ?: 0
+                    if (statusCode >= 500 && scheduleRetryIfNeeded()) return // retry only on server errors
                     val message = failureFromResponseCode(statusCode)
                     val exception = DescopeException.networkError.with(message = message)
                     handleError(exception)
                 }
+            }
+
+            private fun scheduleRetryIfNeeded(): Boolean {
+                if (
+                    flow?.reloadFlowOnError != true // flow does not have reloading enabled
+                    || alreadySetUp // initial loading was successful
+                    || attempts > maxLoadingRetries // or max reload attempts exceeded
+                    || System.currentTimeMillis() - startedAt >= retryWindow // or retry window exceeded
+                ) {
+                    return false
+                }
+
+                loadFailure = true
+                val retryIn = attempts * retryInterval
+                logger.info("Will retry to load in $retryIn ms")
+                val ref = WeakReference(this@DescopeFlowCoordinator)
+                handler.postDelayed(createRetryRunnable(ref), retryIn)
+                return true
             }
         }
     }
@@ -327,6 +359,13 @@ document.head.appendChild(element)
         handleStarted()
         webView.loadUrl(flow.url)
     }
+    
+    internal fun reloadFlow() {
+        val flowUrl = flow?.url ?: return
+        attempts++
+        logger.info("Retrying to load flow (attempt $attempts)")
+        webView.loadUrl(flowUrl)
+    }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {
         if (flow == null) {
@@ -362,6 +401,8 @@ document.head.appendChild(element)
         if (state == Started) return
         state = Started
         alreadySetUp = false
+        startedAt = System.currentTimeMillis()
+        attempts++
         executeHooks(Event.Started)
     }
 
@@ -376,6 +417,7 @@ document.head.appendChild(element)
             logger.info("Flow is ready ($tag)")
             startTimer()
             state = Ready
+            attempts = 0
             executeHooks(Event.Ready)
             listener?.onReady()
         }
@@ -404,6 +446,7 @@ document.head.appendChild(element)
             logger.info("Flow finished successfully", res)
             stopTimer()
             state = Finished
+            attempts = 0
             listener?.onSuccess(authResponse)
         }
     }
@@ -657,6 +700,19 @@ private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (Time
             cancel()
         } else {
             coordinator.periodicRefreshJwtUpdate()
+        }
+    }
+}
+
+private fun createRetryRunnable(ref: WeakReference<DescopeFlowCoordinator>): (Runnable) {
+    return object : Runnable {
+        override fun run() {
+            val coordinator = ref.get()
+            if (coordinator == null) {
+                return
+            } else {
+                coordinator.reloadFlow()
+            }
         }
     }
 }

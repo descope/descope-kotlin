@@ -114,6 +114,14 @@ class DescopeFlow {
     var magicLinkRedirect: String? = null
 
     /**
+     * An optional flag that indicates whether the flow should be reloaded
+     * if an error occurs while first trying to load it. Only a few attempts
+     * will be made in a short time frame, and if the flow still fails to load
+     * the [DescopeFlowView.Listener.onError] callback will be called with the error.
+     */
+    var reloadFlowOnError: Boolean = true
+
+    /**
      * Customize the [DescopeFlowView] presentation by providing a [Presentation] implementation
      */
     var presentation: Presentation? = null
