@@ -49,8 +49,10 @@ import com.descope.session.DescopeSession
 import com.descope.session.Token
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.lang.ref.WeakReference
@@ -127,11 +129,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     return
                 }
                 currentFlowUrl = url.toUri()
-                val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope
-                if (scope == null) {
-                    logger.error("Unable to find lifecycle owner coroutine scope")
-                    return
-                }
+                val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
                 scope.launch(Dispatchers.Main) {
                     var type: String
                     var canceled = false
