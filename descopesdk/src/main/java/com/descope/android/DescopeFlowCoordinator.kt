@@ -177,7 +177,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                         type = "failure"
                         val failure = when (e) {
                             DescopeException.oauthNativeCancelled -> {
-                                logger.info("OAuth native canceled" )
+                                logger.info("OAuth native canceled")
                                 canceled = true
                                 "OAuthNativeCancelled"
                             }
@@ -389,9 +389,10 @@ document.head.appendChild(element)
         if (state == Failed) return
 
         handler.post {
-            logger.error("Flow failed with ${e.code}) error", e)
+            logger.error("Flow failed with [${e.code}] error", e)
             stopTimer()
             state = Failed
+            attempts = 0
             listener?.onError(e)
         }
     }
