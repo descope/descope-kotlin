@@ -6,13 +6,10 @@ import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.WebView
-import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.Descope
-import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
-import com.descope.types.OAuthProvider
 
 /**
  * Authenticate a user using Descope Flows.
@@ -135,15 +132,15 @@ class DescopeFlowView : ViewGroup {
     // API
 
     /**
-     * Run a flow based on the configuration provided
+     * Start a flow based on the configuration provided
      * via a [DescopeFlowView]
      *
      * @param flow The [DescopeFlow] to execute
      */
-    fun run(flow: DescopeFlow) {
-        flowCoordinator.run(flow)
+    fun startFlow(flow: DescopeFlow) {
+        flowCoordinator.startFlow(flow)
     }
-
+    
     /**
      * Resume an already running flow after a deep link
      * event. This function should be called to complete `Magic Link`
@@ -231,4 +228,12 @@ class DescopeFlowView : ViewGroup {
         Inline,
         DoNothing,
     }
+    
+    // Deprecated
+
+    @Deprecated("Use startFlow instead", replaceWith = ReplaceWith("startFlow(flow)"))
+    fun run(flow: DescopeFlow) {
+        startFlow(flow)
+    }
+    
 }

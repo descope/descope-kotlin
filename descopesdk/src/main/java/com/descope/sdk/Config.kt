@@ -83,13 +83,13 @@ open class DescopeLogger(open val level: Level, open val unsafe: Boolean) {
         /**
          * A simple logger that prints basic error and info logs using `println`.
          */
-        val basicLogger: DescopeLogger = ConsoleLogger.basic
+        val basicLogger: DescopeLogger by lazy { ConsoleLogger.basic }
 
         /**
          * A simple logger that prints all logs using `println`, but does not output any
          * potentially unsafe runtime values unless a debugger is attached.
          */
-        val debugLogger: DescopeLogger = ConsoleLogger.debug
+        val debugLogger: DescopeLogger by lazy { ConsoleLogger.debug }
 
         /**
          * A simple logger that prints all logs using `println`, including potentially unsafe
@@ -97,7 +97,7 @@ open class DescopeLogger(open val level: Level, open val unsafe: Boolean) {
          * 
          * - **IMPORTANT**: Do not use unsafeLogger in release builds intended for production.
          */
-        val unsafeLogger: DescopeLogger = ConsoleLogger.unsafe
+        val unsafeLogger: DescopeLogger by lazy { ConsoleLogger.unsafe }
     }
     
     /** The severity of a log message. */
