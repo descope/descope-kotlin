@@ -398,7 +398,7 @@ document.head.appendChild(element)
     }
     
     private fun handleSuccess(authResponse: AuthenticationResponse) {
-        if (ensureState(Ready)) return
+        if (ensureState(Started, Ready)) return
         handler.post {
             val res = if (logger.isUnsafeEnabled) authResponse else null
             logger.info("Flow finished successfully", res)
