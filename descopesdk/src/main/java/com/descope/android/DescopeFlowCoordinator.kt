@@ -307,17 +307,17 @@ class DescopeFlowCoordinator(val webView: WebView) {
             }
 
             private fun scheduleRetryIfNeeded(): Boolean {
+                val retryIn = attempts * retryInterval
                 if (
                     flow?.reloadFlowOnError != true // flow does not have reloading enabled
                     || alreadySetUp // initial loading was successful
                     || attempts > maxLoadingRetries // or max reload attempts exceeded
-                    || System.currentTimeMillis() - startedAt >= retryWindow // or retry window exceeded
+                    || System.currentTimeMillis() - startedAt + retryIn > retryWindow // or retry window exceeded
                 ) {
                     return false
                 }
 
                 loadFailure = true
-                val retryIn = attempts * retryInterval
                 logger.info("Will retry to load in $retryIn ms")
                 val ref = WeakReference(this@DescopeFlowCoordinator)
                 handler.postDelayed(createRetryRunnable(ref), retryIn)
