@@ -30,7 +30,7 @@ internal fun failureFromResponseCode(code: Int): String? {
         403 -> "The request was forbidden"
         404 -> "The resource was not found"
         500, 503 -> "The request failed with status code $code"
-        in 500..599 -> "The server was unreachable"
+        in 500..599 -> "The server was unreachable with status code $code"
         else -> "The server returned status code $code"
     }
 }
