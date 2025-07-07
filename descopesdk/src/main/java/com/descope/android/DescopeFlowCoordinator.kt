@@ -61,7 +61,6 @@ import java.util.Timer
 import java.util.TimerTask
 import kotlin.concurrent.timer
 
-private const val maxLoadingRetries = 3
 private const val retryWindow = 10 * 1000L
 private const val retryInterval = 1500L
 
@@ -311,7 +310,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 if (
                     flow?.reloadFlowOnError != true // flow does not have reloading enabled
                     || alreadySetUp // initial loading was successful
-                    || attempts > maxLoadingRetries // or max reload attempts exceeded
                     || System.currentTimeMillis() - startedAt + retryIn > retryWindow // or retry window exceeded
                 ) {
                     return false
