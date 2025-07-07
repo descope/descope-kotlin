@@ -280,7 +280,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
                     logger.error("Error loading flow page", error?.errorCode, error?.description)
-                    if (scheduleRetryIfNeeded()) return
+                    if (scheduleRetryAfterError()) return
                     val code = error?.errorCode ?: 0
                     val failure = error?.description?.toString() ?: ""
                     val message = when (code) {
@@ -298,18 +298,17 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 if (request?.isForMainFrame == true) {
                     logger.error("Flow page failed to load", errorResponse?.statusCode)
                     val statusCode = errorResponse?.statusCode ?: 0
-                    if (statusCode >= 500 && scheduleRetryIfNeeded()) return // retry only on server errors
+                    if (statusCode >= 500 && scheduleRetryAfterError()) return // potentially retry only on server errors
                     val message = failureFromResponseCode(statusCode)
                     val exception = DescopeException.networkError.with(message = message)
                     handleError(exception)
                 }
             }
 
-            private fun scheduleRetryIfNeeded(): Boolean {
+            private fun scheduleRetryAfterError(): Boolean {
                 val retryIn = attempts * retryInterval
                 if (
-                    flow?.reloadFlowOnError != true // flow does not have reloading enabled
-                    || alreadySetUp // initial loading was successful
+                    alreadySetUp // initial loading was successful
                     || System.currentTimeMillis() - startedAt + retryIn > retryWindow // or retry window exceeded
                 ) {
                     return false
