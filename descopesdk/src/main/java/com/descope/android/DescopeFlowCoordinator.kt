@@ -62,7 +62,7 @@ import java.util.TimerTask
 import kotlin.concurrent.timer
 
 private const val retryWindow = 10 * 1000L
-private const val retryInterval = 1500L
+private const val retryInterval = 1250L
 
 @SuppressLint("SetJavaScriptEnabled")
 class DescopeFlowCoordinator(val webView: WebView) {
