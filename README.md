@@ -1,6 +1,6 @@
 # Descope SDK for Android
 
-The Descope SDK for for Android provides convenient access
+The Descope SDK for Android provides convenient access
 to the Descope user management and authentication APIs for applications
 written for Android. You can read more on the [Descope Website](https://descope.com).
 
