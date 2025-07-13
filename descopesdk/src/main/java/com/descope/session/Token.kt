@@ -1,14 +1,12 @@
 package com.descope.session
 
 import android.text.format.DateFormat
-import androidx.annotation.VisibleForTesting
 import com.descope.internal.others.decodeBase64
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.toMap
 import com.descope.internal.others.with
 import com.descope.types.DescopeException
 import org.json.JSONObject
-import java.util.Objects
 
 /**
  * A `DescopeToken` is a utility wrapper around a single JWT value.
@@ -104,13 +102,13 @@ internal class Token(
 
     override fun permissions(tenant: String?): List<String> = try {
         authorizationItems(tenant, Claim.Permissions)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptyList()
     }
 
     override fun roles(tenant: String?): List<String> = try {
         authorizationItems(tenant, Claim.Roles)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptyList()
     }
 
@@ -118,7 +116,7 @@ internal class Token(
         if (tenant != null) {
             try {
                 getValueForTenant(tenant, claim.key)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 emptyList()
             }
         } else {

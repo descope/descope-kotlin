@@ -1,4 +1,4 @@
-@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+@file:Suppress("MemberVisibilityCanBePrivate", "unused", "DEPRECATION")
 
 package com.descope
 

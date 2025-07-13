@@ -33,6 +33,7 @@ import java.util.Objects
  * and the code examples above are only slightly different. See the documentation
  * for [DescopeSessionManager] for more details.
  */
+@Suppress("unused")
 class DescopeSession {
     /**
      * The wrapper for the short lived JWT that can be sent with every server

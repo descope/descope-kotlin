@@ -642,7 +642,7 @@ internal fun findJwtInCookies(cookieString: String?, name: String): String? {
         cookieString?.split("; ")?.forEach {
             try {
                 addAll(HttpCookie.parse(it))
-            } catch (ignored: Exception) {
+            } catch (_: Exception) {
             }
         }
     }
@@ -651,7 +651,7 @@ internal fun findJwtInCookies(cookieString: String?, name: String): String? {
         .mapNotNull { httpCookie -> // parse token
             try {
                 Token(httpCookie.value)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         }
@@ -663,7 +663,7 @@ internal fun findJwtInCookies(cookieString: String?, name: String): String? {
 private fun String.toUri(): Uri? {
     return try {
         Uri.parse(this)
-    } catch (ignored: Exception) {
+    } catch (_: Exception) {
         null
     }
 }

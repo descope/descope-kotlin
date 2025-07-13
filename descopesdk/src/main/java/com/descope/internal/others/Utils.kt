@@ -19,7 +19,7 @@ internal fun ByteArray.toBase64(): String {
 
 internal fun JSONObject.stringOrEmptyAsNull(key: String): String? = try {
     getString(key).ifEmpty { null }
-} catch (ignored: JSONException) {
+} catch (_: JSONException) {
     null
 }
 
@@ -50,7 +50,7 @@ internal fun JSONArray.toList(): List<Any> {
 internal fun JSONObject.optionalMap(key: String): Map<String, Any> = try {
     val obj = getJSONObject(key)
     obj.toMap()
-} catch (ignored: JSONException) {
+} catch (_: JSONException) {
     emptyMap()
 }
 
@@ -98,6 +98,6 @@ internal fun Long.secToMs() = this * 1000L
 
 inline fun <reified T> tryOrNull(block: () -> T): T? = try {
     block()
-} catch (e: Exception) {
+} catch (_: Exception) {
     null
 }

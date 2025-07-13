@@ -14,13 +14,13 @@ internal class DescopeSystemInfo private constructor(context: Context) : SystemI
     
     override val appName: String? = try {
         context.applicationInfo.loadLabel(context.packageManager).toString()
-    } catch (ignored: Exception) {
+    } catch (_: Exception) {
         null
     }
     
     override val appVersion: String? = try {
         context.packageManager.getPackageInfo(context.packageName, 0)?.versionName
-    } catch (ignored: Exception) {
+    } catch (_: Exception) {
         null
     }
     

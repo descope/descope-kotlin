@@ -1,6 +1,6 @@
 package com.descope.internal.routes
 
-import android.net.Uri
+import androidx.core.net.toUri
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.MaskedAddressServerResponse
@@ -27,7 +27,7 @@ internal fun UserResponse.convert(): DescopeUser = DescopeUser(
     loginIds = loginIds,
     createdAt = createdTime,
     name = name,
-    picture = picture?.run { Uri.parse(this) },
+    picture = picture?.run { this.toUri() },
     email = email,
     isVerifiedEmail = verifiedEmail,
     phone = phone,
