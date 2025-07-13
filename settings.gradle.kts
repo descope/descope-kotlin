@@ -26,4 +26,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Descope for Android"
 include(":descopesdk")
-
