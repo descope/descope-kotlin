@@ -1,5 +1,5 @@
 [versions]
-agp = "8.9.3"
+agp = "8.11.0"
 browser = "1.8.0"
 credentials = "1.5.0"
 googleid = "1.1.1"
