@@ -77,12 +77,12 @@ internal class Passkey(override val client: DescopeClient) : Route, DescopePassk
 private fun convertOptions(options: String): String {
     val root = try {
         JSONObject(options)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         throw DescopeException.decodeError.with(message = "Invalid passkey options")
     }
     val publicKey = try {
         root.getString("publicKey")
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         throw DescopeException.decodeError.with(message = "Malformed passkey options")
     }
     return publicKey
@@ -103,7 +103,7 @@ internal fun getPackageOrigin(context: Context): String {
         val certHash = md.digest(cert)
         val encoded = Base64.encodeToString(certHash, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
         return "android:apk-key-hash:$encoded"
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         throw DescopeException.passkeyFailed.with(message = "Failed to encode origin")
     }
 }
@@ -117,7 +117,7 @@ internal suspend fun performRegister(context: Context, options: String): String 
         val credentialManager = CredentialManager.create(context)
         val result = credentialManager.createCredential(context, request as CreateCredentialRequest) as CreatePublicKeyCredentialResponse
         return result.registrationResponseJson
-    } catch (e: CreateCredentialCancellationException) {
+    } catch (_: CreateCredentialCancellationException) {
         throw DescopeException.passkeyCancelled
     } catch (e: CreatePublicKeyCredentialDomException) {
         throw DescopeException.passkeyFailed.with(message = "Error signing registration", cause = e)
@@ -146,7 +146,7 @@ internal suspend fun performAssertion(context: Context, options: String): String
         return credential.authenticationResponseJson
     } catch (e: NoCredentialException) {
         throw DescopeException.passkeyNoPasskeys.with(cause = e)
-    } catch (e: GetCredentialCancellationException) {
+    } catch (_: GetCredentialCancellationException) {
         throw DescopeException.passkeyCancelled
     } catch (e: GetPublicKeyCredentialDomException) {
         throw DescopeException.passkeyFailed.with(message = "Error signing assertion", cause = e)

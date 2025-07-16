@@ -76,7 +76,7 @@ internal fun UpdateOptions.validate(body: Map<String, Any?>) {
     if (onMergeUseExisting) assertTrue(body["onMergeUseExisting"] as Boolean)
 }
 
-internal val jwt =
+internal const val jwt =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJodHRwczovL2Rlc2NvcGUuY29tL2JsYS9QMTIzIiwiZXhwIjoxNjAzMTc2NjE0LCJwZXJtaXNzaW9ucyI6WyJkIiwiZSJdLCJyb2xlcyI6WyJ1c2VyIl0sInRlbmFudHMiOnsidGVuYW50Ijp7InBlcm1pc3Npb25zIjpbImEiLCJiIiwiYyJdLCJyb2xlcyI6WyJhZG1pbiJdfX19.MCSE6ZTlD0oVS0FhXe5LwBpbUVG8H5RmwU7sk_L7Bbo"
 
 internal val mockJwtResponse = JwtServerResponse(

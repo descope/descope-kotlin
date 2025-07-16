@@ -1,8 +1,6 @@
 package com.descope.internal.routes
 
 import com.descope.internal.http.OAuthServerResponse
-import com.descope.types.OAuthProvider
-import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

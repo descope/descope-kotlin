@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.library")
     id("kotlin-android")
@@ -7,14 +9,20 @@ plugins {
 
 android {
     namespace = "com.descope"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
-        targetSdk = 35
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+    }
+
+    testOptions {
+        targetSdk = 36
+    }
+
+    lint {
+        targetSdk = 36
     }
 
     buildTypes {
@@ -27,9 +35,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8.toString()
-    }
 
     publishing {
         singleVariant("release") {
@@ -37,6 +42,10 @@ android {
             withJavadocJar()
         }
     }
+}
+
+kotlin {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
 }
 
 dependencies {

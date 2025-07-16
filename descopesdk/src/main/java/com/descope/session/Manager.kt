@@ -68,6 +68,7 @@ import java.net.URLConnection
  * @property storage the [DescopeSessionStorage] enables the session manager to persist the session between app usages.
  * @property lifecycle the [DescopeSessionLifecycle] makes sure the session is valid during app usage.
  */
+@Suppress("unused")
 class DescopeSessionManager(
     private val storage: DescopeSessionStorage,
     private val lifecycle: DescopeSessionLifecycle,

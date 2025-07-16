@@ -1,7 +1,10 @@
+@file:Suppress("DEPRECATION")
+
 package com.descope.internal.routes
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import com.descope.android.defaultCustomTabIntent
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.toBase64
@@ -46,8 +49,8 @@ internal class Flow(
 
         override fun resume(context: Context, incomingUriString: String) {
             // create the redirect flow URL by copying all url parameters received from the incoming URI
-            val incomingUri = Uri.parse(incomingUriString)
-            val uriBuilder = Uri.parse(flowUrl).buildUpon()
+            val incomingUri = incomingUriString.toUri()
+            val uriBuilder = flowUrl.toUri().buildUpon()
             incomingUri.queryParameterNames.forEach { uriBuilder.appendQueryParameter(it, incomingUri.getQueryParameter(it)) }
             val uri = uriBuilder.build()
 
@@ -85,7 +88,7 @@ internal class Flow(
         }
 
         private fun startFlowViaBrowser(codeChallenge: String, context: Context) {
-            val uriBuilder = Uri.parse(flowUrl).buildUpon()
+            val uriBuilder = flowUrl.toUri().buildUpon()
                 .appendQueryParameter("ra-callback", deepLinkUrl)
                 .appendQueryParameter("ra-challenge", codeChallenge)
                 .appendQueryParameter("ra-initiator", "android")

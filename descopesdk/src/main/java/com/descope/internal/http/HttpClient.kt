@@ -1,6 +1,6 @@
 package com.descope.internal.http
 
-import android.net.Uri
+import androidx.core.net.toUri
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
@@ -118,7 +118,7 @@ internal open class HttpClient(
     private fun makeUrl(route: String, params: Map<String, String?>): URL {
         val composed = "$baseUrl$basePath$route"
         val urlString = if (params.isNotEmpty()) {
-            Uri.parse(composed).buildUpon().apply {
+            composed.toUri().buildUpon().apply {
                 params
                     .filterValues { it != null }
                     .forEach { appendQueryParameter(it.key, it.value) }
@@ -135,7 +135,7 @@ private val Map<String, List<String>>.cookies: List<HttpCookie>
             this[key]?.forEach {
                 try {
                     cookies.addAll(HttpCookie.parse(it))
-                } catch (ignored: Exception) {}
+                } catch (_: Exception) {}
             }
         }
         return cookies.toList()

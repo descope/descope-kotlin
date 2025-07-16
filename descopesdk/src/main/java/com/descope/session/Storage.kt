@@ -1,7 +1,8 @@
 package com.descope.session
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.descope.internal.others.debug
@@ -70,12 +71,8 @@ interface DescopeSessionStorage {
  */
 class SessionStorage(context: Context, private val projectId: String, logger: DescopeLogger? = null, store: Store? = null) : DescopeSessionStorage {
 
-    private val store: Store
+    private val store: Store = store ?: createEncryptedStore(context, projectId, logger)
     private var lastSaved: EncodedSession? = null
-
-    init {
-        this.store = store ?: createEncryptedStore(context, projectId, logger)
-    }
 
     override fun saveSession(session: DescopeSession) {
         val encodedSession = EncodedSession(
@@ -163,13 +160,13 @@ class EncryptedSharedPrefs(name: String, context: Context) : SessionStorage.Stor
 
     override fun loadItem(key: String): String? = sharedPreferences.getString(key, null)
 
-    override fun saveItem(key: String, data: String) = sharedPreferences.edit()
-        .putString(key, data)
-        .apply()
+    override fun saveItem(key: String, data: String) = sharedPreferences.edit {
+        putString(key, data)
+    }
 
-    override fun removeItem(key: String) = sharedPreferences.edit()
-        .remove(key)
-        .apply()
+    override fun removeItem(key: String) = sharedPreferences.edit {
+        remove(key)
+    }
 }
 
 // Serialization
@@ -180,7 +177,7 @@ private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
         loginIds = getJSONArray("loginIds").toStringList(),
         createdAt = getLong("createdAt"),
         name = stringOrEmptyAsNull("name"),
-        picture = stringOrEmptyAsNull("picture")?.run { Uri.parse(this) },
+        picture = stringOrEmptyAsNull("picture")?.run { this.toUri() },
         email = stringOrEmptyAsNull("email"),
         isVerifiedEmail = optBoolean("isVerifiedEmail"),
         phone = stringOrEmptyAsNull("phone"),
@@ -213,7 +210,7 @@ private fun createEncryptedStore(context: Context, projectId: String, logger: De
         val storage = EncryptedSharedPrefs(projectId, context)
         logger.debug("Encrypted storage initialized successfully")
         return storage
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         try {
             logger.error("Encrypted storage key unusable")
             context.deleteSharedPreferences(projectId)

@@ -43,7 +43,7 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
                 val response = checkForSession(pendingRef)
                 log(Info, "Enchanted link authentication succeeded")
                 return response
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // sleep for a second before checking again
                 log(Info, "Waiting for enchanted link")
                 delay(1000L)

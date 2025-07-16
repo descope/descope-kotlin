@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.descope.android
 
 import android.content.Context
@@ -157,7 +159,7 @@ class DescopeFlowView : ViewGroup {
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            child.layout(0, 0, width, height);
+            child.layout(0, 0, width, height)
         }
     }
 

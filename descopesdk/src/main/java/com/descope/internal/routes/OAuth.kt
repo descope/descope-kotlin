@@ -79,7 +79,7 @@ private suspend fun performAuthorization(context: Context, clientId: String, non
     return try {
         val credentialManager = CredentialManager.create(context)
         credentialManager.getCredential(context, request)
-    } catch (e: GetCredentialCancellationException) {
+    } catch (_: GetCredentialCancellationException) {
         throw DescopeException.oauthNativeCancelled
     } catch (e: GetCredentialException) {
         throw DescopeException.oauthNativeFailed.with(cause = e)
@@ -96,7 +96,7 @@ private fun parseCredential(credential: Credential): String {
 
     val result = try {
         GoogleIdTokenCredential.createFrom(credential.data)
-    } catch (e: GoogleIdTokenParsingException) {
+    } catch (_: GoogleIdTokenParsingException) {
         throw DescopeException.oauthNativeFailed.with(message = "Invalid OAuth credential")
     }
 
