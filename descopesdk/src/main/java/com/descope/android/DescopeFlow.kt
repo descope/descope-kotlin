@@ -33,6 +33,14 @@ class DescopeFlow {
     var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
+     * A map of parameters that will be sent to the flow webpage.
+     * 
+     * These parameters should conform to basic JSON types, and can be used
+     * in the flow editor to customize the flow's behavior.
+     */
+    var clientParams: Map<String, Any> = emptyMap()
+
+    /**
      * An object that provides the [DescopeSession] value for the currently authenticated
      * user if there is one, or `null` otherwise.
      *

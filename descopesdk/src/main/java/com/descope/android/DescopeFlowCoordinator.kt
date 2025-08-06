@@ -37,6 +37,7 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
+import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
@@ -272,6 +273,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                             ssoRedirect = pickRedirectUrl(flow?.ssoRedirect, flow?.ssoRedirectCustomScheme, useCustomSchemeFallback),
                             magicLinkRedirect = flow?.magicLinkRedirect ?: "",
                             isWebAuthnSupported = isWebAuthnSupported,
+                            clientJson = flow?.clientParams?.toJsonObject()?.toString()?.escapeForBackticks() ?: "{}"
                         )
                     ) {}
                 }
@@ -537,6 +539,7 @@ private fun setupScript(
     ssoRedirect: String,
     magicLinkRedirect: String,
     isWebAuthnSupported: Boolean,
+    clientJson: String,
 ) = """
     
 window.descopeBridge = {}
@@ -590,6 +593,18 @@ function flowBridgeSetRefreshJwt(wc, refreshJwt) {
     }
 }
 
+function flowBridgeMergeClientJson(wc, clientJson) {
+    let client = {}
+    try {
+        client = JSON.parse(wc.getAttribute("client") || '{}')
+    } catch (e) {}
+    client = {
+        ...client,
+        ...JSON.parse(clientJson),
+    }
+    wc.setAttribute("client", JSON.stringify(client))
+}
+
 function flowBridgePrepareWebComponent(wc) {
     flowBridgeSetRefreshJwt(wc, '$refreshJwt')
       
@@ -622,6 +637,9 @@ function flowBridgePrepareWebComponent(wc) {
     wc.addEventListener('bridge', (e) => {
         flow.native(JSON.stringify(e.detail), window.location.href);
     })
+    
+    // add incoming client params to any already exiting client parameters on the web-component
+    flowBridgeMergeClientJson(wc, '$clientJson')
     
     // ensure we support old web-components without this function
     wc.lazyInit?.()
