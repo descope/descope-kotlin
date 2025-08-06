@@ -638,7 +638,7 @@ function flowBridgePrepareWebComponent(wc) {
         flow.native(JSON.stringify(e.detail), window.location.href);
     })
     
-    // add incoming client params to any already exiting client parameters on the web-component
+    // add incoming client params to any already existing client parameters on the web-component
     flowBridgeMergeClientJson(wc, '$clientJson')
     
     // ensure we support old web-components without this function
