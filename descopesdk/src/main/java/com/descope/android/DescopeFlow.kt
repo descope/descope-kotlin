@@ -33,10 +33,10 @@ class DescopeFlow {
     var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
-     * A map of inputs that will be sent to the flow webpage.
+     * An optional map of client inputs that will be provided to the flow.
      * 
-     * These inputs should conform to basic JSON types, and can be used
-     * in the flow editor to customize the flow's behavior.
+     * These values can be used in the flow editor to customize the flow's behavior
+     * during execution. The values set on the map must be valid JSON types.
      */
     var clientInputs: Map<String, Any> = emptyMap()
 
