@@ -273,7 +273,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                             ssoRedirect = pickRedirectUrl(flow?.ssoRedirect, flow?.ssoRedirectCustomScheme, useCustomSchemeFallback),
                             magicLinkRedirect = flow?.magicLinkRedirect ?: "",
                             isWebAuthnSupported = isWebAuthnSupported,
-                            clientJson = flow?.clientParams?.toJsonObject()?.toString()?.escapeForBackticks() ?: "{}"
+                            clientJson = flow?.clientInputs?.toJsonObject()?.toString()?.escapeForBackticks() ?: "{}"
                         )
                     ) {}
                 }
@@ -596,13 +596,13 @@ function flowBridgeSetRefreshJwt(wc, refreshJwt) {
 function flowBridgeMergeClientJson(wc, clientJson) {
     let client = {}
     try {
-        client = JSON.parse(wc.getAttribute("client") || '{}')
+        client = JSON.parse(wc.getAttribute('client') || '{}')
     } catch (e) {}
     client = {
         ...client,
         ...JSON.parse(clientJson),
     }
-    wc.setAttribute("client", JSON.stringify(client))
+    wc.setAttribute('client', JSON.stringify(client))
 }
 
 function flowBridgePrepareWebComponent(wc) {
