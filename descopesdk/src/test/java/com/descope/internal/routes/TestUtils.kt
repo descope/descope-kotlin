@@ -97,6 +97,11 @@ internal val mockJwtResponse = JwtServerResponse(
         givenName = "givenName",
         middleName = "middleName",
         familyName = "familyName",
+        password = true,
+        status = "disabled",
+        roleNames = listOf("role1", "role2"),
+        ssoAppIds = listOf("sso1", "sso2"),
+        oauthProviders = mapOf("google" to true, "github" to true)
     )
 )
 

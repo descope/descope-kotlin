@@ -3,6 +3,7 @@ package com.descope.internal.http
 import com.descope.internal.others.optionalMap
 import com.descope.internal.others.secToMs
 import com.descope.internal.others.stringOrEmptyAsNull
+import com.descope.internal.others.toBooleanMap
 import com.descope.internal.others.toObjectList
 import com.descope.internal.others.toStringList
 import org.json.JSONObject
@@ -54,6 +55,11 @@ internal data class UserResponse(
     val givenName: String?,
     val middleName: String?,
     val familyName: String?,
+    val password: Boolean,
+    val status: String,
+    val roleNames: List<String>,
+    val ssoAppIds: List<String>,
+    val oauthProviders: Map<String, Boolean>,
 ) {
     companion object {
         @Suppress("UNUSED_PARAMETER")
@@ -74,6 +80,11 @@ internal data class UserResponse(
                 givenName = stringOrEmptyAsNull("givenName"),
                 middleName = stringOrEmptyAsNull("middleName"),
                 familyName = stringOrEmptyAsNull("familyName"),
+                password = optBoolean("password"),
+                status = getString("status"),
+                roleNames = getJSONArray("roleNames").toStringList(),
+                ssoAppIds = getJSONArray("ssoAppIds").toStringList(),
+                oauthProviders = getJSONObject("OAuth").toBooleanMap(), 
             )
         }
     }

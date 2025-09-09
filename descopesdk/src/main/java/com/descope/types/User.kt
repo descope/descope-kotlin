@@ -56,6 +56,11 @@ import com.descope.session.DescopeSession
  * @property givenName optional user's given name.
  * @property middleName optional user's middle name.
  * @property familyName optional user's family name.
+ * @property hasPassword whether the user has a password set or not.
+ * @property status the user's status, one of 'enabled', 'disabled' or 'invited'.
+ * @property roleNames a list of role names the user is associated with. Can be empty.
+ * @property ssoAppIds a list of SSO App IDs the user is associated with. Can be empty.
+ * @property oauthProviders a list of OAuth providers the user has used. Can be empty.
  */
 data class DescopeUser(
     val userId: String,
@@ -71,4 +76,9 @@ data class DescopeUser(
     val givenName: String?,
     val middleName: String?,
     val familyName: String?,
+    val hasPassword: Boolean,
+    val status: String,
+    val roleNames: List<String>,
+    val ssoAppIds: List<String>,
+    val oauthProviders: List<String>,
 )

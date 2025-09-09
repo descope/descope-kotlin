@@ -36,6 +36,11 @@ internal fun UserResponse.convert(): DescopeUser = DescopeUser(
     givenName = givenName,
     middleName = middleName,
     familyName = familyName,
+    hasPassword = password,
+    status = status,
+    roleNames = roleNames,
+    ssoAppIds = ssoAppIds,
+    oauthProviders = oauthProviders.keys.toList(),
 )
 
 internal fun JwtServerResponse.convert(): AuthenticationResponse {

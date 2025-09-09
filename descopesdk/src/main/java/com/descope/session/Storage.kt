@@ -186,6 +186,11 @@ private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
         givenName = stringOrEmptyAsNull("givenName"),
         middleName = stringOrEmptyAsNull("middleName"),
         familyName = stringOrEmptyAsNull("familyName"),
+        hasPassword = optBoolean("hasPassword"),
+        status = stringOrEmptyAsNull("status") ?: "unknown",
+        roleNames = optJSONArray("roleNames")?.toStringList() ?: emptyList(),
+        ssoAppIds = optJSONArray("ssoAppIds")?.toStringList() ?: emptyList(),
+        oauthProviders = optJSONArray("oauthProviders")?.toStringList() ?: emptyList()
     )
 }
 
@@ -203,6 +208,11 @@ private fun DescopeUser.toJson() = JSONObject().apply {
     put("givenName", givenName)
     put("middleName", middleName)
     put("familyName", familyName)
+    put("hasPassword", hasPassword)
+    put("status", status)
+    put("roleNames", roleNames.toJsonArray())
+    put("ssoAppIds", ssoAppIds.toJsonArray())
+    put("oauthProviders", oauthProviders.toJsonArray())
 }
 
 private fun createEncryptedStore(context: Context, projectId: String, logger: DescopeLogger?): SessionStorage.Store {
