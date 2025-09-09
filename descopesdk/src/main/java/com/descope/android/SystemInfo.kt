@@ -1,16 +1,16 @@
-package com.descope.internal.http
+package com.descope.android
 
 import android.content.Context
 import android.os.Build
 
-internal interface SystemInfo {
+interface SystemInfo {
     val appName: String?
     val appVersion: String?
     val platformVersion: String
     val device: String?
 }
 
-internal class DescopeSystemInfo private constructor(context: Context) : SystemInfo {
+class DescopeSystemInfo private constructor(context: Context) : SystemInfo {
     
     override val appName: String? = try {
         context.applicationInfo.loadLabel(context.packageManager).toString()

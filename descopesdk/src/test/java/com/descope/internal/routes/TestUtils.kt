@@ -1,8 +1,8 @@
 package com.descope.internal.routes
 
+import com.descope.android.SystemInfo
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.JwtServerResponse
-import com.descope.internal.http.SystemInfo
 import com.descope.internal.http.UserResponse
 import com.descope.sdk.DescopeConfig
 import com.descope.types.SignInOptions
