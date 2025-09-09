@@ -1,6 +1,7 @@
 package com.descope.internal.others
 
 import android.util.Base64
+import com.descope.types.DescopeException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -15,7 +16,7 @@ internal fun ByteArray.toBase64(): String {
     return Base64.encodeToString(this, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
 }
 
-// JSON
+// JSON -> Map/List
 
 internal fun JSONObject.stringOrEmptyAsNull(key: String): String? = try {
     getString(key).ifEmpty { null }
@@ -54,21 +55,35 @@ internal fun JSONObject.optionalMap(key: String): Map<String, Any> = try {
     emptyMap()
 }
 
-internal fun JSONArray.toStringList(): List<String> {
-    val list = mutableListOf<String>()
+internal fun JSONObject.toBooleanMap(): Map<String, Boolean> = toTypedMap<Boolean>()
+
+internal fun JSONArray.toStringList(): List<String> = toTypedList<String>()
+
+internal fun JSONArray.toObjectList(): List<JSONObject> = toTypedList<JSONObject>()
+
+internal inline fun <reified T> JSONObject.toTypedMap(): Map<String, T> {
+    val map = mutableMapOf<String, T>()
+    keys().forEach { key ->
+        map[key] = when(val obj = get(key)) {
+            is T -> obj
+            else -> throw DescopeException.decodeError.with(desc = "JSON object expected only '${T::class.java.name}' but contains an unexpected type: '${obj.javaClass.name}'")
+        }
+    }
+    return map.toMap()
+}
+
+internal inline fun <reified T> JSONArray.toTypedList(): List<T> {
+    val list = mutableListOf<T>()
     for (i in 0 until length()) {
-        list.add(getString(i))
+        list.add(when(val obj = get(i)) {
+            is T -> obj
+            else -> throw DescopeException.decodeError.with(desc = "JSON array expected only '${T::class.java.name}' but contains an unexpected type: '${obj?.javaClass?.name}'")
+        })
     }
     return list
 }
 
-internal fun JSONArray.toObjectList(): List<JSONObject> {
-    val list = mutableListOf<JSONObject>()
-    for (i in 0 until length()) {
-        list.add(getJSONObject(i))
-    }
-    return list
-}
+// Map/List -> JSON
 
 internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
     this@toJsonArray.forEach {
