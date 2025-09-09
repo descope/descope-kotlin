@@ -88,10 +88,15 @@ private fun convertOptions(options: String): String {
     return publicKey
 }
 
-@RequiresApi(Build.VERSION_CODES.P)
-internal fun getPackageOrigin(context: Context): String {
-    val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-    val signers = packageInfo.signingInfo?.apkContentsSigners // nullable according to source code
+fun getPackageOrigin(context: Context): String {
+    @Suppress("DEPRECATION")
+    val signers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        packageInfo?.signingInfo?.apkContentsSigners // nullable according to source code
+    } else {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+        packageInfo.signatures
+    }
 
     if (signers.isNullOrEmpty()) {
         throw DescopeException.passkeyFailed.with(message = "Failed to find signing certificates")
@@ -109,7 +114,7 @@ internal fun getPackageOrigin(context: Context): String {
 }
 
 @SuppressLint("PublicKeyCredential")
-internal suspend fun performRegister(context: Context, options: String): String {
+suspend fun performRegister(context: Context, options: String): String {
     val publicKey = convertOptions(options)
     val request = CreatePublicKeyCredentialRequest(publicKey)
 
@@ -134,7 +139,7 @@ internal suspend fun performRegister(context: Context, options: String): String 
     }
 }
 
-internal suspend fun performAssertion(context: Context, options: String): String {
+suspend fun performAssertion(context: Context, options: String): String {
     val publicKey = convertOptions(options)
     val option = GetPublicKeyCredentialOption(publicKey)
     val request = GetCredentialRequest(listOf(option))
@@ -160,3 +165,4 @@ internal suspend fun performAssertion(context: Context, options: String): String
         throw DescopeException.passkeyFailed.with(message = "Unexpected failure", cause = e)
     }
 }
+
