@@ -60,6 +60,10 @@ internal data class UserResponse(
     val roleNames: List<String>,
     val ssoAppIds: List<String>,
     val oauthProviders: Map<String, Boolean>,
+    val webauthn: Boolean,
+    val totp: Boolean,
+    val saml: Boolean,
+    val scim: Boolean,
 ) {
     companion object {
         @Suppress("UNUSED_PARAMETER")
@@ -84,7 +88,11 @@ internal data class UserResponse(
                 status = getString("status"),
                 roleNames = getJSONArray("roleNames").toStringList(),
                 ssoAppIds = getJSONArray("ssoAppIds").toStringList(),
-                oauthProviders = getJSONObject("OAuth").toBooleanMap(), 
+                oauthProviders = getJSONObject("OAuth").toBooleanMap(),
+                webauthn = optBoolean("webauthn"),
+                totp = optBoolean("TOTP"),
+                saml = optBoolean("SAML"),
+                scim = optBoolean("SCIM"),
             )
         }
     }

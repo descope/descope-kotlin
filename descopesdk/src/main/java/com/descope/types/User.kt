@@ -2,6 +2,7 @@ package com.descope.types
 
 import android.net.Uri
 import com.descope.session.DescopeSession
+import java.util.Locale
 
 /**
  * The `DescopeUser` data class represents an existing user in Descope.
@@ -56,11 +57,12 @@ import com.descope.session.DescopeSession
  * @property givenName optional user's given name.
  * @property middleName optional user's middle name.
  * @property familyName optional user's family name.
- * @property hasPassword whether the user has a password set or not.
  * @property status the user's status, one of 'enabled', 'disabled' or 'invited'.
- * @property roleNames a list of role names the user is associated with. Can be empty.
- * @property ssoAppIds a list of SSO App IDs the user is associated with. Can be empty.
- * @property oauthProviders a list of OAuth providers the user has used. Can be empty.
+ * @property authentication details about the authentication methods the user has set up.
+ * @property authorization details about the authorization settings for this user.
+ * @property isUpdateRequired when true, indicates the user model has been updated and requires
+ * an update from the data available on the server. It is advised to call the `auth.me` API
+ * to refresh the user details.
  */
 data class DescopeUser(
     val userId: String,
@@ -76,9 +78,52 @@ data class DescopeUser(
     val givenName: String?,
     val middleName: String?,
     val familyName: String?,
-    val hasPassword: Boolean,
-    val status: String,
-    val roleNames: List<String>,
-    val ssoAppIds: List<String>,
-    val oauthProviders: List<String>,
-)
+    val status: Status,
+    val authentication: Authentication,
+    val authorization: Authorization,
+    val isUpdateRequired: Boolean,
+) {
+
+    enum class Status{
+        Invited,
+        Enabled,
+        Disabled;
+
+        fun serialize(): String = name.lowercase()
+        
+        companion object {
+            fun deserialize(value: String): Status =
+                valueOf(value.lowercase().replaceFirstChar { it.titlecase(Locale.ROOT) })
+        }
+    }
+    
+    /**
+     * Details about the authentication methods the user has set up.
+     * 
+     * @property passkey whether the user has passkey (WebAuthn) authentication set up.
+     * @property password whether the user has a password set up.
+     * @property totp whether the user has TOTP (authenticator app) set up.
+     * @property oauth the OAuth providers the user has used to sign in. Can be empty.
+     * @property sso whether the user has SSO set up.
+     * @property scim whether SCIM provisioning is enabled for this user.
+     */
+    data class Authentication(
+        val passkey: Boolean,
+        val password: Boolean,
+        val totp: Boolean,
+        val oauth: Set<String>,
+        val sso: Boolean,
+        val scim: Boolean,
+    )
+    
+    /**
+     * Details about the authorization settings for this user.
+     * 
+     * @property roles the names of the roles assigned to this user. Can be empty.
+     * @property ssoAppIds the IDs of the SSO Apps assigned to this user. Can be empty.
+     */
+    data class Authorization(
+        val roles: Set<String>,
+        val ssoAppIds: Set<String>,
+    )
+}

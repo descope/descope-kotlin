@@ -24,6 +24,12 @@ internal fun JSONObject.stringOrEmptyAsNull(key: String): String? = try {
     null
 }
 
+internal fun JSONObject.booleanOrNull(key: String): Boolean? = try {
+    getBoolean(key)
+} catch (_: JSONException) {
+    null
+}
+
 internal fun JSONObject.toMap(): Map<String, Any> {
     val map = mutableMapOf<String, Any>()
     keys().forEach { key ->
@@ -59,6 +65,8 @@ internal fun JSONObject.toBooleanMap(): Map<String, Boolean> = toTypedMap<Boolea
 
 internal fun JSONArray.toStringList(): List<String> = toTypedList<String>()
 
+internal fun JSONArray.toStringSet(): Set<String> = toTypedSet<String>()
+
 internal fun JSONArray.toObjectList(): List<JSONObject> = toTypedList<JSONObject>()
 
 internal inline fun <reified T> JSONObject.toTypedMap(): Map<String, T> {
@@ -83,6 +91,17 @@ internal inline fun <reified T> JSONArray.toTypedList(): List<T> {
     return list
 }
 
+internal inline fun <reified T> JSONArray.toTypedSet(): Set<T> {
+    val set = mutableSetOf<T>()
+    for (i in 0 until length()) {
+        set.add(when(val obj = get(i)) {
+            is T -> obj
+            else -> throw DescopeException.decodeError.with(desc = "JSON array expected only '${T::class.java.name}' but contains an unexpected type: '${obj?.javaClass?.name}'")
+        })
+    }
+    return set
+}
+
 // Map/List -> JSON
 
 internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
@@ -90,6 +109,18 @@ internal fun List<*>.toJsonArray(): JSONArray = JSONArray().apply {
         when {
             it is Map<*, *> -> put(it.toJsonObject())
             it is List<*> -> put(it.toJsonArray())
+            it is Set<*> -> put(it.toJsonArray())
+            it != null -> put(it)
+        }
+    }
+}
+
+internal fun Set<*>.toJsonArray(): JSONArray = JSONArray().apply {
+    this@toJsonArray.forEach {
+        when {
+            it is Map<*, *> -> put(it.toJsonObject())
+            it is List<*> -> put(it.toJsonArray())
+            it is Set<*> -> put(it.toJsonArray())
             it != null -> put(it)
         }
     }
@@ -102,6 +133,7 @@ internal fun Map<*, *>.toJsonObject(): JSONObject = JSONObject().apply {
         when {
             value is Map<*, *> -> put(key, value.toJsonObject())
             value is List<*> -> put(key, value.toJsonArray())
+            value is Set<*> -> put(key, value.toJsonArray())
             value != null -> put(key, value)
         }
     }
