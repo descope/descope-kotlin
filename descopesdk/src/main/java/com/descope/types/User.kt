@@ -60,9 +60,13 @@ import java.util.Locale
  * @property status the user's status, one of 'enabled', 'disabled' or 'invited'.
  * @property authentication details about the authentication methods the user has set up.
  * @property authorization details about the authorization settings for this user.
- * @property isUpdateRequired when true, indicates the user model has been updated and requires
- * an update from the data available on the server. It is advised to call the `auth.me` API
- * to refresh the user details.
+ * @property isUpdateRequired This flag indicates that the [DescopeUser] of the signed in user was saved by an older
+ * version of the Descope SDK, and some fields that were added to the [DescopeUser] class
+ * might show empty values (`false`, `null`, etc) as placeholders, until the user is loaded
+ * from the server again.
+ * The scenario described above can happen when deploying an app update with a new version of
+ * the Descope SDK, in which case it's recommended to call `Descope.auth.me()` to update the
+ * user data, after which this flag will become `false`.
  */
 data class DescopeUser(
     val userId: String,
