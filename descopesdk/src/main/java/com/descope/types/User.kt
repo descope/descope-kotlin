@@ -2,6 +2,7 @@ package com.descope.types
 
 import android.net.Uri
 import com.descope.session.DescopeSession
+import java.util.Locale
 
 /**
  * The `DescopeUser` data class represents an existing user in Descope.
@@ -56,6 +57,16 @@ import com.descope.session.DescopeSession
  * @property givenName optional user's given name.
  * @property middleName optional user's middle name.
  * @property familyName optional user's family name.
+ * @property status the user's status, one of 'enabled', 'disabled' or 'invited'.
+ * @property authentication details about the authentication methods the user has set up.
+ * @property authorization details about the authorization settings for this user.
+ * @property isUpdateRequired This flag indicates that the [DescopeUser] of the signed in user was saved by an older
+ * version of the Descope SDK, and some fields that were added to the [DescopeUser] class
+ * might show empty values (`false`, `null`, etc) as placeholders, until the user is loaded
+ * from the server again.
+ * The scenario described above can happen when deploying an app update with a new version of
+ * the Descope SDK, in which case it's recommended to call `Descope.auth.me()` to update the
+ * user data, after which this flag will become `false`.
  */
 data class DescopeUser(
     val userId: String,
@@ -71,4 +82,52 @@ data class DescopeUser(
     val givenName: String?,
     val middleName: String?,
     val familyName: String?,
-)
+    val status: Status,
+    val authentication: Authentication,
+    val authorization: Authorization,
+    val isUpdateRequired: Boolean,
+) {
+
+    enum class Status{
+        Invited,
+        Enabled,
+        Disabled;
+
+        fun serialize(): String = name.lowercase()
+        
+        companion object {
+            fun deserialize(value: String): Status =
+                valueOf(value.lowercase().replaceFirstChar { it.titlecase(Locale.ROOT) })
+        }
+    }
+    
+    /**
+     * Details about the authentication methods the user has set up.
+     * 
+     * @property passkey whether the user has passkey (WebAuthn) authentication set up.
+     * @property password whether the user has a password set up.
+     * @property totp whether the user has TOTP (authenticator app) set up.
+     * @property oauth the OAuth providers the user has used to sign in. Can be empty.
+     * @property sso whether the user has SSO set up.
+     * @property scim whether SCIM provisioning is enabled for this user.
+     */
+    data class Authentication(
+        val passkey: Boolean,
+        val password: Boolean,
+        val totp: Boolean,
+        val oauth: Set<String>,
+        val sso: Boolean,
+        val scim: Boolean,
+    )
+    
+    /**
+     * Details about the authorization settings for this user.
+     * 
+     * @property roles the names of the roles assigned to this user. Can be empty.
+     * @property ssoAppIds the IDs of the SSO Apps assigned to this user. Can be empty.
+     */
+    data class Authorization(
+        val roles: Set<String>,
+        val ssoAppIds: Set<String>,
+    )
+}

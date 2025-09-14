@@ -34,6 +34,15 @@ class AuthTest {
             givenName = null,
             middleName = null,
             familyName = null,
+            password = false,
+            status = "enabled",
+            roleNames = emptyList(),
+            ssoAppIds = emptyList(),
+            oauthProviders = emptyMap(),
+            webauthn = false,
+            totp = false,
+            saml = false,
+            scim = false,
         )
         val response = auth.me("refreshJwt")
         assertEquals("name", response.name)

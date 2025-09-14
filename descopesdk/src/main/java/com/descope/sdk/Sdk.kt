@@ -5,8 +5,8 @@ package com.descope.sdk
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Looper
+import com.descope.android.DescopeSystemInfo
 import com.descope.internal.http.DescopeClient
-import com.descope.internal.http.DescopeSystemInfo
 import com.descope.internal.others.ConsoleLogger
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
@@ -78,6 +78,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         const val NAME = "DescopeAndroid"
 
         /** The Descope SDK version */
-        const val VERSION = "0.17.0"
+        const val VERSION = "0.17.1"
     }
 }

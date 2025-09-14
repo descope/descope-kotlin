@@ -54,13 +54,17 @@ internal suspend fun nativeAuthorization(context: Context, responseJson: JSONObj
 }
 
 internal suspend fun nativeAuthorization(context: Context, startResponse: OAuthNativeStartServerResponse): NativeAuthorizationResponse {
-    if (!startResponse.implicit) {
+    val identityToken = performNativeAuthorization(context, startResponse.clientId, startResponse.nonce, startResponse.implicit)
+    return NativeAuthorizationResponse(startResponse.stateId, identityToken)
+}
+
+suspend fun performNativeAuthorization(context: Context, clientId: String, nonce: String?, implicit: Boolean): String {
+    if (!implicit) {
         throw DescopeException.oauthNativeFailed.with(message = "OAuth provider configuration must allow 'implicit' grant type")
     }
 
-    val authorization = performAuthorization(context, startResponse.clientId, startResponse.nonce)
-    val identityToken = parseCredential(authorization.credential)
-    return NativeAuthorizationResponse(startResponse.stateId, identityToken)
+    val authorization = performAuthorization(context, clientId, nonce)
+    return parseCredential(authorization.credential)
 }
 
 private suspend fun performAuthorization(context: Context, clientId: String, nonce: String?): GetCredentialResponse {

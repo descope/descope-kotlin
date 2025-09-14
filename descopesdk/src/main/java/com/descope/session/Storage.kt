@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.descope.internal.others.booleanOrNull
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.optionalMap
@@ -12,6 +13,7 @@ import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonArray
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.toStringList
+import com.descope.internal.others.toStringSet
 import com.descope.internal.others.tryOrNull
 import com.descope.sdk.DescopeLogger
 import com.descope.types.DescopeUser
@@ -128,7 +130,7 @@ class SessionStorage(context: Context, private val projectId: String, logger: De
             get() = JSONObject().apply {
                 put("sessionJwt", sessionJwt)
                 put("refreshJwt", refreshJwt)
-                put("user", user.toJson())
+                put("user", user.serialize())
             }.toString()
 
         companion object {
@@ -171,7 +173,25 @@ class EncryptedSharedPrefs(name: String, context: Context) : SessionStorage.Stor
 
 // Serialization
 
-private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
+internal fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
+    val authentication = optJSONObject("authentication").let { json ->
+        DescopeUser.Authentication(
+            password = json?.optBoolean("password") ?: false,
+            passkey = json?.optBoolean("passkey") ?: false,
+            totp = json?.optBoolean("totp") ?: false,
+            oauth = json?.optJSONArray("oauth")?.toStringSet() ?: emptySet(),
+            sso = json?.optBoolean("sso") ?: false,
+            scim = json?.optBoolean("scim") ?: false,
+        )
+    }
+    
+    val authorization = optJSONObject("authorization").let { json ->
+        DescopeUser.Authorization(
+            roles = json?.optJSONArray("roles")?.toStringSet() ?: emptySet(),
+            ssoAppIds = json?.optJSONArray("ssoAppIds")?.toStringSet() ?: emptySet(),
+        )
+    }
+    
     DescopeUser(
         userId = getString("userId"),
         loginIds = getJSONArray("loginIds").toStringList(),
@@ -186,10 +206,14 @@ private fun deserializeDescopeUser(json: JSONObject): DescopeUser = json.run {
         givenName = stringOrEmptyAsNull("givenName"),
         middleName = stringOrEmptyAsNull("middleName"),
         familyName = stringOrEmptyAsNull("familyName"),
+        status = DescopeUser.Status.deserialize(stringOrEmptyAsNull("status") ?: "enabled"),
+        authentication = authentication,
+        authorization = authorization,
+        isUpdateRequired = booleanOrNull("isUpdateRequired") ?: true, // if the flag doesn't exist we've got old data without the new fields
     )
 }
 
-private fun DescopeUser.toJson() = JSONObject().apply {
+internal fun DescopeUser.serialize() = JSONObject().apply {
     put("userId", userId)
     put("loginIds", loginIds.toJsonArray())
     put("createdAt", createdAt)
@@ -203,8 +227,25 @@ private fun DescopeUser.toJson() = JSONObject().apply {
     put("givenName", givenName)
     put("middleName", middleName)
     put("familyName", familyName)
+    put("authentication", authentication.toJsonObject())
+    put("authorization", authorization.toJsonObject())
+    put("status", status.serialize())
+    put("isUpdateRequired", isUpdateRequired)
 }
 
+private fun DescopeUser.Authentication.toJsonObject() = JSONObject().apply {
+        put("password", password)
+        put("passkey", passkey)
+        put("totp", totp)
+        put("oauth", oauth.toJsonArray())
+        put("sso", sso)
+        put("scim", scim)
+    }
+
+private fun DescopeUser.Authorization.toJsonObject() = JSONObject().apply {
+        put("roles", roles.toJsonArray())
+        put("ssoAppIds", ssoAppIds.toJsonArray())
+    }
 private fun createEncryptedStore(context: Context, projectId: String, logger: DescopeLogger?): SessionStorage.Store {
     try {
         val storage = EncryptedSharedPrefs(projectId, context)
