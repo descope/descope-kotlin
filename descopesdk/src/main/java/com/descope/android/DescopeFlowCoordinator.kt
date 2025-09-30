@@ -454,9 +454,10 @@ document.head.appendChild(element)
         try {
             val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
             // take tokens from cookies if missing
-            val cookieString = CookieManager.getInstance().getCookie(url)
-            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(cookieString, name = SESSION_COOKIE_NAME)
-            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(cookieString, name = REFRESH_COOKIE_NAME)
+            val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
+            val urlCookieString = CookieManager.getInstance().getCookie(url)
+            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(SESSION_COOKIE_NAME, respCookieString, urlCookieString)
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
             val authResponse = jwtServerResponse.convert()
             logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
@@ -654,12 +655,13 @@ private fun String.escapeForBackticks() = replace("\\", "\\\\")
 
 // Cookies
 
-internal fun findJwtInCookies(cookieString: String?, name: String): String? {
-    // split and aggregate all cookies 
-    val cookies = mutableListOf<HttpCookie>().apply {
+internal fun findJwtInCookies(name: String, vararg cookieStrings: String?): String? {
+    val cookies = mutableListOf<HttpCookie>()
+    cookieStrings.forEach { cookieString ->
+        // split and aggregate all cookies 
         cookieString?.split("; ")?.forEach {
             try {
-                addAll(HttpCookie.parse(it))
+                cookies.addAll(HttpCookie.parse(it))
             } catch (_: Exception) {
             }
         }
