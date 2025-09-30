@@ -45,7 +45,7 @@ class TokenTest {
             cookies.add(HttpCookie("name$i", "value$i"))
         }
         cookies.add(HttpCookie(REFRESH_COOKIE_NAME, jwtForP123))
-        val refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = REFRESH_COOKIE_NAME)
+        val refreshJwt = findJwtInCookies(name = REFRESH_COOKIE_NAME, cookies.joinToString(separator = "; "))
         assertEquals(jwtForP123, refreshJwt)
     }
 
@@ -58,7 +58,7 @@ class TokenTest {
         }
         cookies.add(HttpCookie(REFRESH_COOKIE_NAME, jwtForP123))
 
-        val refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = REFRESH_COOKIE_NAME)
+        val refreshJwt = findJwtInCookies(name = REFRESH_COOKIE_NAME, cookies.joinToString(separator = "; "))
         assertEquals(jwtForP456, refreshJwt)
     }
 
@@ -71,7 +71,7 @@ class TokenTest {
         }
         cookies.add(HttpCookie(SESSION_COOKIE_NAME, jwtForP123))
 
-        var refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = SESSION_COOKIE_NAME)
+        var refreshJwt = findJwtInCookies(name = SESSION_COOKIE_NAME, cookies.joinToString(separator = "; "))
         assertEquals(laterJwtForP123, refreshJwt)
 
         // try again with a different order
@@ -82,8 +82,44 @@ class TokenTest {
         }
         cookies.add(HttpCookie(SESSION_COOKIE_NAME, laterJwtForP123))
 
-        refreshJwt = findJwtInCookies(cookies.joinToString(separator = "; "), name = SESSION_COOKIE_NAME)
+        refreshJwt = findJwtInCookies(name = SESSION_COOKIE_NAME, cookies.joinToString(separator = "; "))
         assertEquals(laterJwtForP123, refreshJwt)
     }
 
+    @Test
+    fun cookies_oneDsr_multipleStrings() {
+        val cookies = mutableListOf<HttpCookie>()
+        for (i in 0 until 10) {
+            cookies.add(HttpCookie("name$i", "value$i"))
+        }
+        cookies.add(HttpCookie(REFRESH_COOKIE_NAME, jwtForP123))
+        val moreCookies = mutableListOf<HttpCookie>()
+        for (i in 10 until 20) {
+            moreCookies.add(HttpCookie("name$i", "value$i"))
+        }
+        val refreshJwt = findJwtInCookies(name = REFRESH_COOKIE_NAME, moreCookies.joinToString(separator = "; "), cookies.joinToString(separator = "; "))
+        assertEquals(jwtForP123, refreshJwt)
+    }
+
+    @Test
+    fun cookies_multipleDs_multipleStrings() {
+        val cookies = mutableListOf<HttpCookie>()
+        cookies.add(HttpCookie(SESSION_COOKIE_NAME, laterJwtForP123))
+        for (i in 0 until 10) {
+            cookies.add(HttpCookie("name$i", "value$i"))
+        }
+
+        val moreCookies = mutableListOf<HttpCookie>()
+        moreCookies.add(HttpCookie(SESSION_COOKIE_NAME, laterJwtForP123))
+        for (i in 0 until 10) {
+            moreCookies.add(HttpCookie("name$i", "value$i"))
+        }
+        moreCookies.add(HttpCookie(SESSION_COOKIE_NAME, jwtForP123))
+        var refreshJwt = findJwtInCookies(name = SESSION_COOKIE_NAME, cookies.joinToString(separator = "; "), moreCookies.joinToString(separator = "; "))
+        assertEquals(laterJwtForP123, refreshJwt)
+
+        // try again with a different order
+        refreshJwt = findJwtInCookies(name = SESSION_COOKIE_NAME, moreCookies.joinToString(separator = "; "), cookies.joinToString(separator = "; "))
+        assertEquals(laterJwtForP123, refreshJwt)
+    }
 }

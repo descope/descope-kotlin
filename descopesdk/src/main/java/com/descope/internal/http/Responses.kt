@@ -17,6 +17,8 @@ internal data class JwtServerResponse(
     var refreshJwt: String?,
     val user: UserResponse?,
     val firstSeen: Boolean,
+    val cookieDomain: String,
+    val cookiePath: String,
 ) {
     companion object {
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
@@ -36,6 +38,8 @@ internal data class JwtServerResponse(
                 refreshJwt = stringOrEmptyAsNull("refreshJwt") ?: refreshJwt,
                 user = optJSONObject("user")?.run { UserResponse.fromJson(this) },
                 firstSeen = optBoolean("firstSeen"),
+                cookieDomain = stringOrEmptyAsNull("cookieDomain") ?: "",
+                cookiePath = stringOrEmptyAsNull("cookiePath") ?: "",
             )
         }
     }
