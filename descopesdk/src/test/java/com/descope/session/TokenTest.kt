@@ -115,9 +115,6 @@ class TokenTest {
             moreCookies.add(HttpCookie("name$i", "value$i"))
         }
         moreCookies.add(HttpCookie(SESSION_COOKIE_NAME, jwtForP123))
-        
-        
-
         var refreshJwt = findJwtInCookies(name = SESSION_COOKIE_NAME, cookies.joinToString(separator = "; "), moreCookies.joinToString(separator = "; "))
         assertEquals(laterJwtForP123, refreshJwt)
 
