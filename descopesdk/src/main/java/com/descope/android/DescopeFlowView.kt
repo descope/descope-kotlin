@@ -2,13 +2,16 @@
 
 package com.descope.android
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.WebView
 import com.descope.Descope
+import com.descope.internal.others.with
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
@@ -52,6 +55,7 @@ import com.descope.types.DescopeException
  * **Usage**
  *
  * Add a [DescopeFlowView] to your UI via XML, compose, or code.
+ * **IMPORTANT**: When inflating programmatically, make sure to provide an Activity context.
  *
  * Running a flow requires providing an instance of [DescopeFlow] to the [DescopeFlowView].
  * The [DescopeFlow] object defines where and how a flow is run.
@@ -126,7 +130,9 @@ class DescopeFlowView : ViewGroup {
     }
 
     private fun initView() {
-        val webView = WebView(context)
+        // make sure the webview uses an activity context to inflate itself
+        val activity = context.findActivity() ?: throw DescopeException.invalidArguments.with("DescopeFlowView must be created with an Activity context")
+        val webView = WebView(activity)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
         this.flowCoordinator = DescopeFlowCoordinator(webView)
     }
@@ -238,4 +244,13 @@ class DescopeFlowView : ViewGroup {
         startFlow(flow)
     }
     
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
