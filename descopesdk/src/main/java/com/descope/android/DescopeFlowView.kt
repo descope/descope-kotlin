@@ -113,26 +113,24 @@ class DescopeFlowView : ViewGroup {
 
     private lateinit var flowCoordinator: DescopeFlowCoordinator
 
-    constructor(context: Context) : super(context, null, 0) {
-        initView()
+    constructor(context: Context) : super(context) {
+        initFlowView()
     }
 
-    constructor(context: Context, attrs: AttributeSet) : super(context, attrs, 0) {
-        initView()
+    constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
+        initFlowView()
     }
 
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
-        initView()
+        initFlowView()
     }
 
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int, defStyleRes: Int) : super(context, attrs, defStyleAttr, defStyleRes) {
-        initView()
+        initFlowView()
     }
 
-    private fun initView() {
-        // make sure the webview uses an activity context to inflate itself
-        val activity = context.findActivity() ?: throw DescopeException.invalidArguments.with("DescopeFlowView must be created with an Activity context")
-        val webView = WebView(activity)
+    private fun initFlowView() {
+        val webView = WebView(context)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
         this.flowCoordinator = DescopeFlowCoordinator(webView)
     }
@@ -237,6 +235,39 @@ class DescopeFlowView : ViewGroup {
         DoNothing,
     }
     
+    // Warm up
+    
+    companion object {
+        /**
+         * Prepares the Android [WebView] class for use by [DescopeFlowView] ahead of time.
+         * 
+         * This function is experimental. Calling it is strictly optional, but it might improve
+         * the initial flow loading time on some devices, and it might help workaround some
+         * internal Android bugs (e.g., https://issuetracker.google.com/issues/447973113 ).
+         * 
+         * You can call this function when you expect your app to be idle, for example,
+         * in a home screen or splash screen [Activity]'s `onStart()` method. Alternatively,
+         * if you're using Jetpack Compose you can add a method such as the one below and
+         * call it somewhere in your code:
+         * 
+         *     @Composable
+         *     fun warmupFlowView() {
+         *         val context = LocalContext.current
+         *         LaunchedEffect(Unit) {
+         *             delay(1000)
+         *             DescopeFlowView.warmup(context)
+         *         }
+         *     }
+         * 
+         * By default, calling this function schedules the actual WebView warmup to happen when
+         * the main thread is idle, unless the `immediately` parameter is set to `true`. It's safe
+         * to call this function multiple times as subsequent calls do nothing.
+         */
+        fun warmup(context: Context, immediately: Boolean = false) {
+            WebViewUtils.warmup(context, immediately)
+        }
+    }
+    
     // Deprecated
 
     @Deprecated("Use startFlow instead", replaceWith = ReplaceWith("startFlow(flow)"))
@@ -244,13 +275,4 @@ class DescopeFlowView : ViewGroup {
         startFlow(flow)
     }
     
-}
-
-private fun Context.findActivity(): Activity? {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    return null
 }
