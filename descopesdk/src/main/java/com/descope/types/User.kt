@@ -118,7 +118,11 @@ data class DescopeUser(
         val oauth: Set<String>,
         val sso: Boolean,
         val scim: Boolean,
-    )
+    ) {
+        internal companion object {
+            val placeholder = Authentication(false, false, false, emptySet(), false, false)
+        }
+    }
     
     /**
      * Details about the authorization settings for this user.
@@ -129,5 +133,26 @@ data class DescopeUser(
     data class Authorization(
         val roles: Set<String>,
         val ssoAppIds: Set<String>,
-    )
+    ) {
+        internal companion object {
+            val placeholder = Authorization(emptySet(), emptySet())
+        }
+    }
+    
+    companion object {
+        /**
+         * A placeholder [DescopeUser] value.
+         * 
+         * This can be useful in some circumstances, such as an app that only keeps the JWT values
+         * it gets after the user authenticates but needs to create a [DescopeSession] value.
+         * 
+         * If your code ends up accessing any of the [DescopeUser] fields in the [DescopeSession]
+         * then make sure to call `Descope.auth.me()` to get an actual [DescopeUser] value and
+         * update your session by calling [DescopeSession.updateUser].
+         * 
+         * You can check if a [DescopeSession] has a valid [DescopeSession.user] field by checking
+         * if the [isUpdateRequired] property is `false`.
+         */
+        val placeholder = DescopeUser("", emptyList(), 0, null, null, null, false, null, false, emptyMap(), null, null, null, Status.Enabled, Authentication.placeholder, Authorization.placeholder, true)
+    }
 }
