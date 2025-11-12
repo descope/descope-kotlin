@@ -704,7 +704,7 @@ interface DescopeSso {
  * authentication view is not being displayed.
  * 
  * - **Important**: Before authentication via passkeys is possible, some set up is required.
- * Please follow the [Add support for Digital Asset Links](https://developer.android.com/training/sign-in/passkeys#add-support-dal)
+ * Please follow the [Add support for Digital Asset Links](https://developer.android.com/identity/credential-manager/prerequisites)
  * setup, as described in the official Google docs.
  */
 interface DescopePasskey {

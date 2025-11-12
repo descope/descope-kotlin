@@ -9,7 +9,7 @@ written for Android. You can read more on the [Descope Website](https://descope.
 Add the following to your `build.gradle` dependencies:
 
 ```groovy
-implementation 'com.descope:descope-kotlin:0.17.3'
+implementation 'com.descope:descope-kotlin:0.17.4'
 ```
 
 ## Quickstart
@@ -489,7 +489,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
 Users can authenticate by creating or using a [passkey](https://fidoalliance.org/passkeys/).
 Configure your Passkey/WebAuthn settings on the [Descope console](https://app.descope.com/settings/authentication/webauthn).
 Make sure it is enabled and that the top level domain is configured correctly.
-After that, go through the [Add support for Digital Asset Links](https://developer.android.com/training/sign-in/passkeys#add-support-dal)
+After that, go through the [Add support for Digital Asset Links](https://developer.android.com/identity/credential-manager/prerequisites)
 setup, as described in the official Google docs, and complete the asset links and manifest preparations.
 
 **Note:** The passkey operations are all suspending functions that perform
