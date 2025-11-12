@@ -99,12 +99,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
             fun onFound(data: String) {
                 logger.info("Received found event")
                 val attributes = JSONObject(data)
-                handleFound(attributes)
+                handler.post {
+                    handleFound(attributes)
+                }
             }
             
             @JavascriptInterface
             fun onReady(tag: String) {
-                handleReady(tag)
+                handler.post {
+                    handleReady(tag)
+                }
             }
 
             @JavascriptInterface
@@ -444,14 +448,12 @@ document.head.appendChild(element)
 
     private fun handleReady(tag: String) {
         if (ensureState(Started)) return
-        handler.post {
-            logger.info("Flow is ready ($tag)")
-            startTimer()
-            state = Ready
-            attempts = 0
-            executeHooks(Event.Ready)
-            listener?.onReady()
-        }
+        logger.info("Flow is ready ($tag)")
+        startTimer()
+        state = Ready
+        attempts = 0
+        executeHooks(Event.Ready)
+        listener?.onReady()
     }
 
     private fun handleError(e: DescopeException) {
