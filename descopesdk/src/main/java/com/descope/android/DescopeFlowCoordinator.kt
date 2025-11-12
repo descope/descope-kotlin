@@ -649,15 +649,15 @@ window.descopeBridge = {
             }
 
             this.component.addEventListener('bridge', (event) => {
-                flow.native(JSON.stringify(e.detail), window.location.href)
+                flow.native(JSON.stringify(event.detail), window.location.href)
             })
 
             this.component.addEventListener('error', (event) => {
-                flow.onError(JSON.stringify(e.detail))
+                flow.onError(JSON.stringify(event.detail))
             })
 
             this.component.addEventListener('success', (event) => {
-                flow.onSuccess(e.detail ? JSON.stringify(e.detail) : null, window.location.href)
+                flow.onSuccess(event.detail ? JSON.stringify(event.detail) : null, window.location.href)
             })
 
             // ensure we support old web-components without this function
