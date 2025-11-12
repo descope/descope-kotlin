@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package com.descope.android
 
 import android.webkit.WebView

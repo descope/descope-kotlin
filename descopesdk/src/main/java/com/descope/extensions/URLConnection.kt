@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package com.descope.extensions
 
 import com.descope.session.DescopeSession
