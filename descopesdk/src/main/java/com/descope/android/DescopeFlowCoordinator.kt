@@ -585,6 +585,7 @@ window.descopeBridge = {
         appName: ${systemInfo.appName.javaScriptLiteralString()},
         appVersion: ${systemInfo.appVersion.javaScriptLiteralString()}, 
         device: ${systemInfo.device.javaScriptLiteralString()},
+        webauthn: $isWebAuthnSupported,
     },
 
     abortFlow(reason) {
@@ -671,7 +672,6 @@ window.descopeBridge = {
                 flow.onError('The flow is using an unsupported web component version')
                 return
             }
-            this.component.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
             this.disableTouchInteractions()
             flow.onReady(tag)
         },
