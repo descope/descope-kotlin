@@ -27,7 +27,6 @@ enum class DeliveryMethod {
 }
 
 /** The provider to use in an OAuth flow. */
-@Suppress("unused")
 data class OAuthProvider(val name: String) {
     companion object {
         val Facebook = OAuthProvider("facebook")

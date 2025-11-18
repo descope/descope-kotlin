@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
@@ -37,10 +36,12 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
+import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.getPackageOrigin
+import com.descope.internal.routes.isWebAuthnSupported
 import com.descope.internal.routes.nativeAuthorization
 import com.descope.internal.routes.performAssertion
 import com.descope.internal.routes.performRegister
@@ -77,6 +78,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
     private val logger: DescopeLogger?
         get() = sdk?.client?.config?.logger
+    private val context: Context
+        get() = webView.context
     private val currentSession: DescopeSession?
         get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
     private var currentFlowUrl: Uri? = null
@@ -84,15 +87,28 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private var startedAt: Long = 0L
     private var attempts: Int = 0
     private var loadFailure: Boolean = false
+    private var refreshCookieName = REFRESH_COOKIE_NAME
 
     init {
         webView.settings.javaScriptEnabled = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.domStorageEnabled = true
+
         webView.addJavascriptInterface(object {
             @JavascriptInterface
+            fun onFound(data: String) {
+                logger.info("Received found event")
+                val attributes = JSONObject(data)
+                handler.post {
+                    handleFound(attributes)
+                }
+            }
+            
+            @JavascriptInterface
             fun onReady(tag: String) {
-                handleReady(tag)
+                handler.post {
+                    handleReady(tag)
+                }
             }
 
             @JavascriptInterface
@@ -219,7 +235,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
                     // we call the callback even when we fail unless the user canceled the operation
                     if (!canceled) {
-                        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${nativeResponse.toString().escapeForBackticks()}`)") {}
+                        call("handleResponse", type, nativeResponse.toString())
                     }
                 }
             }
@@ -260,23 +276,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 }
                 alreadySetUp = true
                 handleLoaded()
-                view?.run {
-                    val isWebAuthnSupported = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                    val origin = if (isWebAuthnSupported) getPackageOrigin(context) else ""
-                    val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
-                    evaluateJavascript(
-                        setupScript(
-                            refreshJwt = currentSession?.refreshJwt ?: "",
-                            origin = origin,
-                            oauthNativeProvider = flow?.oauthNativeProvider?.name ?: "",
-                            oauthRedirect = pickRedirectUrl(flow?.oauthRedirect, flow?.oauthRedirectCustomScheme, useCustomSchemeFallback),
-                            ssoRedirect = pickRedirectUrl(flow?.ssoRedirect, flow?.ssoRedirectCustomScheme, useCustomSchemeFallback),
-                            magicLinkRedirect = flow?.magicLinkRedirect ?: "",
-                            isWebAuthnSupported = isWebAuthnSupported,
-                            clientJson = flow?.clientInputs?.toJsonObject()?.toString()?.escapeForBackticks() ?: "{}"
-                        )
-                    ) {}
-                }
+                
+                val script = makeSetupScript(DescopeSystemInfo.getInstance(context))
+                view?.evaluateJavascript(script, {})
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -328,27 +330,18 @@ class DescopeFlowCoordinator(val webView: WebView) {
     // Public API
 
     fun runJavaScript(code: String) {
-        val javascript = anonymousFunction(code)
-        webView.evaluateJavascript(javascript) {}
+        webView.evaluateJavascript(code.javaScriptAnonymousFunction(), {})
     }
 
     fun addStyles(css: String) {
         runJavaScript(
             """
-const styles = `${css.escapeForBackticks()}`
+const styles = ${css.javaScriptLiteralString()}
 const element = document.createElement('style')
 element.textContent = styles
 document.head.appendChild(element)
 """
         )
-    }
-
-    private fun anonymousFunction(body: String): String {
-        return """
-            (function() {
-                $body
-            })()
-        """
     }
 
     // Internal API
@@ -374,8 +367,45 @@ document.head.appendChild(element)
         activityHelper.closeCustomTab(webView.context)
         val response = JSONObject().apply { put("url", deepLink.toString()) }
         val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
-        webView.evaluateJavascript("document.getElementsByTagName('descope-wc')[0]?.nativeResume('$type', `${response.toString().escapeForBackticks()}`)") {}
+        call("handleResponse", type, response.toString())
     }
+    
+    // State
+    
+    private fun initialize() {
+        val flow = flow ?: return
+
+        val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
+        
+        val origin = try {
+            if (isWebAuthnSupported) getPackageOrigin(context) else ""
+        } catch (_: Exception) {
+            ""
+        }
+        
+        val refreshJwt = currentSession?.refreshJwt ?: ""
+        val oauthProvider = flow.oauthNativeProvider?.name ?: ""
+        val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
+        val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
+        val magicLinkRedirect = flow.magicLinkRedirect ?: ""
+        
+        val nativeOptions = JSONObject().apply {
+            put("platform", "android")
+            put("bridgeVersion", 1)
+            put("oauthProvider", oauthProvider)
+            put("oauthRedirect", oauthRedirect)
+            put("ssoRedirect", ssoRedirect)
+            put("magicLinkRedirect", magicLinkRedirect)
+            put("origin", origin)
+        }
+        
+        var clientInputs = ""
+        if (flow.clientInputs.isNotEmpty()) {
+            clientInputs = flow.clientInputs.toJsonObject().toString()
+        }
+
+        call("initialize", nativeOptions.toString(), refreshJwt, clientInputs)
+    } 
 
     // Hooks
 
@@ -390,7 +420,8 @@ document.head.appendChild(element)
     
     internal fun periodicRefreshJwtUpdate() {
         handler.post {
-            webView.evaluateJavascript("flowBridgeSetRefreshJwt(null, '${currentSession?.refreshJwt?.escapeForBackticks() ?: ""}');") {}
+            val refreshJwt = currentSession?.refreshJwt ?: ""
+            call("updateRefreshJwt", refreshJwt)
         }
     }
 
@@ -409,17 +440,20 @@ document.head.appendChild(element)
         if (state != Started) return
         executeHooks(Event.Loaded)
     }
+    
+    private fun handleFound(attributes: JSONObject) {
+        refreshCookieName = attributes.stringOrEmptyAsNull("refreshCookieName") ?: refreshCookieName
+        initialize()
+    }
 
     private fun handleReady(tag: String) {
         if (ensureState(Started)) return
-        handler.post {
-            logger.info("Flow is ready ($tag)")
-            startTimer()
-            state = Ready
-            attempts = 0
-            executeHooks(Event.Ready)
-            listener?.onReady()
-        }
+        logger.info("Flow is ready ($tag)")
+        startTimer()
+        state = Ready
+        attempts = 0
+        executeHooks(Event.Ready)
+        listener?.onReady()
     }
 
     private fun handleError(e: DescopeException) {
@@ -492,6 +526,14 @@ document.head.appendChild(element)
         timer?.cancel()
         timer = null
     }
+    
+    // Utils
+    
+    private fun call(function: String, vararg params: String) {
+        val escaped = params.joinToString(", ") { it.javaScriptLiteralString() }
+        val javascript = "window.descopeBridge.internal.$function($escaped)"
+        webView.evaluateJavascript(javascript, {})
+    }
 }
 
 // Helper Classes
@@ -530,128 +572,200 @@ internal sealed class NativePayload {
     }
 }
 
-// JS
+// New JS
 
-private fun setupScript(
-    refreshJwt: String,
-    origin: String,
-    oauthNativeProvider: String,
-    oauthRedirect: String,
-    ssoRedirect: String,
-    magicLinkRedirect: String,
-    isWebAuthnSupported: Boolean,
-    clientJson: String,
-) = """
+private fun makeSetupScript(systemInfo: SystemInfo) = """
     
-window.descopeBridge = {}
-window.descopeBridge.abortFlow = (reason) => { flow.onAbort(typeof reason == 'string' ? reason : '') }
+window.descopeBridge = {
+    hostInfo: {
+        sdkName: 'android',
+        sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
+        platformName: 'android',
+        platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
+        appName: ${systemInfo.appName.javaScriptLiteralString()},
+        appVersion: ${systemInfo.appVersion.javaScriptLiteralString()}, 
+        device: ${systemInfo.device.javaScriptLiteralString()},
+        webauthn: $isWebAuthnSupported,
+    },
 
-function flowBridgeWaitWebComponent() {
-    const styles = `
-        * {
-          user-select: none;
-        }
-    `
+    abortFlow(reason) {
+        this.internal.aborted = true
+        flow.onAbort(typeof reason == 'string' ? reason : '')
+    },
 
-    const stylesheet = document.createElement("style")
-    stylesheet.textContent = styles
-    document.head.appendChild(stylesheet)
+    startFlow() {
+        this.internal.start()
+    },
 
-    const wc = document.getElementsByTagName('descope-wc')[0]
-    if (wc) {
-        flowBridgePrepareWebComponent(wc)
-        return
+    internal: {
+        component: null,
+
+        aborted: false,
+
+        start() {
+            if (this.aborted || this.connect()) {
+                return
+            }
+
+            console.debug('Waiting for Descope component')
+
+            let interval
+            interval = setInterval(() => {
+                if (this.aborted || this.connect()) {
+                    clearInterval(interval)
+                }
+            }, 20)
+        },
+
+        connect() {
+            this.component ||= document.querySelector('descope-wc')
+            if (!this.component) {
+                return false
+            }
+
+            const attributes = {
+                refreshCookieName: this.component.refreshCookieName || null,
+            }
+            
+            flow.onFound(JSON.stringify(attributes))
+            return true
+        },
+
+        initialize(nativeOptions, refreshJwt, clientInputs) {
+            // update webpage sdk headers and print sdk type and version to native log
+            this.updateConfigHeaders()
+
+            this.component.nativeOptions = JSON.parse(nativeOptions)
+            this.updateRefreshJwt(refreshJwt)
+            this.updateClientInputs(clientInputs)
+            
+            if (this.component.flowStatus === 'error') {
+                flow.onError('The flow failed during initialization')
+            } else if (this.component.flowStatus === 'ready' || this.component.shadowRoot?.querySelector('descope-container')) {
+                this.postReady('immediate') // can only happen in old web-components without lazy init
+            } else {
+                this.component.addEventListener('ready', () => {
+                    this.postReady('listener')
+                })
+            }
+
+            this.component.addEventListener('bridge', (event) => {
+                flow.native(JSON.stringify(event.detail), window.location.href)
+            })
+
+            this.component.addEventListener('error', (event) => {
+                flow.onError(JSON.stringify(event.detail))
+            })
+
+            this.component.addEventListener('success', (event) => {
+                flow.onSuccess(event.detail ? JSON.stringify(event.detail) : null, window.location.href)
+            })
+
+            // ensure we support old web-components without this function
+            this.component.lazyInit?.()
+
+            return true
+        },
+
+        postReady(tag) {
+            if (!this.component.bridgeVersion) {
+                flow.onError('The flow is using an unsupported web component version')
+                return
+            }
+            this.disableTouchInteractions()
+            flow.onReady(tag)
+        },
+
+        updateConfigHeaders() {
+            const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
+
+            const headers = config?.baseHeaders || {}
+            console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
+
+            const hostInfo = window.descopeBridge.hostInfo
+            headers['x-descope-bridge-name'] = hostInfo.sdkName
+            headers['x-descope-bridge-version'] = hostInfo.sdkVersion
+            headers['x-descope-platform-name'] = hostInfo.platformName
+            headers['x-descope-platform-version'] = hostInfo.platformVersion
+            if (hostInfo.appName) {
+                headers['x-descope-app-name'] = hostInfo.appName
+            }
+            if (hostInfo.appVersion) {
+                headers['x-descope-app-version'] = hostInfo.appVersion
+            }
+            if (hostInfo.device) {
+                headers['x-descope-device'] = hostInfo.device
+            }
+        },
+
+        disableTouchInteractions() {
+            const stylesheet = document.createElement("style")
+            stylesheet.textContent = `
+                * {
+                    user-select: none;
+                }
+            `
+            document.head.appendChild(stylesheet)
+        
+            this.component.injectStyle?.(`
+                #content-root * {
+                    user-select: none;
+                }
+            `)
+
+            this.component.shadowRoot?.querySelectorAll('descope-enriched-text').forEach(t => {
+                t.shadowRoot?.querySelectorAll('a').forEach(a => {
+                    a.draggable = false
+                })
+            })
+
+            this.component.shadowRoot?.querySelectorAll('img').forEach(a => {
+                a.draggable = false
+            })
+        },
+
+        updateRefreshJwt(refreshJwt) {
+            if (refreshJwt) {
+                const storagePrefix = this.component.storagePrefix || ''
+                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+                window.localStorage.setItem(storageKey, refreshJwt)
+            }
+        },
+
+        updateClientInputs(inputs) {
+            let client = {}
+            try {
+                client = JSON.parse(this.component.getAttribute('client') || '{}')
+            } catch (e) {}
+            client = {
+                ...client,
+                ...JSON.parse(inputs || '{}'),
+            }
+            this.component.setAttribute('client', JSON.stringify(client))
+        },
+
+        handleResponse(type, payload) {
+            this.component.nativeResume(type, payload)
+        },
     }
-    
-    let id
-    id = setInterval(() => {
-        const wc = document.getElementsByTagName('descope-wc')[0]
-        if (wc) {
-            clearInterval(id)
-            flowBridgePrepareWebComponent(wc)
-        }
-    }, 20)
 }
 
-function flowBridgeIsReady(wc, tag) {
-    if (!wc.bridgeVersion) {
-        flow.onError('Hosted flow uses unsupported web-component SDK version');
-        return
-    }
-    wc.sdk.webauthn.helpers.isSupported = async () => $isWebAuthnSupported
-    flow.onReady(tag);
-}
+window.descopeBridge.startFlow()
 
-function flowBridgeSetRefreshJwt(wc, refreshJwt) {
-    wc = wc || document.getElementsByTagName('descope-wc')[0]
-    if (!wc) {
-        console.debug('Unable to set refresh token, web-component not found')
-        return
-    }
-    if (refreshJwt) {
-        const storagePrefix = wc.getAttribute('storage-prefix') || ''
-        window.localStorage.setItem(storagePrefix + 'DSR', refreshJwt);
-    }
-}
+"""
 
-function flowBridgeMergeClientJson(wc, clientJson) {
-    let client = {}
-    try {
-        client = JSON.parse(wc.getAttribute('client') || '{}')
-    } catch (e) {}
-    client = {
-        ...client,
-        ...JSON.parse(clientJson),
-    }
-    wc.setAttribute('client', JSON.stringify(client))
-}
+// JavaScript
 
-function flowBridgePrepareWebComponent(wc) {
-    flowBridgeSetRefreshJwt(wc, '$refreshJwt')
-      
-    wc.nativeOptions = {
-        bridgeVersion: 1,
-        platform: 'android',
-        oauthProvider: '$oauthNativeProvider',
-        oauthRedirect: '$oauthRedirect',
-        ssoRedirect: '$ssoRedirect',
-        magicLinkRedirect: '$magicLinkRedirect',
-        origin: '$origin',
-    }
+private fun String?.javaScriptLiteralString() = if (this == null) "''"
+    else "`"+replace("\\", "\\\\")
+        .replace("$", "\\$")
+        .replace("`", "\\`") + "`"
 
-    if (document.querySelector('descope-wc')?.shadowRoot?.querySelector('descope-container')) {
-        flowBridgeIsReady(wc, 'immediate')
-    } else {
-        wc.addEventListener('ready', () => {
-            flowBridgeIsReady(wc, 'listener')
-        })
-    }
-    
-    wc.addEventListener('success', (e) => {
-        flow.onSuccess(e.detail ? JSON.stringify(e.detail) : null, window.location.href);
-    })
-    
-    wc.addEventListener('error', (e) => {
-        flow.onError(JSON.stringify(e.detail));
-    })
-
-    wc.addEventListener('bridge', (e) => {
-        flow.native(JSON.stringify(e.detail), window.location.href);
-    })
-    
-    // add incoming client params to any already existing client parameters on the web-component
-    flowBridgeMergeClientJson(wc, '$clientJson')
-    
-    // ensure we support old web-components without this function
-    wc.lazyInit?.()
-}
-
-flowBridgeWaitWebComponent();
-    """.trimIndent()
-
-private fun String.escapeForBackticks() = replace("\\", "\\\\")
-    .replace("$", "\\$")
-    .replace("`", "\\`")
+private fun String.javaScriptAnonymousFunction() = """
+    (function() {
+        $this
+    })()
+"""
 
 // Cookies
 

@@ -70,7 +70,6 @@ internal data class UserResponse(
     val scim: Boolean,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = fromJson(JSONObject(json))
 
         fun fromJson(json: JSONObject) = json.run {
@@ -113,7 +112,6 @@ internal data class TenantsResponse(
     )
 
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             TenantsResponse(tenants = getJSONArray("tenants").toObjectList().map {
                 Tenant(
@@ -131,7 +129,6 @@ internal data class MaskedAddressServerResponse(
     val maskedPhone: String? = null,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             MaskedAddressServerResponse(
                 maskedEmail = stringOrEmptyAsNull("maskedEmail"),
@@ -149,7 +146,6 @@ internal data class PasswordPolicyServerResponse(
     val nonAlphanumeric: Boolean,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             PasswordPolicyServerResponse(
                 minLength = getInt("minLength"),
@@ -168,7 +164,6 @@ internal data class EnchantedLinkServerResponse(
     val maskedEmail: String,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             EnchantedLinkServerResponse(
                 linkId = getString("linkId"),
@@ -186,7 +181,6 @@ internal data class TotpServerResponse(
     val key: String,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             TotpServerResponse(
                 provisioningUrl = getString("provisioningUrl"),
@@ -201,7 +195,6 @@ internal data class OAuthServerResponse(
     val url: String,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             OAuthServerResponse(
                 url = getString("url")
@@ -217,7 +210,6 @@ internal data class OAuthNativeStartServerResponse(
     var implicit: Boolean
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = fromJsonObject(JSONObject(json))
 
         fun fromJsonObject(json: JSONObject) = json.run {
@@ -237,7 +229,6 @@ internal data class PasskeyStartServerResponse(
     var create: Boolean
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             PasskeyStartServerResponse(
                 transactionId = getString("transactionId"),
@@ -252,7 +243,6 @@ internal data class SsoServerResponse(
     val url: String,
 ) {
     companion object {
-        @Suppress("UNUSED_PARAMETER")
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             SsoServerResponse(
                 url = getString("url")

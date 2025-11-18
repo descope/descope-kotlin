@@ -35,6 +35,8 @@ import com.descope.types.SignUpDetails
 import org.json.JSONObject
 import java.security.MessageDigest
 
+val isWebAuthnSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+
 internal class Passkey(override val client: DescopeClient) : Route, DescopePasskey {
     @RequiresApi(Build.VERSION_CODES.P)
     override suspend fun signUp(context: Context, loginId: String, details: SignUpDetails?): AuthenticationResponse {
@@ -88,16 +90,12 @@ private fun convertOptions(options: String): String {
     return publicKey
 }
 
+@RequiresApi(Build.VERSION_CODES.P)
 fun getPackageOrigin(context: Context): String {
-    @Suppress("DEPRECATION")
-    val signers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        packageInfo?.signingInfo?.apkContentsSigners // nullable according to source code
-    } else {
-        val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-        packageInfo.signatures
-    }
+    val packageInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
 
+    // nullable according to source code (even though the signatures claim otherwise)
+    val signers = packageInfo?.signingInfo?.apkContentsSigners
     if (signers.isNullOrEmpty()) {
         throw DescopeException.passkeyFailed.with(message = "Failed to find signing certificates")
     }
