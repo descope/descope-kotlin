@@ -658,7 +658,8 @@ window.descopeBridge = {
             })
 
             this.component.addEventListener('success', (event) => {
-                flow.onSuccess(event.detail ? JSON.stringify(event.detail) : null, window.location.href)
+                const response = (event.detail && Object.keys(event.detail).length) ? JSON.stringify(event.detail) : null
+                flow.onSuccess(response, window.location.href)
             })
 
             // ensure we support old web-components without this function
