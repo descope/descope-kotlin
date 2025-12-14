@@ -86,7 +86,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private var alreadySetUp = false
     private var startedAt: Long = 0L
     private var attempts: Int = 0
-    private var loadFailure: Boolean = false
     private var refreshCookieName = REFRESH_COOKIE_NAME
 
     init {
@@ -261,15 +260,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 logger.info("On page started", url)
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                if (loadFailure) {
-                    logger.info("Page finished after error", url)
-                    loadFailure = false
-                    return
-                }
-                logger.info("On page finished", url, view?.progress)
                 if (alreadySetUp) {
                     logger.error("Bridge is already set up", url, view?.progress)
                     return
@@ -279,6 +269,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 
                 val script = makeSetupScript(DescopeSystemInfo.getInstance(context))
                 view?.evaluateJavascript(script, {})
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                logger.info("On page finished", url, view?.progress)
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -318,7 +312,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     return false
                 }
 
-                loadFailure = true
                 logger.info("Will retry to load in $retryIn ms")
                 val ref = WeakReference(this@DescopeFlowCoordinator)
                 handler.postDelayed(createRetryRunnable(ref), retryIn)
