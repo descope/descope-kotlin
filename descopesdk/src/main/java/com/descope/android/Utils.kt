@@ -9,14 +9,20 @@ import android.webkit.WebView
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.descope.internal.others.activityHelper
+import com.descope.internal.others.with
+import com.descope.types.DescopeException
 import java.util.concurrent.atomic.AtomicBoolean
 
 
 // Emails
 
 fun launchMailClient(context: Context, uri: Uri) {
-    val intent = Intent(Intent.ACTION_SENDTO).apply { data = uri }
-    context.startActivity(intent)
+    try {
+        val intent = Intent(Intent.ACTION_SENDTO).apply { data = uri }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        throw DescopeException.browserError.with(cause = e, message = "Failed to launch mail client")
+    }
 }
 
 // Custom Tab
