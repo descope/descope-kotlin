@@ -247,9 +247,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 return when (listener?.onNavigation(uri) ?: OpenBrowser) {
                     Inline -> false
                     DoNothing -> true
-                    OpenBrowser -> { 
+                    OpenBrowser -> {
                         try {
-                            launchCustomTab(webView.context, uri, flow?.presentation?.createCustomTabsIntent(webView.context))
+                            when (uri.scheme) {
+                                "mailto" -> launchMailClient(webView.context, uri)
+                                else -> launchCustomTab(webView.context, uri, flow?.presentation?.createCustomTabsIntent(webView.context))
+                            }
                         } catch (e: DescopeException) {
                             logger.error("Failed to open URL in browser", e)
                         }
