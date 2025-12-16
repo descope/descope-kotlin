@@ -1,6 +1,7 @@
 package com.descope.android
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -9,6 +10,14 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.descope.internal.others.activityHelper
 import java.util.concurrent.atomic.AtomicBoolean
+
+
+// Emails
+
+fun launchMailClient(context: Context, uri: Uri) {
+    val intent = Intent(Intent.ACTION_SENDTO).apply { data = uri }
+    context.startActivity(intent)
+}
 
 // Custom Tab
 
