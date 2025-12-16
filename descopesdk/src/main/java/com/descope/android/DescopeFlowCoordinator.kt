@@ -268,10 +268,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     return
                 }
                 alreadySetUp = true
-                handleLoaded()
                 
                 val script = makeSetupScript(DescopeSystemInfo.getInstance(context))
                 view?.evaluateJavascript(script, {})
+                
+                handleLoaded()
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
