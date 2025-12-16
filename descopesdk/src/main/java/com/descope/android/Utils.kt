@@ -16,12 +16,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 // Emails
 
-fun launchMailClient(context: Context, uri: Uri) {
+fun sendViewIntent(context: Context, uri: Uri) {
     try {
-        val intent = Intent(Intent.ACTION_SENDTO).apply { data = uri }
+        val intent = Intent(Intent.ACTION_VIEW).apply { data = uri }
         context.startActivity(intent)
     } catch (e: Exception) {
-        throw DescopeException.browserError.with(cause = e, message = "Failed to launch mail client")
+        throw DescopeException.browserError.with(cause = e, message = "Failed to launch view intent")
     }
 }
 
