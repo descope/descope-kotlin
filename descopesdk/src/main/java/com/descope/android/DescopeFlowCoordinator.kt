@@ -250,7 +250,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     OpenBrowser -> {
                         try {
                             when (uri.scheme) {
-                                "mailto" -> launchMailClient(webView.context, uri)
+                                "mailto", "tel" -> sendViewIntent(webView.context, uri)
                                 else -> launchCustomTab(webView.context, uri, flow?.presentation?.createCustomTabsIntent(webView.context))
                             }
                         } catch (e: DescopeException) {
