@@ -9,7 +9,7 @@ written for Android. You can read more on the [Descope Website](https://descope.
 Add the following to your `build.gradle` dependencies:
 
 ```groovy
-implementation 'com.descope:descope-kotlin:0.17.8'
+implementation 'com.descope:descope-kotlin:0.17.9'
 ```
 
 ## Quickstart
