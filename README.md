@@ -9,7 +9,7 @@ written for Android. You can read more on the [Descope Website](https://descope.
 Add the following to your `build.gradle` dependencies:
 
 ```groovy
-implementation 'com.descope:descope-kotlin:0.17.9'
+implementation 'com.descope:descope-kotlin:0.18.0'
 ```
 
 ## Quickstart
@@ -321,7 +321,12 @@ descopeFlowView.listener = object : DescopeFlowView.Listener {
     }
 }
 
-val descopeFlow = DescopeFlow("<URL_FOR_FLOW_IN_SETUP_#1>")
+// If using Descope hosted flows, you can provide the flow ID to run
+val descopeFlow = DescopeFlow.withFlowId("<FLOW_ID_TO_RUN>")
+// If using self hosted flows, you can provide the full URL to run:
+// val descopeFlow = DescopeFlow.withUrl("<URL_FOR_FLOW_IN_SETUP_#1>")
+
+
 // set the OAuth provider ID that is configured to "sign in with Google"
 descopeFlow.oauthNativeProvider = OAuthProvider.Google
 // set the oauth redirect URI to use your app's deep link 
