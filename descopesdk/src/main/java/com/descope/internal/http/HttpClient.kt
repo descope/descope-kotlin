@@ -17,7 +17,7 @@ import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 internal open class HttpClient(
-    private val baseUrl: String,
+    internal val baseUrl: String,
     private val logger: DescopeLogger?,
     client: DescopeNetworkClient?,
 ) {

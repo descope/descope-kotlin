@@ -360,7 +360,7 @@ document.head.appendChild(element)
     internal fun startFlow(flow: DescopeFlow) {
         this.flow = flow
         handleStarted()
-        webView.loadUrl(flow.url)
+        webView.loadUrl(buildFlowUrl(flow))
     }
     
     internal fun reloadFlow() {
@@ -539,6 +539,18 @@ document.head.appendChild(element)
     }
     
     // Utils
+    
+    private fun buildFlowUrl(flow: DescopeFlow): String {
+        // if a URL was provided, use it
+        val url = flow.url
+        if (url?.isNotEmpty() == true) return url
+
+        // construct auth hosting URL based on the base URL, project ID and flow ID
+        val flowId = flow.flowId
+        if (flowId?.isNotEmpty() != true) throw DescopeException.flowSetup.with(message = "Cannot build flow URL: no flow ID or URL provided")
+        val client = sdk?.client ?: throw DescopeException.flowSetup.with(message = "Cannot build flow URL: SDK is not initialized")
+        return "${client.baseUrl}/login/${client.config.projectId}?mobile=true&flow=$flowId"
+    }
     
     private fun call(function: String, vararg params: String) {
         val escaped = params.joinToString(", ") { it.javaScriptLiteralString() }

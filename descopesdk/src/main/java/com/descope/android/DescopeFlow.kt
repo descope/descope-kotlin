@@ -16,9 +16,24 @@ import com.descope.types.OAuthProvider
  */
 class DescopeFlow {
 
-    /** The URL where the flow is hosted. */
-    var url: String
+    /** 
+     * The URL where the flow is hosted. This is primarily used when
+     * self-hosting flows.
+     * 
+     * **Important:** Either this property or the [flowId] property must be provided.
+     * If both are provided, this property takes precedence.
+     */
+    var url: String? = null
 
+    /** 
+     * The specific flow ID to run when using Descope's Flow hosting service.
+     * Is not required, and will not be used when providing the exact URL via the [url] property.
+     * 
+     * **Important:** Either this property or the [url] property must be provided.
+     * If both are provided, the [url] property takes precedence.
+     */
+    var flowId: String? = null
+    
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
@@ -127,20 +142,6 @@ class DescopeFlow {
     var presentation: Presentation? = null
 
     /**
-     * Creates a new [DescopeFlow] object.
-     */
-    constructor(url: String) {
-        this.url = url
-    }
-
-    /**
-     * Creates a new [DescopeFlow] object from a parsed `Uri` instance.
-     * */
-    constructor(uri: Uri) {
-        this.url = uri.toString()
-    }
-
-    /**
      * Customize the flow's presentation by implementing the [Presentation] interface.
      */
     interface Presentation {
@@ -154,7 +155,29 @@ class DescopeFlow {
          */
         fun createCustomTabsIntent(context: Context): CustomTabsIntent?
     }
+    
+    // Internal
+    
+    private constructor()
 
+    // Deprecated constructors, properties and methods
+
+    /**
+     * Creates a new [DescopeFlow] object.
+     */
+    @Deprecated(message = "Use the factory method instead", replaceWith = ReplaceWith("DescopeFlow.withUrl(url)"))
+    constructor(url: String) {
+        this.url = url
+    }
+
+    /**
+     * Creates a new [DescopeFlow] object from a parsed `Uri` instance.
+     * */
+    @Deprecated(message = "Use the factory method instead", replaceWith = ReplaceWith("DescopeFlow.withUrl(uri.toString())"))
+    constructor(uri: Uri) {
+        this.url = uri.toString()
+    }
+    
     /**
      * Has been renamed and replaced by [oauthNativeProvider]. Use it instead.
      */
@@ -164,4 +187,28 @@ class DescopeFlow {
         set(value) {
             oauthNativeProvider = value
         }
+    
+    companion object {
+        /** 
+         * Create a new [DescopeFlow] instance with the provided flow URL.
+         * 
+         * Note: If you are using Descope's Flow hosting service, you can alternatively
+         * use the [withFlowId] method to create a flow instance by providing the flow ID.
+         * 
+         * @param url The URL where the flow is hosted.
+         * @return A new [DescopeFlow] instance.
+         */
+        fun withUrl(url: String): DescopeFlow = DescopeFlow().apply { this.url = url }
+
+        /**
+         * Create a new [DescopeFlow] instance with the provided flow ID.
+         * 
+         * Note: This method is only applicable when using Descope's Flow hosting service.
+         * If you host your own flows, use the [withUrl] method instead.
+         * 
+         * @param flowId The flow ID configured in Descope's Flow hosting service.
+         * @return A new [DescopeFlow] instance.
+         */
+        fun withFlowId(flowId: String): DescopeFlow = DescopeFlow().apply { this.flowId = flowId }
+    }
 }
