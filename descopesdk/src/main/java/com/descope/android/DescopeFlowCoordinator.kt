@@ -238,6 +238,19 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     }
                 }
             }
+
+            @JavascriptInterface
+            fun onLog(tag: String, message: String) {
+                if (tag == "fail") {
+                    logger.error("Bridge encountered script error in webpage", message)
+                } else if (logger.isUnsafeEnabled) { // we can't trust all console messages to be safe
+                    when (tag) {
+                        "error" -> logger.error("Webview console.$tag: $message")
+                        "warn", "info", "log" -> logger.info("Webview console.$tag: $message")
+                        else -> logger.debug("Webview console.$tag: $message")
+                    }
+                }
+            }
         }, "flow")
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -269,6 +282,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 }
                 alreadySetUp = true
                 
+                view?.evaluateJavascript(loggingScript, {})
                 val script = makeSetupScript(DescopeSystemInfo.getInstance(context))
                 view?.evaluateJavascript(script, {})
                 
@@ -570,6 +584,25 @@ internal sealed class NativePayload {
 }
 
 // New JS
+
+/// Redirects errors and console logs to the coordinator
+private const val loggingScript = """
+(function() {
+    function stringify(args) {
+        return Array.from(args).map(arg => {
+            if (!arg) return ""
+            if (typeof arg === 'string') return arg
+            return JSON.stringify(arg)
+        }).join(' ')
+    }
+    window.onerror = function() { flow.onLog('fail', stringify(arguments)); };
+    window.console.error = function() { flow.onLog('error', stringify(arguments)); };
+    window.console.warn = function() { flow.onLog('warn', stringify(arguments)); };
+    window.console.info = function() { flow.onLog('info', stringify(arguments)); };
+    window.console.debug = function() { flow.onLog('debug', stringify(arguments)); };
+    window.console.log = function() { flow.onLog('log', stringify(arguments)); };
+})();
+"""
 
 private fun makeSetupScript(systemInfo: SystemInfo) = """
     
