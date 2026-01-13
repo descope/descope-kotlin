@@ -9,7 +9,9 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.CookieManager
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -244,14 +246,27 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 if (tag == "fail") {
                     logger.error("Bridge encountered script error in webpage", message)
                 } else if (logger.isUnsafeEnabled) { // we can't trust all console messages to be safe
+                    val logMessage = "Webview console.$tag: $message"
                     when (tag) {
-                        "error" -> logger.error("Webview console.$tag: $message")
-                        "warn", "info", "log" -> logger.info("Webview console.$tag: $message")
-                        else -> logger.debug("Webview console.$tag: $message")
+                        "error" -> logger.error(logMessage)
+                        "warn", "info", "log" -> logger.info(logMessage)
+                        else -> logger.debug(logMessage)
                     }
                 }
             }
         }, "flow")
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                val message = consoleMessage?.message() ?: return false
+                // Capture syntax errors and other browser-level errors that bypass the JS bridge
+                if (consoleMessage.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    logger?.error("WebView console.error", message)
+                }
+                return true
+            }
+        }
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
@@ -596,7 +611,7 @@ private const val loggingScript = """
             return JSON.stringify(arg)
         }).join(' ')
     }
-    window.onerror = function() { flow.onLog('fail', stringify(arguments)); };
+    window.onerror = function() { flow.onLog('fail', stringify(arguments)); return true; };
     window.console.error = function() { flow.onLog('error', stringify(arguments)); };
     window.console.warn = function() { flow.onLog('warn', stringify(arguments)); };
     window.console.info = function() { flow.onLog('info', stringify(arguments)); };
