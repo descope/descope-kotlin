@@ -85,7 +85,7 @@ private suspend fun performAuthorization(context: Context, clientId: String, non
         credentialManager.getCredential(context, request)
     } catch (_: GetCredentialCancellationException) {
         throw DescopeException.oauthNativeCancelled
-    } catch (e: GetCredentialException) {
+    } catch (e: Exception) {
         throw DescopeException.oauthNativeFailed.with(cause = e)
     }
 }

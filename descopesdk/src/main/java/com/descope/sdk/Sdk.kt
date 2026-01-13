@@ -36,6 +36,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     @Deprecated(message = "Use DescopeFlowView instead")
     val flow: DescopeFlow
 
+    internal val config: DescopeConfig
     internal val client: DescopeClient
 
     init {
@@ -43,7 +44,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
             throw IllegalStateException("Descope SDK must be initialized on the main thread")
         }
         // init config
-        val config = DescopeConfig(projectId = projectId)
+        config = DescopeConfig(projectId = projectId)
         configure(config)
         // init logging debug flag
         ConsoleLogger.isApplicationDebuggable = context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
@@ -78,6 +79,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         const val NAME = "DescopeAndroid"
 
         /** The Descope SDK version */
-        const val VERSION = "0.17.9"
+        const val VERSION = "0.18.0"
     }
 }

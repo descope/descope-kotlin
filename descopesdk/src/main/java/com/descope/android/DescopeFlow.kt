@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.Descope
+import com.descope.internal.others.with
 import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
 import com.descope.session.DescopeSessionManager
+import com.descope.types.DescopeException
 import com.descope.types.OAuthProvider
 
 /**
@@ -155,13 +157,23 @@ class DescopeFlow {
         fun createCustomTabsIntent(context: Context): CustomTabsIntent?
     }
 
-    /**
-     * Has been renamed and replaced by [oauthNativeProvider]. Use it instead.
-     */
-    @Deprecated(message = "Use oauthNativeProvider instead", replaceWith = ReplaceWith("oauthNativeProvider"))
-    var oauthProvider: OAuthProvider?
-        get() = oauthNativeProvider
-        set(value) {
-            oauthNativeProvider = value
+    companion object {
+        /**
+         * Create a new [DescopeFlow] instance with the provided flow ID.
+         *
+         * Note: This method is only applicable when using Descope's Flow hosting service.
+         * If you host your own flows, use the default constructor instead.
+         *
+         * @param flowId The flow ID.
+         * @param sdk An optional `DescopeSdk` to use instead of the the [Descope] singleton.
+         * @return A new [DescopeFlow] instance.
+         */
+        fun hosted(flowId: String, sdk: DescopeSdk? = null): DescopeFlow {
+            val descope = sdk ?: if (Descope.isInitialized) Descope.sdk else throw DescopeException.flowSetup.with(message = "The Descope SDK must be initialized before use")
+            val url = "${descope.client.baseUrl}/login/${descope.client.config.projectId}?mobile=true&flow=$flowId"
+            val flow = DescopeFlow(url)
+            flow.sdk = sdk
+            return flow
         }
+    }    
 }
