@@ -169,8 +169,8 @@ class DescopeFlow {
          * @return A new [DescopeFlow] instance.
          */
         fun hosted(flowId: String, sdk: DescopeSdk? = null): DescopeFlow {
-            val sdk = sdk ?: if (Descope.isInitialized) Descope.sdk else throw DescopeException.flowSetup.with(message = "The Descope SDK must be initialized before use")
-            val url = "${sdk.client.baseUrl}/login/${sdk.client.config.projectId}?mobile=true&flow=$flowId"
+            val descope = sdk ?: if (Descope.isInitialized) Descope.sdk else throw DescopeException.flowSetup.with(message = "The Descope SDK must be initialized before use")
+            val url = "${descope.client.baseUrl}/login/${descope.client.config.projectId}?mobile=true&flow=$flowId"
             val flow = DescopeFlow(url)
             flow.sdk = sdk
             return flow
