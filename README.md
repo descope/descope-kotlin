@@ -321,10 +321,9 @@ descopeFlowView.listener = object : DescopeFlowView.Listener {
     }
 }
 
+val descopeFlow = DescopeFlow("<URL_FOR_FLOW_IN_SETUP_#1>")
 // If using Descope hosted flows, you can provide the flow ID to run
-val descopeFlow = DescopeFlow.withFlowId("<FLOW_ID_TO_RUN>")
-// If using self hosted flows, you can provide the full URL to run:
-// val descopeFlow = DescopeFlow.withUrl("<URL_FOR_FLOW_IN_SETUP_#1>")
+// val descopeFlow = DescopeFlow.hosted("<FLOW_ID_TO_RUN>")
 
 // set the OAuth provider ID that is configured to "sign in with Google"
 descopeFlow.oauthNativeProvider = OAuthProvider.Google
