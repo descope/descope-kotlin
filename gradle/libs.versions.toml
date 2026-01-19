@@ -8,7 +8,7 @@ junit = "4.13.2"
 kotlin = "2.2.0"
 kotlinxCoroutinesAndroid = "1.10.2"
 lifecycleCommon = "2.9.2"
-lifecycleProcess = "2.9.2"
+lifecycleProcess = "2.10.0"
 nexus = "2.0.0"
 securityCrypto = "1.1.0"
 
