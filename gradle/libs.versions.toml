@@ -10,7 +10,7 @@ kotlinxCoroutinesAndroid = "1.10.2"
 lifecycleCommon = "2.9.2"
 lifecycleProcess = "2.9.2"
 nexus = "2.0.0"
-securityCrypto = "1.0.0"
+securityCrypto = "1.1.0"
 
 [libraries]
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
