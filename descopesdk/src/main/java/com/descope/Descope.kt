@@ -12,6 +12,7 @@ import com.descope.sdk.DescopeOAuth
 import com.descope.sdk.DescopeOtp
 import com.descope.sdk.DescopePasskey
 import com.descope.sdk.DescopePassword
+import com.descope.sdk.DescopePush
 import com.descope.sdk.DescopeSdk
 import com.descope.sdk.DescopeSso
 import com.descope.sdk.DescopeTotp
@@ -114,6 +115,10 @@ object Descope {
     /** Authentication with passwords. */
     val password: DescopePassword
         get() = sdk.password
+
+    /** Authentication with push notifications. */
+    val push: DescopePush
+        get() = sdk.push
     
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
     internal lateinit var sdk: DescopeSdk
