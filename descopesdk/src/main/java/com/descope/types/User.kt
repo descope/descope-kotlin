@@ -88,7 +88,7 @@ data class DescopeUser(
     val isUpdateRequired: Boolean,
 ) {
 
-    enum class Status{
+    enum class Status {
         Invited,
         Enabled,
         Disabled;

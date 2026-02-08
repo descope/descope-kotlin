@@ -36,7 +36,7 @@ class EnchantedLinkTest {
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/enchantedlink/signin/email", route)
             assertEquals(loginId, body["loginId"])
-            assertEquals(uri, body["uri"])
+            assertEquals(uri, body["redirectUrl"])
             options.validate(body)
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", "maskedEmail")
