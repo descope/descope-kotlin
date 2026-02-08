@@ -39,7 +39,7 @@ class MagicLinkTest {
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/magiclink/signin/sms", route)
             assertEquals(loginId, body["loginId"])
-            assertEquals(uri, body["uri"])
+            assertEquals(uri, body["redirectUrl"])
             options.validate(body)
         }
         client.response = maskedAddress
