@@ -261,7 +261,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         body = mapOf(
             "loginId" to loginId,
             "user" to details?.toMap(),
-            "uri" to uri,
+            "redirectUrl" to uri,
         ),
     )
 
@@ -271,7 +271,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "loginOptions" to options?.toMap(),
         ),
     )
@@ -282,7 +282,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "loginOptions" to options?.toMap(),
         ),
     )
@@ -294,7 +294,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         body = mapOf(
             "loginId" to loginId,
             "email" to email,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "addToLoginIDs" to options?.addToLoginIds,
             "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
@@ -307,7 +307,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         body = mapOf(
             "loginId" to loginId,
             "phone" to phone,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "addToLoginIDs" to options?.addToLoginIds,
             "onMergeUseExisting" to options?.onMergeUseExisting,
         ),
@@ -329,7 +329,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         body = mapOf(
             "loginId" to loginId,
             "user" to details?.toMap(),
-            "uri" to uri,
+            "redirectUrl" to uri,
         ),
     )
 
@@ -339,7 +339,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "loginOptions" to options?.toMap(),
         ),
     )
@@ -350,7 +350,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "loginOptions" to options?.toMap(),
         ),
     )
@@ -362,7 +362,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
         body = mapOf(
             "loginId" to loginId,
             "email" to email,
-            "uri" to uri,
+            "redirectUrl" to uri,
             "addToLoginIDs" to options?.addToLoginIds,
             "onMergeUseExisting" to options?.onMergeUseExisting,
         ),

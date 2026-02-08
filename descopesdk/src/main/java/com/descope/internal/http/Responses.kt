@@ -183,7 +183,7 @@ internal data class TotpServerResponse(
     companion object {
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             TotpServerResponse(
-                provisioningUrl = getString("provisioningUrl"),
+                provisioningUrl = getString("provisioningURL"),
                 image = getString("image").toByteArray(),
                 key = getString("key"),
             )
