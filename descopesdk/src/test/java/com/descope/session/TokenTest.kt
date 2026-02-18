@@ -102,6 +102,20 @@ class TokenTest {
     }
 
     @Test
+    fun cookies_customCookieNames() {
+        val customSessionName = "my_session_cookie"
+        val customRefreshName = "my_refresh_cookie"
+        val cookies = mutableListOf<HttpCookie>()
+        cookies.add(HttpCookie(customSessionName, jwtForP123))
+        cookies.add(HttpCookie(customRefreshName, laterJwtForP123))
+        assertEquals(jwtForP123, findJwtInCookies(name = customSessionName, cookies.joinToString(separator = "; ")))
+        assertEquals(laterJwtForP123, findJwtInCookies(name = customRefreshName, cookies.joinToString(separator = "; ")))
+        // Default cookie names should not find anything
+        assertEquals(null, findJwtInCookies(name = SESSION_COOKIE_NAME, cookies.joinToString(separator = "; ")))
+        assertEquals(null, findJwtInCookies(name = REFRESH_COOKIE_NAME, cookies.joinToString(separator = "; ")))
+    }
+
+    @Test
     fun cookies_multipleDs_multipleStrings() {
         val cookies = mutableListOf<HttpCookie>()
         cookies.add(HttpCookie(SESSION_COOKIE_NAME, laterJwtForP123))

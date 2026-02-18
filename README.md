@@ -33,9 +33,14 @@ override fun onCreate() {
         if (BuildConfig.DEBUG) {
             logger = DescopeLogger.debugLogger
         }
+        // override cookie names if your app uses different names (default: "DS" and "DSR")
+        sessionCookieName = "my_session_cookie"
+        refreshCookieName = "my_refresh_cookie"
     }
 }
 ```
+
+> **Note:** If your session cookies [use different names](https://docs.descope.com/flows/actions/end-action#refresh-cookie-name) than the defaults (`DS` for session and `DSR` for refresh), you can override them via `sessionCookieName` and `refreshCookieName` in the setup block.
 
 Authenticate the user in your application by starting one of the
 authentication methods. For example, let's use OTP via email:
@@ -71,7 +76,7 @@ val authResponse = try {
             logError("Unexpected authentication failure: $e")
             showUnexpectedErrorAlert(e)
         }
-    }    
+    }
 }
 // we create a DescopeSession object that represents an authenticated user session
 val session = DescopeSession(authResponse)
@@ -186,13 +191,13 @@ override fun onCreate() {
 }
 ```
 
-When the user wants to sign out of the application we clear it 
+When the user wants to sign out of the application we clear it
 from the session manager and revoke the active session:
 
 ```kotlin
 Descope.sessionManager.clearSession()
 Descope.sessionManager.session?.refreshJwt?.let { refreshJwt ->
-    // revoke can be called without waiting for the response or 
+    // revoke can be called without waiting for the response or
     // any error handling since it's not a required measure
     // to log the user out
     myScope.launch(Dispatchers.Main) {
@@ -212,10 +217,10 @@ for more details.
 
 ## Running Flows
 
-We can authenticate users by building and running Flows. Flows are built in the Descope 
+We can authenticate users by building and running Flows. Flows are built in the Descope
 [flow editor](https://app.descope.com/flows). The editor allows you to easily
 define both the behavior and the UI that take the user through their
-authentication journey. Read more about it in the  Descope
+authentication journey. Read more about it in the Descope
 [getting started](https://docs.descope.com/build/guides/gettingstarted/) guide.
 
 ### Setup #1: Define and host your flow
@@ -241,6 +246,7 @@ Any activity can handle an incoming App Link, however in order to resume the flo
 used to run the flow must be called with the `resumeFromDeepLink()` function.
 
 _this code example demonstrates how app links can be handled - you're app architecture might differ'_
+
 ```kotlin
 class FlowRedirectActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -263,6 +269,7 @@ class FlowRedirectActivity : AppCompatActivity() {
 ```
 
 #### Add a matching Manifest declaration
+
 ```xml
 <activity
     android:name=".FlowRedirectActivity"
@@ -327,7 +334,7 @@ val descopeFlow = DescopeFlow("<URL_FOR_FLOW_IN_SETUP_#1>")
 
 // set the OAuth provider ID that is configured to "sign in with Google"
 descopeFlow.oauthNativeProvider = OAuthProvider.Google
-// set the oauth redirect URI to use your app's deep link 
+// set the oauth redirect URI to use your app's deep link
 descopeFlow.oauthRedirect = "<URL_FOR_APP_LINK_IN_SETUP_#2>"
 // customize the flow presentation further
 descopeFlow.presentation = flowPresentation

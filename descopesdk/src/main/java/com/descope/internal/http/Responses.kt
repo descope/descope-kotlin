@@ -21,15 +21,20 @@ internal data class JwtServerResponse(
     val cookiePath: String,
 ) {
     companion object {
-        fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+        fun fromJson(
+            json: String,
+            cookies: List<HttpCookie>,
+            sessionCookieName: String = SESSION_COOKIE_NAME,
+            refreshCookieName: String = REFRESH_COOKIE_NAME,
+        ) = JSONObject(json).run {
             var sessionJwt: String? = null
             var refreshJwt: String? = null
 
             // check cookies for tokens
             cookies.forEach {
                 when (it.name) {
-                    SESSION_COOKIE_NAME -> sessionJwt = it.value
-                    REFRESH_COOKIE_NAME -> refreshJwt = it.value
+                    sessionCookieName -> sessionJwt = it.value
+                    refreshCookieName -> refreshJwt = it.value
                 }
             }
 
