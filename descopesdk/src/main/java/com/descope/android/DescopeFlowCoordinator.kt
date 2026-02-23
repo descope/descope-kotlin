@@ -113,7 +113,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         } else {
             FlowBridgeResponse.WebAuth(type = type, url = deepLink.toString())
         }
-        bridge.postResponse(response)
+        sendResponse(response)
     }
 
     // Bridge Events
@@ -270,6 +270,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
         return true
     }
 
+    private fun sendResponse(response: FlowBridgeResponse) {
+        if (ensureState(Started, Ready)) return // we get here in started state if the flow has no screens
+        bridge.postResponse(response)
+    }
+
     // Native Operations
 
     private fun handleRequest(request: FlowBridgeRequest) {
@@ -289,14 +294,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
         logger.info("Launching system UI for native oauth")
         try {
             val resp = nativeAuthorization(webView.context, request.start)
-            bridge.postResponse(FlowBridgeResponse.OAuthNative(resp.stateId, resp.identityToken))
+            sendResponse(FlowBridgeResponse.OAuthNative(resp.stateId, resp.identityToken))
         } catch (e: DescopeException) {
             if (e == DescopeException.oauthNativeCancelled) {
                 logger.info("OAuth native canceled")
                 return
             }
             logger.error("OAuth native failed", e)
-            bridge.postResponse(FlowBridgeResponse.Failure("OAuthNativeFailed"))
+            sendResponse(FlowBridgeResponse.Failure("OAuthNativeFailed"))
         }
     }
 
@@ -306,7 +311,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
         } catch (e: DescopeException) {
             logger.error("Failed to launch custom tab", e)
-            bridge.postResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
+            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
         }
     }
 
@@ -316,7 +321,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
         } catch (e: DescopeException) {
             logger.error("Failed to launch custom tab", e)
-            bridge.postResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
+            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
         }
     }
 
@@ -324,7 +329,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         logger.info("Attempting to create new a passkey")
         try {
             val res = performRegister(webView.context, request.options)
-            bridge.postResponse(FlowBridgeResponse.WebAuthn(type = "webauthnCreate", transactionId = request.transactionId, response = res))
+            sendResponse(FlowBridgeResponse.WebAuthn(type = "webauthnCreate", transactionId = request.transactionId, response = res))
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
@@ -344,7 +349,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     "NativeFailed"
                 }
             }
-            bridge.postResponse(FlowBridgeResponse.Failure(failure))
+            sendResponse(FlowBridgeResponse.Failure(failure))
         }
     }
 
@@ -352,7 +357,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         logger.info("Attempting to use an existing passkey")
         try {
             val res = performAssertion(webView.context, request.options)
-            bridge.postResponse(FlowBridgeResponse.WebAuthn(type = "webauthnGet", transactionId = request.transactionId, response = res))
+            sendResponse(FlowBridgeResponse.WebAuthn(type = "webauthnGet", transactionId = request.transactionId, response = res))
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
@@ -372,7 +377,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     "NativeFailed"
                 }
             }
-            bridge.postResponse(FlowBridgeResponse.Failure(failure))
+            sendResponse(FlowBridgeResponse.Failure(failure))
         }
     }
 
