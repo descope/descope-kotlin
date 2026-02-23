@@ -57,6 +57,7 @@ internal class FlowBridge(val webView: WebView) {
 
     // JavaScript Interface
 
+    @Suppress("unused")
     private val javascriptInterface = object {
         @JavascriptInterface fun onFound(data: String) = bridgeOnFound(data)
         @JavascriptInterface fun onReady(tag: String) = bridgeOnReady(tag)
@@ -145,85 +146,95 @@ internal class FlowBridge(val webView: WebView) {
         return true
     }
 
+    // View Client
+
+    private val viewClient = object : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            val uri = request?.url ?: return false
+            if (request.isRedirect) return false
+            return handleUrlLoading(uri)
+        }
+        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) = handlePageStarted(url)
+        override fun onPageFinished(view: WebView?, url: String?) = handlePageFinished(url)
+        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+            if (request?.isForMainFrame == true) handleReceivedError(error?.errorCode ?: 0, error?.description?.toString())
+        }
+        override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+            if (request?.isForMainFrame == true) handleReceivedHttpError(errorResponse?.statusCode ?: 0)
+        }
+    }
+
+    private fun handleUrlLoading(uri: Uri): Boolean {
+        logger.info("Flow attempting to navigate to a URL", uri)
+        return listener?.onNavigation(uri) ?: true
+    }
+
+    private fun handlePageStarted(url: String?) {
+        logger.info("On page started", url)
+        if (alreadySetUp) {
+            logger.error("Bridge is already set up", url, webView.progress)
+            return
+        }
+        alreadySetUp = true
+
+        webView.evaluateJavascript(loggingScript, {})
+
+        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context))
+        webView.evaluateJavascript(setupScript, {})
+
+        listener?.onLoaded()
+    }
+
+    private fun handlePageFinished(url: String?) {
+        logger.info("On page finished", url, webView.progress)
+    }
+
+    private fun handleReceivedError(errorCode: Int, description: String?) {
+        logger.error("Error loading flow page", errorCode, description)
+        if (scheduleRetryAfterError()) return
+        val failure = description ?: ""
+        val message = when (errorCode) {
+            WebViewClient.ERROR_HOST_LOOKUP -> if ("INTERNET_DISCONNECTED" in failure) "The Internet connection appears to be offline" else "The server could not be found"
+            WebViewClient.ERROR_CONNECT -> "Failed to connect to the server"
+            WebViewClient.ERROR_TIMEOUT -> "The connection timed out"
+            else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
+        }
+        val exception = DescopeException.networkError.with(message = message)
+        listener?.onError(exception)
+    }
+
+    private fun handleReceivedHttpError(statusCode: Int) {
+        logger.error("Flow page failed to load", statusCode)
+        if (statusCode >= 500 && scheduleRetryAfterError()) return
+        val message = failureFromResponseCode(statusCode)
+        val exception = DescopeException.networkError.with(message = message)
+        listener?.onError(exception)
+    }
+
+    private fun scheduleRetryAfterError(): Boolean {
+        val retryIn = attempts * retryInterval
+        if (
+            alreadySetUp
+            || System.currentTimeMillis() - startedAt + retryIn > retryWindow
+        ) {
+            return false
+        }
+
+        logger.info("Will retry to load in $retryIn ms")
+        val ref = WeakReference(this)
+        handler.postDelayed(createRetryRunnable(ref), retryIn)
+        return true
+    }
+
+    // Init
+
     init {
         webView.settings.javaScriptEnabled = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.domStorageEnabled = true
-
         webView.addJavascriptInterface(javascriptInterface, "flow")
         webView.webChromeClient = chromeClient
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val uri = request?.url ?: return false
-                if (request.isRedirect) return false
-                logger.info("Flow attempting to navigate to a URL", uri)
-                return listener?.onNavigation(uri) ?: true
-            }
-
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                logger.info("On page started", url)
-                if (alreadySetUp) {
-                    logger.error("Bridge is already set up", url, view?.progress)
-                    return
-                }
-                alreadySetUp = true
-
-                view?.evaluateJavascript(loggingScript, {})
-
-                val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context))
-                view?.evaluateJavascript(setupScript, {})
-
-                listener?.onLoaded()
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                logger.info("On page finished", url, view?.progress)
-            }
-
-            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                if (request?.isForMainFrame == true) {
-                    logger.error("Error loading flow page", error?.errorCode, error?.description)
-                    if (scheduleRetryAfterError()) return
-                    val code = error?.errorCode ?: 0
-                    val failure = error?.description?.toString() ?: ""
-                    val message = when (code) {
-                        ERROR_HOST_LOOKUP -> if ("INTERNET_DISCONNECTED" in failure) "The Internet connection appears to be offline" else "The server could not be found"
-                        ERROR_CONNECT -> "Failed to connect to the server"
-                        ERROR_TIMEOUT -> "The connection timed out"
-                        else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
-                    }
-                    val exception = DescopeException.networkError.with(message = message)
-                    listener?.onError(exception)
-                }
-            }
-
-            override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
-                if (request?.isForMainFrame == true) {
-                    logger.error("Flow page failed to load", errorResponse?.statusCode)
-                    val statusCode = errorResponse?.statusCode ?: 0
-                    if (statusCode >= 500 && scheduleRetryAfterError()) return
-                    val message = failureFromResponseCode(statusCode)
-                    val exception = DescopeException.networkError.with(message = message)
-                    listener?.onError(exception)
-                }
-            }
-
-            private fun scheduleRetryAfterError(): Boolean {
-                val retryIn = attempts * retryInterval
-                if (
-                    alreadySetUp
-                    || System.currentTimeMillis() - startedAt + retryIn > retryWindow
-                ) {
-                    return false
-                }
-
-                logger.info("Will retry to load in $retryIn ms")
-                val ref = WeakReference(this@FlowBridge)
-                handler.postDelayed(createRetryRunnable(ref), retryIn)
-                return true
-            }
-        }
+        webView.webViewClient = viewClient
     }
 
     // Lifecycle
