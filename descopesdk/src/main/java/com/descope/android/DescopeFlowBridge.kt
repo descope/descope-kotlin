@@ -129,22 +129,29 @@ internal class FlowBridge(val webView: WebView) {
         }
     }
 
+    // Chrome Client
+
+    private val chromeClient = object : WebChromeClient() {
+        override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+            val message = consoleMessage?.message() ?: return false
+            return handleConsoleMessage(message, consoleMessage.messageLevel())
+        }
+    }
+
+    private fun handleConsoleMessage(message: String, level: ConsoleMessage.MessageLevel): Boolean {
+        if (level == ConsoleMessage.MessageLevel.ERROR) {
+            logger?.error("WebView console.error", message)
+        }
+        return true
+    }
+
     init {
         webView.settings.javaScriptEnabled = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.domStorageEnabled = true
 
         webView.addJavascriptInterface(javascriptInterface, "flow")
-
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                val message = consoleMessage?.message() ?: return false
-                if (consoleMessage.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
-                    logger?.error("WebView console.error", message)
-                }
-                return true
-            }
-        }
+        webView.webChromeClient = chromeClient
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
