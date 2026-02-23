@@ -55,81 +55,86 @@ internal class FlowBridge(val webView: WebView) {
     private var startedAt = 0L
     private var attempts = 0
 
+    // JavaScript Interface
+
+    private val javascriptInterface = object {
+        @JavascriptInterface fun onFound(data: String) = bridgeOnFound(data)
+        @JavascriptInterface fun onReady(tag: String) = bridgeOnReady(tag)
+        @JavascriptInterface fun onSuccess(data: String?, url: String) = bridgeOnSuccess(data, url)
+        @JavascriptInterface fun onAbort(reason: String) = bridgeOnAbort(reason)
+        @JavascriptInterface fun onError(error: String) = bridgeOnError(error)
+        @JavascriptInterface fun native(response: String?, url: String) = bridgeOnNative(response, url)
+        @JavascriptInterface fun onLog(tag: String, message: String) = bridgeOnLog(tag, message)
+    }
+
+    private fun bridgeOnFound(data: String) {
+        logger.info("Received found event")
+        val json = JSONObject(data)
+        handler.post {
+            attributes.refreshCookieName = json.stringOrEmptyAsNull("refreshCookieName")
+            listener?.onFound()
+        }
+    }
+
+    private fun bridgeOnReady(tag: String) {
+        handler.post {
+            listener?.onReady(tag)
+        }
+    }
+
+    private fun bridgeOnSuccess(data: String?, url: String) {
+        listener?.onSuccess(data, url)
+    }
+
+    private fun bridgeOnAbort(reason: String) {
+        val error = if (reason.isNotEmpty()) {
+            logger.error("Flow aborted with a failure reason", reason)
+            DescopeException.flowFailed.with(message = reason)
+        } else {
+            logger.info("Flow aborted with cancellation")
+            DescopeException.flowCancelled
+        }
+        listener?.onError(error)
+    }
+
+    private fun bridgeOnError(error: String) {
+        listener?.onError(DescopeException.flowFailed.with(message = error))
+    }
+
+    private fun bridgeOnNative(response: String?, url: String) {
+        if (response == null) {
+            logger.info("Skipping bridge call because response is null")
+            return
+        }
+        handler.post {
+            try {
+                val request = FlowBridgeRequest.fromJson(response)
+                listener?.onRequest(request)
+            } catch (e: DescopeException) {
+                listener?.onError(e)
+            }
+        }
+    }
+
+    private fun bridgeOnLog(tag: String, message: String) {
+        if (tag == "fail") {
+            logger.error("Bridge encountered script error in webpage", message)
+        } else if (logger.isUnsafeEnabled) {
+            val logMessage = "Webview console.$tag: $message"
+            when (tag) {
+                "error" -> logger.error(logMessage)
+                "warn", "info", "log" -> logger.info(logMessage)
+                else -> logger.debug(logMessage)
+            }
+        }
+    }
+
     init {
         webView.settings.javaScriptEnabled = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.domStorageEnabled = true
 
-        webView.addJavascriptInterface(object {
-            @JavascriptInterface
-            fun onFound(data: String) {
-                logger.info("Received found event")
-                val json = JSONObject(data)
-                handler.post {
-                    attributes.refreshCookieName = json.stringOrEmptyAsNull("refreshCookieName")
-                    listener?.onFound()
-                }
-            }
-
-            @JavascriptInterface
-            fun onReady(tag: String) {
-                handler.post {
-                    listener?.onReady(tag)
-                }
-            }
-
-            @JavascriptInterface
-            fun onSuccess(data: String?, url: String) {
-                listener?.onSuccess(data, url)
-            }
-
-            @JavascriptInterface
-            fun onAbort(reason: String) {
-                val error = if (reason.isNotEmpty()) {
-                    logger.error("Flow aborted with a failure reason", reason)
-                    DescopeException.flowFailed.with(message = reason)
-                } else {
-                    logger.info("Flow aborted with cancellation")
-                    DescopeException.flowCancelled
-                }
-                listener?.onError(error)
-            }
-
-            @JavascriptInterface
-            fun onError(error: String) {
-                listener?.onError(DescopeException.flowFailed.with(message = error))
-            }
-
-            @JavascriptInterface
-            fun native(response: String?, url: String) {
-                if (response == null) {
-                    logger.info("Skipping bridge call because response is null")
-                    return
-                }
-                handler.post {
-                    try {
-                        val request = FlowBridgeRequest.fromJson(response)
-                        listener?.onRequest(request)
-                    } catch (e: DescopeException) {
-                        listener?.onError(e)
-                    }
-                }
-            }
-
-            @JavascriptInterface
-            fun onLog(tag: String, message: String) {
-                if (tag == "fail") {
-                    logger.error("Bridge encountered script error in webpage", message)
-                } else if (logger.isUnsafeEnabled) {
-                    val logMessage = "Webview console.$tag: $message"
-                    when (tag) {
-                        "error" -> logger.error(logMessage)
-                        "warn", "info", "log" -> logger.info(logMessage)
-                        else -> logger.debug(logMessage)
-                    }
-                }
-            }
-        }, "flow")
+        webView.addJavascriptInterface(javascriptInterface, "flow")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
