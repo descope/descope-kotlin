@@ -252,7 +252,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
             val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
             val urlCookieString = CookieManager.getInstance().getCookie(url)
             jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(SESSION_COOKIE_NAME, respCookieString, urlCookieString)
-            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
+            val refreshCookieName = bridge.attributes.refreshCookieName ?: REFRESH_COOKIE_NAME
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(refreshCookieName, respCookieString, urlCookieString)
             val authResponse = jwtServerResponse.convert()
             logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
