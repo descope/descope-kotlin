@@ -109,6 +109,8 @@ internal val mockJwtResponse = JwtServerResponse(
     ),
     cookieDomain = "domain",
     cookiePath = "/path",
+    cookieName = null,
+    sessionCookieName = null,
 )
 
 private object MockInfo: SystemInfo {
