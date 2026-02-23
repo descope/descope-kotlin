@@ -31,80 +31,6 @@ import java.lang.ref.WeakReference
 private const val retryWindow = 10 * 1000L
 private const val retryInterval = 1250L
 
-// Supporting Types
-
-internal data class FlowBridgeAttributes(
-    var refreshCookieName: String? = null,
-)
-
-internal sealed class FlowBridgeRequest {
-    class OAuthNative(val start: JSONObject) : FlowBridgeRequest()
-    class OAuthWeb(val startUrl: String) : FlowBridgeRequest()
-    class Sso(val startUrl: String) : FlowBridgeRequest()
-    class WebAuthnCreate(val transactionId: String, val options: String) : FlowBridgeRequest()
-    class WebAuthnGet(val transactionId: String, val options: String) : FlowBridgeRequest()
-
-    val type
-        get() = when (this) {
-            is OAuthNative -> "oauthNative"
-            is OAuthWeb -> "oauthWeb"
-            is Sso -> "sso"
-            is WebAuthnCreate -> "webauthnCreate"
-            is WebAuthnGet -> "webauthnGet"
-        }
-
-    companion object {
-        fun fromJson(jsonString: String): FlowBridgeRequest {
-            val json = JSONObject(jsonString)
-            val type = json.getString("type")
-            return json.getJSONObject("payload").run {
-                when (type) {
-                    "oauthNative" -> OAuthNative(start = getJSONObject("start"))
-                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
-                    "sso" -> Sso(startUrl = getString("startUrl"))
-                    "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
-                    "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
-                    else -> throw DescopeException.flowFailed.with(message = "Unexpected server response in flow")
-                }
-            }
-        }
-    }
-}
-
-internal sealed class FlowBridgeResponse {
-    class OAuthNative(val stateId: String, val identityToken: String) : FlowBridgeResponse()
-    class WebAuthn(val type: String, val transactionId: String, val response: String) : FlowBridgeResponse()
-    class WebAuth(val type: String, val url: String) : FlowBridgeResponse()
-    class MagicLink(val url: String) : FlowBridgeResponse()
-    class Failure(val failure: String) : FlowBridgeResponse()
-
-    val typeName: String
-        get() = when (this) {
-            is OAuthNative -> "oauthNative"
-            is WebAuthn -> type
-            is WebAuth -> type
-            is MagicLink -> "magicLink"
-            is Failure -> "failure"
-        }
-
-    val payload: String
-        get() = when (this) {
-            is OAuthNative -> JSONObject().apply {
-                put("nativeOAuth", JSONObject().apply {
-                    put("stateId", stateId)
-                    put("idToken", identityToken)
-                })
-            }.toString()
-            is WebAuthn -> JSONObject().apply {
-                put("transactionId", transactionId)
-                put("response", response)
-            }.toString()
-            is WebAuth -> JSONObject().apply { put("url", url) }.toString()
-            is MagicLink -> JSONObject().apply { put("url", url) }.toString()
-            is Failure -> JSONObject().apply { put("failure", failure) }.toString()
-        }
-}
-
 // Bridge
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -343,6 +269,89 @@ document.head.appendChild(element)
     }
 }
 
+// Supporting Types
+
+internal data class FlowBridgeAttributes(
+    var refreshCookieName: String? = null,
+)
+
+internal sealed class FlowBridgeRequest {
+    class OAuthNative(val start: JSONObject) : FlowBridgeRequest()
+    class OAuthWeb(val startUrl: String) : FlowBridgeRequest()
+    class Sso(val startUrl: String) : FlowBridgeRequest()
+    class WebAuthnCreate(val transactionId: String, val options: String) : FlowBridgeRequest()
+    class WebAuthnGet(val transactionId: String, val options: String) : FlowBridgeRequest()
+
+    val type
+        get() = when (this) {
+            is OAuthNative -> "oauthNative"
+            is OAuthWeb -> "oauthWeb"
+            is Sso -> "sso"
+            is WebAuthnCreate -> "webauthnCreate"
+            is WebAuthnGet -> "webauthnGet"
+        }
+
+    companion object {
+        fun fromJson(jsonString: String): FlowBridgeRequest {
+            val json = JSONObject(jsonString)
+            val type = json.getString("type")
+            return json.getJSONObject("payload").run {
+                when (type) {
+                    "oauthNative" -> OAuthNative(start = getJSONObject("start"))
+                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
+                    "sso" -> Sso(startUrl = getString("startUrl"))
+                    "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
+                    "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
+                    else -> throw DescopeException.flowFailed.with(message = "Unexpected server response in flow")
+                }
+            }
+        }
+    }
+}
+
+internal sealed class FlowBridgeResponse {
+    class OAuthNative(val stateId: String, val identityToken: String) : FlowBridgeResponse()
+    class WebAuthn(val type: String, val transactionId: String, val response: String) : FlowBridgeResponse()
+    class WebAuth(val type: String, val url: String) : FlowBridgeResponse()
+    class MagicLink(val url: String) : FlowBridgeResponse()
+    class Failure(val failure: String) : FlowBridgeResponse()
+
+    val typeName: String
+        get() = when (this) {
+            is OAuthNative -> "oauthNative"
+            is WebAuthn -> type
+            is WebAuth -> type
+            is MagicLink -> "magicLink"
+            is Failure -> "failure"
+        }
+
+    val payload: String
+        get() = when (this) {
+            is OAuthNative -> JSONObject().apply {
+                put("nativeOAuth", JSONObject().apply {
+                    put("stateId", stateId)
+                    put("idToken", identityToken)
+                })
+            }.toString()
+            is WebAuthn -> JSONObject().apply {
+                put("transactionId", transactionId)
+                put("response", response)
+            }.toString()
+            is WebAuth -> JSONObject().apply { put("url", url) }.toString()
+            is MagicLink -> JSONObject().apply { put("url", url) }.toString()
+            is Failure -> JSONObject().apply { put("failure", failure) }.toString()
+        }
+}
+
+
+// Retry
+
+private fun createRetryRunnable(ref: WeakReference<FlowBridge>) = Runnable {
+    val bridge = ref.get() ?: return@Runnable
+    val url = bridge.webView.url ?: return@Runnable
+    bridge.reload(url)
+}
+
 // JavaScript
 
 private fun String?.javaScriptLiteralString() = if (this == null) "''"
@@ -356,7 +365,6 @@ private fun String.javaScriptAnonymousFunction() = """
     })()
 """
 
-/// Redirects errors and console logs to the bridge
 private const val loggingScript = """
 (function() {
     function stringify(args) {
@@ -555,11 +563,3 @@ window.descopeBridge = {
 window.descopeBridge.startFlow()
 
 """
-
-// Retry
-
-private fun createRetryRunnable(ref: WeakReference<FlowBridge>) = Runnable {
-    val bridge = ref.get() ?: return@Runnable
-    val url = bridge.webView.url ?: return@Runnable
-    bridge.reload(url)
-}
