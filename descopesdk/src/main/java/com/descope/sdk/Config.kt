@@ -11,6 +11,18 @@ import java.net.URL
 class DescopeConfig(val projectId: String) {
     /** An optional override for the base URL of the Descope server. */
     var baseUrl: String? = null
+
+    /**
+     * The name of the session cookie used for authentication.
+     * Defaults to "DS" if not specified. Override this if your cookies are named differently.
+     */
+    var sessionCookieName: String = "DS"
+
+    /**
+     * The name of the refresh cookie used for authentication.
+     * Defaults to "DSR" if not specified. Override this if your cookies are named differently.
+     */
+    var refreshCookieName: String = "DSR"
     
     /**
      * An optional object to handle logging in the Descope SDK.

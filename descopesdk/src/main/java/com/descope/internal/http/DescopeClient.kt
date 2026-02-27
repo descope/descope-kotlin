@@ -16,6 +16,10 @@ import java.net.HttpCookie
 
 internal open class DescopeClient(internal val config: DescopeConfig, systemInfo: SystemInfo) : HttpClient(config.baseUrl ?: baseUrlForProjectId(config.projectId), config.logger, config.networkClient) {
 
+    private val jwtDecoder: (String, List<HttpCookie>) -> JwtServerResponse = { json, cookies ->
+        JwtServerResponse.fromJson(json, cookies, config.sessionCookieName, config.refreshCookieName)
+    }
+
     // OTP
 
     suspend fun otpSignUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?): MaskedAddressServerResponse = post(
@@ -49,7 +53,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun otpVerify(method: DeliveryMethod, loginId: String, code: String): JwtServerResponse = post(
         route = "auth/otp/verify/${method.route()}",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "loginId" to loginId,
             "code" to code,
@@ -102,7 +106,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun totpVerify(loginId: String, code: String, options: List<SignInOptions>?): JwtServerResponse = post(
         route = "auth/totp/verify",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         headers = authorization(options?.refreshJwt),
         body = mapOf(
             "loginId" to loginId,
@@ -133,7 +137,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun passkeySignUpFinish(transactionId: String, response: String): JwtServerResponse = post(
         route = "auth/webauthn/signup/finish",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "transactionId" to transactionId,
             "response" to response,
@@ -153,7 +157,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun passkeySignInFinish(transactionId: String, response: String): JwtServerResponse = post(
         route = "auth/webauthn/signin/finish",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "transactionId" to transactionId,
             "response" to response,
@@ -202,7 +206,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun passwordSignUp(loginId: String, password: String, details: SignUpDetails?): JwtServerResponse = post(
         route = "auth/password/signup",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "loginId" to loginId,
             "password" to password,
@@ -212,7 +216,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun passwordSignIn(loginId: String, password: String): JwtServerResponse = post(
         route = "auth/password/signin",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "loginId" to loginId,
             "password" to password,
@@ -231,7 +235,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun passwordReplace(loginId: String, oldPassword: String, newPassword: String) = post(
         route = "auth/password/replace",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "loginId" to loginId,
             "oldPassword" to oldPassword,
@@ -315,7 +319,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun magicLinkVerify(token: String): JwtServerResponse = post(
         route = "auth/magiclink/verify",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "token" to token,
         ),
@@ -370,7 +374,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun enchantedLinkCheckForSession(pendingRef: String): JwtServerResponse = post(
         route = "auth/enchantedlink/pending-session",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "pendingRef" to pendingRef,
         ),
@@ -391,7 +395,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun oauthWebExchange(code: String): JwtServerResponse = post(
         route = "auth/oauth/exchange",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "code" to code,
         ),
@@ -410,7 +414,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun oauthNativeFinish(provider: OAuthProvider, stateId: String, identityToken: String): JwtServerResponse = post(
         route = "auth/oauth/native/finish",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "provider" to provider.name,
             "stateId" to stateId,
@@ -433,7 +437,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun ssoExchange(code: String): JwtServerResponse = post(
         route = "auth/saml/exchange",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "code" to code,
         ),
@@ -443,7 +447,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun flowExchange(authorizationCode: String, codeVerifier: String): JwtServerResponse = post(
         route = "flow/exchange",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf(
             "authorizationCode" to authorizationCode,
             "codeVerifier" to codeVerifier,
@@ -480,13 +484,13 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     suspend fun refresh(refreshJwt: String): JwtServerResponse = post(
         route = "auth/refresh",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         headers = authorization(refreshJwt),
     )
 
     suspend fun exchangeExternalToken(externalToken: String): JwtServerResponse = post(
         route = "auth/refresh",
-        decoder = JwtServerResponse::fromJson,
+        decoder = jwtDecoder,
         body = mapOf("externalToken" to externalToken)
     )
 

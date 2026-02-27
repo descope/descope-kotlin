@@ -88,6 +88,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private var alreadySetUp = false
     private var startedAt: Long = 0L
     private var attempts: Int = 0
+    private var sessionCookieName = SESSION_COOKIE_NAME
     private var refreshCookieName = REFRESH_COOKIE_NAME
 
     init {
@@ -299,7 +300,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 
                 view?.evaluateJavascript(loggingScript, {})
                 
-                val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(context))
+                val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(context), refreshCookieName)
                 view?.evaluateJavascript(setupScript, {})
                 
                 handleLoaded()
@@ -375,6 +376,10 @@ document.head.appendChild(element)
 
     internal fun startFlow(flow: DescopeFlow) {
         this.flow = flow
+        sdk?.client?.config?.let { config ->
+            sessionCookieName = config.sessionCookieName
+            refreshCookieName = config.refreshCookieName
+        }
         handleStarted()
         webView.loadUrl(flow.url)
     }
@@ -469,7 +474,8 @@ document.head.appendChild(element)
     }
     
     private fun handleFound(attributes: JSONObject) {
-        refreshCookieName = attributes.stringOrEmptyAsNull("refreshCookieName") ?: refreshCookieName
+        attributes.stringOrEmptyAsNull("sessionCookieName")?.let { sessionCookieName = it }
+        attributes.stringOrEmptyAsNull("refreshCookieName")?.let { refreshCookieName = it }
         initialize()
     }
 
@@ -513,12 +519,12 @@ document.head.appendChild(element)
     
     private fun handleAuthentication(data: String, url: String) {
         try {
-            val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
+            val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList(), sessionCookieName, refreshCookieName)
             // take tokens from cookies if missing
             val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
             val urlCookieString = CookieManager.getInstance().getCookie(url)
-            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(SESSION_COOKIE_NAME, respCookieString, urlCookieString)
-            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
+            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(sessionCookieName, respCookieString, urlCookieString)
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(refreshCookieName, respCookieString, urlCookieString)
             val authResponse = jwtServerResponse.convert()
             logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
@@ -620,7 +626,7 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = """
+private fun makeSetupScript(systemInfo: SystemInfo, refreshCookieName: String) = """
     
 window.descopeBridge = {
     hostInfo: {
@@ -670,6 +676,7 @@ window.descopeBridge = {
             }
 
             const attributes = {
+                sessionCookieName: this.component.sessionCookieName || null,
                 refreshCookieName: this.component.refreshCookieName || null,
             }
             
@@ -774,7 +781,7 @@ window.descopeBridge = {
         updateRefreshJwt(refreshJwt) {
             if (refreshJwt) {
                 const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+                const storageKey = storagePrefix + ${refreshCookieName.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
             }
         },
