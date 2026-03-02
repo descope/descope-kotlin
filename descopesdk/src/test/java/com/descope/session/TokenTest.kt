@@ -39,6 +39,16 @@ class TokenTest {
     }
 
     @Test
+    fun cookies_customNames() {
+        val cookies = mutableListOf<HttpCookie>()
+        cookies.add(HttpCookie("FOO", jwtForP123))
+        cookies.add(HttpCookie("BAR", laterJwtForP123))
+        val cookieString = cookies.joinToString(separator = "; ")
+        assertEquals(jwtForP123, findJwtInCookies(name = "FOO", cookieString))
+        assertEquals(laterJwtForP123, findJwtInCookies(name = "BAR", cookieString))
+    }
+
+    @Test
     fun cookies_oneDsr() {
         val cookies = mutableListOf<HttpCookie>()
         for (i in 0 until 10) {

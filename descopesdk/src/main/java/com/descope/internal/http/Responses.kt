@@ -19,17 +19,24 @@ internal data class JwtServerResponse(
     val firstSeen: Boolean,
     val cookieDomain: String,
     val cookiePath: String,
+    val cookieName: String?,
+    val sessionCookieName: String?,
 ) {
     companion object {
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
+            val cookieName = stringOrEmptyAsNull("cookieName")
+            val sessionCookieName = stringOrEmptyAsNull("sessionCookieName")
+
             var sessionJwt: String? = null
             var refreshJwt: String? = null
 
             // check cookies for tokens
+            val effectiveSessionCookieName = sessionCookieName ?: SESSION_COOKIE_NAME
+            val effectiveRefreshCookieName = cookieName ?: REFRESH_COOKIE_NAME
             cookies.forEach {
                 when (it.name) {
-                    SESSION_COOKIE_NAME -> sessionJwt = it.value
-                    REFRESH_COOKIE_NAME -> refreshJwt = it.value
+                    effectiveSessionCookieName -> sessionJwt = it.value
+                    effectiveRefreshCookieName -> refreshJwt = it.value
                 }
             }
 
@@ -40,6 +47,8 @@ internal data class JwtServerResponse(
                 firstSeen = optBoolean("firstSeen"),
                 cookieDomain = stringOrEmptyAsNull("cookieDomain") ?: "",
                 cookiePath = stringOrEmptyAsNull("cookiePath") ?: "",
+                cookieName = cookieName,
+                sessionCookieName = sessionCookieName,
             )
         }
     }
