@@ -57,14 +57,13 @@ internal class FlowBridge(val webView: WebView) {
 
     // JavaScript Interface
 
-    @Suppress("unused")
     private val javascriptInterface = object {
         @JavascriptInterface fun onFound(data: String) = bridgeOnFound(data)
         @JavascriptInterface fun onReady(tag: String) = bridgeOnReady(tag)
         @JavascriptInterface fun onSuccess(data: String?, url: String) = bridgeOnSuccess(data, url)
         @JavascriptInterface fun onAbort(reason: String) = bridgeOnAbort(reason)
         @JavascriptInterface fun onError(error: String) = bridgeOnError(error)
-        @JavascriptInterface fun native(response: String?, url: String) = bridgeOnNative(response, url)
+        @JavascriptInterface fun native(response: String?) = bridgeOnNative(response)
         @JavascriptInterface fun onLog(tag: String, message: String) = bridgeOnLog(tag, message)
     }
 
@@ -102,7 +101,7 @@ internal class FlowBridge(val webView: WebView) {
         listener?.onError(DescopeException.flowFailed.with(message = error))
     }
 
-    private fun bridgeOnNative(response: String?, url: String) {
+    private fun bridgeOnNative(response: String?) {
         if (response == null) {
             logger.info("Skipping bridge call because response is null")
             return
@@ -406,18 +405,18 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = """
+private fun makeSetupScript(systemInfo: SystemInfo) = $$"""
 
 window.descopeBridge = {
     hostInfo: {
         sdkName: 'android',
-        sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
+        sdkVersion: $${DescopeSdk.VERSION.javaScriptLiteralString()},
         platformName: 'android',
-        platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
-        appName: ${systemInfo.appName.javaScriptLiteralString()},
-        appVersion: ${systemInfo.appVersion.javaScriptLiteralString()},
-        device: ${systemInfo.device.javaScriptLiteralString()},
-        webauthn: $isWebAuthnSupported,
+        platformVersion: $${systemInfo.platformVersion.javaScriptLiteralString()},
+        appName: $${systemInfo.appName.javaScriptLiteralString()},
+        appVersion: $${systemInfo.appVersion.javaScriptLiteralString()},
+        device: $${systemInfo.device.javaScriptLiteralString()},
+        webauthn: $$isWebAuthnSupported,
     },
 
     abortFlow(reason) {
@@ -482,7 +481,7 @@ window.descopeBridge = {
             }
 
             this.component.addEventListener('bridge', (event) => {
-                flow.native(JSON.stringify(event.detail), window.location.href)
+                flow.native(JSON.stringify(event.detail))
             })
 
             this.component.addEventListener('error', (event) => {
@@ -513,7 +512,7 @@ window.descopeBridge = {
             const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
 
             const headers = config?.baseHeaders || {}
-            console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
+            console.debug(`Descope ${headers['x-descope-sdk-name'] || 'unknown'} package version "${headers['x-descope-sdk-version'] || 'unknown'}"`)
 
             const hostInfo = window.descopeBridge.hostInfo
             headers['x-descope-bridge-name'] = hostInfo.sdkName
@@ -560,7 +559,7 @@ window.descopeBridge = {
         updateRefreshJwt(refreshJwt) {
             if (refreshJwt) {
                 const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+                const storageKey = storagePrefix + $${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
             }
         },
