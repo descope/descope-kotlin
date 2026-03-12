@@ -119,7 +119,7 @@ internal class FlowBridge(val webView: WebView) {
     private fun bridgeOnLog(tag: String, message: String) {
         if (tag == "fail") {
             logger.error("Bridge encountered script error in webpage", message)
-        } else if (logger.isUnsafeEnabled) {
+        } else if (logger.isUnsafeEnabled && !message.contains("Fetched theme")) {
             val logMessage = "Webview console.$tag: $message"
             when (tag) {
                 "error" -> logger.error(logMessage)
