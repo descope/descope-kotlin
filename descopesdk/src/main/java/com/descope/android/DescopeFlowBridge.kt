@@ -219,10 +219,7 @@ internal class FlowBridge(val webView: WebView) {
 
     private fun scheduleRetryAfterError(): Boolean {
         val retryIn = attempts * retryInterval
-        if (
-            alreadySetUp
-            || System.currentTimeMillis() - startedAt + retryIn > retryWindow
-        ) {
+        if (alreadySetUp || System.currentTimeMillis() - startedAt + retryIn > retryWindow) {
             return false
         }
 
