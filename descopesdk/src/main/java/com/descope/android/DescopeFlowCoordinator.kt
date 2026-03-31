@@ -96,9 +96,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal fun startFlow(flow: DescopeFlow) {
         this.flow = flow
+        bridge.flow = flow
         bridge.logger = logger
         handleStarted()
-        bridge.start(flow.url)
+        bridge.start()
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri) {

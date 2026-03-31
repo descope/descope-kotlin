@@ -46,6 +46,7 @@ internal class FlowBridge(val webView: WebView) {
         fun onError(error: DescopeException)
     }
 
+    var flow: DescopeFlow? = null
     var listener: Listener? = null
     var logger: DescopeLogger? = null
     var attributes = FlowBridgeAttributes()
@@ -244,14 +245,16 @@ internal class FlowBridge(val webView: WebView) {
 
     // Lifecycle
 
-    fun start(url: String) {
+    fun start() {
+        val url = flow?.url ?: return
         alreadySetUp = false
         startedAt = System.currentTimeMillis()
         attempts = 1
         webView.loadUrl(url)
     }
 
-    fun reload(url: String) {
+    fun reload() {
+        val url = flow?.url ?: return
         attempts++
         logger.info("Retrying to load flow (attempt $attempts)")
         webView.loadUrl(url)
@@ -376,8 +379,7 @@ internal sealed class FlowBridgeResponse {
 
 private fun createRetryRunnable(ref: WeakReference<FlowBridge>) = Runnable {
     val bridge = ref.get() ?: return@Runnable
-    val url = bridge.webView.url ?: return@Runnable
-    bridge.reload(url)
+    bridge.reload()
 }
 
 // JavaScript
