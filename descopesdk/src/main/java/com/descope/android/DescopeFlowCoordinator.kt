@@ -226,23 +226,19 @@ class DescopeFlowCoordinator(val webView: WebView) {
         // and ensure it only reports a single failure
         if (state == Failed) return
 
-        handler.post {
-            logger.error("Flow failed with [${e.code}] error", e)
-            stopTimer()
-            state = Failed
-            listener?.onError(e)
-        }
+        logger.error("Flow failed with [${e.code}] error", e)
+        stopTimer()
+        state = Failed
+        listener?.onError(e)
     }
 
     private fun handleSuccess(authResponse: AuthenticationResponse) {
         if (ensureState(Started, Ready)) return
-        handler.post {
-            val res = if (logger.isUnsafeEnabled) authResponse else null
-            logger.info("Flow finished successfully", res)
-            stopTimer()
-            state = Finished
-            listener?.onSuccess(authResponse)
-        }
+        val res = if (logger.isUnsafeEnabled) authResponse else null
+        logger.info("Flow finished successfully", res)
+        stopTimer()
+        state = Finished
+        listener?.onSuccess(authResponse)
     }
 
     private fun handleAuthentication(data: String, url: String) {
@@ -437,13 +433,9 @@ internal fun findJwtInCookies(name: String, vararg cookieStrings: String?): Stri
 private fun shouldUseCustomSchemeUrl(context: Context): Boolean {
     val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
-    return when (resolveInfo?.loadLabel(context.packageManager).toString().lowercase()) {
-        "opera",
-        "opera mini",
-        "duckduckgo",
-        "mi browser",
-            -> true
-
+    val label = resolveInfo?.loadLabel(context.packageManager).toString()
+    return when (label.lowercase()) {
+        "opera",  "opera mini",  "duckduckgo",  "mi browser" -> true
         else -> false
     }
 }

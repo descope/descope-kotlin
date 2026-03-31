@@ -83,7 +83,9 @@ internal class FlowBridge(val webView: WebView) {
     }
 
     private fun bridgeOnSuccess(data: String?, url: String) {
-        listener?.onSuccess(data, url)
+        handler.post {
+            listener?.onSuccess(data, url)
+        }
     }
 
     private fun bridgeOnAbort(reason: String) {
@@ -94,11 +96,15 @@ internal class FlowBridge(val webView: WebView) {
             logger.info("Flow aborted with cancellation")
             DescopeException.flowCancelled
         }
-        listener?.onError(error)
+        handler.post {
+            listener?.onError(error)
+        }
     }
 
     private fun bridgeOnError(error: String) {
-        listener?.onError(DescopeException.flowFailed.with(message = error))
+        handler.post {
+            listener?.onError(DescopeException.flowFailed.with(message = error))
+        }
     }
 
     private fun bridgeOnNative(response: String?) {
