@@ -16,6 +16,7 @@ import com.descope.internal.routes.OAuth
 import com.descope.internal.routes.Otp
 import com.descope.internal.routes.Passkey
 import com.descope.internal.routes.Password
+import com.descope.internal.routes.Push
 import com.descope.internal.routes.Sso
 import com.descope.internal.routes.Totp
 import com.descope.session.DescopeSessionManager
@@ -33,6 +34,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     val sso: DescopeSso
     val passkey: DescopePasskey
     val password: DescopePassword
+    val push: DescopePush
     @Deprecated(message = "Use DescopeFlowView instead")
     val flow: DescopeFlow
 
@@ -59,6 +61,7 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         sso = Sso(client)
         passkey = Passkey(client)
         password = Password(client)
+        push = Push(client)
         flow = Flow(client)
         // init session manager
         sessionManager = initDefaultManager(context, config)

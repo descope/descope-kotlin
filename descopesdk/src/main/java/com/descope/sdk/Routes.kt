@@ -956,3 +956,32 @@ interface DescopeFlow {
      */
     data class Authentication(val flowId: String, val refreshJwt: String)
 }
+
+/**
+ * Authenticate users using push notifications.
+ *
+ * The push notification authentication works by registering the user's device
+ * via FCM (Firebase Cloud Messaging) and then completing authentication
+ * transactions by approving or denying them.
+ */
+interface DescopePush {
+    /**
+     * Registers an FCM device token for push authentication.
+     *
+     * The user must have an active [DescopeSession] whose [refreshJwt] should be
+     * passed as a parameter to this function.
+     *
+     * @param token the FCM device token to register.
+     * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     */
+    suspend fun enroll(token: String, refreshJwt: String)
+
+    /**
+     * Completes a push authentication transaction by approving or denying it.
+     *
+     * @param transactionId the ID of the push authentication transaction.
+     * @param approved whether the authentication request is approved or denied.
+     * @param refreshJwt the refreshJwt from an active [DescopeSession].
+     */
+    suspend fun finish(transactionId: String, approved: Boolean, refreshJwt: String)
+}
