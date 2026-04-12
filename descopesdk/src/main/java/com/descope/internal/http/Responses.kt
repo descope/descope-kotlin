@@ -193,7 +193,7 @@ internal data class TotpServerResponse(
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             TotpServerResponse(
                 provisioningUrl = getString("provisioningURL"),
-                image = getString("image").toByteArray(),
+                image = android.util.Base64.decode(getString("image").toByteArray(), android.util.Base64.DEFAULT),
                 key = getString("key"),
             )
         }
