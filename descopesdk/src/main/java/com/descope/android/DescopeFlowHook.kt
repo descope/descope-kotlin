@@ -192,6 +192,9 @@ private class BackgroundColorHook(events: Set<Event> = setOf(Event.Loaded), priv
             val g = (color shr 8) and 0xff
             val b = color and 0xff
             return if (a == 0L) "transparent"
-            else "rgba($r, $g, $b, $a)"
+            else {
+                val alpha = a / 255.0
+                "rgba($r, $g, $b, $alpha)"
+            }
         }
 }
