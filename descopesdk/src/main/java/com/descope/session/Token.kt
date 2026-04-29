@@ -89,8 +89,8 @@ internal class Token(
             val map = decodeJwt(jwt)
             entityId = getClaim(Claim.Subject, map)
             projectId = decodeIssuer(getClaim(Claim.Issuer, map))
-            issuedAt = getClaim<Int>(Claim.IssuedAt, map).toLong().secToMs()
-            expiresAt = getClaim<Int>(Claim.Expiration, map).toLong().secToMs()
+            issuedAt = getClaim<Number>(Claim.IssuedAt, map).toLong().secToMs()
+            expiresAt = getClaim<Number>(Claim.Expiration, map).toLong().secToMs()
             claims = map.filter { Claim.isCustom(it.key) }
             allClaims = map
         } catch (e: Exception) {
@@ -147,7 +147,7 @@ internal class Token(
     }
     
     /**
-     * Returns a safe string representation of the token with the `entityId` value
+     * Returns a safe string representation of the token with the `entityId`
      * value and the token's expiry time (i.e., no private or secret data).
      */
     override fun toString(): String {

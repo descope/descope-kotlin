@@ -12,6 +12,7 @@ class TokenTest {
     private val jwtForP123 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJodHRwczovL2Rlc2NvcGUuY29tL2JsYS9QMTIzIiwiZXhwIjoxNjAzMTc2NjE0LCJwZXJtaXNzaW9ucyI6WyJkIiwiZSJdLCJyb2xlcyI6WyJ1c2VyIl0sInRlbmFudHMiOnsidGVuYW50Ijp7InBlcm1pc3Npb25zIjpbImEiLCJiIiwiYyJdLCJyb2xlcyI6WyJhZG1pbiJdfX19.MCSE6ZTlD0oVS0FhXe5LwBpbUVG8H5RmwU7sk_L7Bbo"
     private val laterJwtForP123 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNzI4OTk1ODc1LCJpc3MiOiJodHRwczovL2Rlc2NvcGUuY29tL2JsYS9QMTIzIiwiZXhwIjoxNjAzMTc2NjE0LCJwZXJtaXNzaW9ucyI6WyJkIiwiZSJdLCJyb2xlcyI6WyJ1c2VyIl0sInRlbmFudHMiOnsidGVuYW50Ijp7InBlcm1pc3Npb25zIjpbImEiLCJiIiwiYyJdLCJyb2xlcyI6WyJhZG1pbiJdfX19.XKZku4wncwDMtaWJp_-ZBC5TliB4Gci_UiGJnLcDOqk"
     private val jwtForP456 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJodHRwczovL2Rlc2NvcGUuY29tL2JsYS9QNDU2IiwiZXhwIjoxNjAzMTc2NjE0LCJwZXJtaXNzaW9ucyI6WyJkIiwiZSJdLCJyb2xlcyI6WyJ1c2VyIl0sInRlbmFudHMiOnsidGVuYW50Ijp7InBlcm1pc3Npb25zIjpbImEiLCJiIiwiYyJdLCJyb2xlcyI6WyJhZG1pbiJdfX19.Xiq0lrwmfvpCF6XIhMbgbqcoRaemjljcJ6j_DXvKibw"
+    private val jwtWithLargeExp = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5OTk5OTk5OTk5IiwibmFtZSI6IkZhciBGdXR1cmUiLCJpYXQiOjE3Nzc0NTg5NDgsImlzcyI6Imh0dHBzOi8vZGVzY29wZS5jb20vYmxhL1A3ODkiLCJleHAiOjQxMDI0NDQ4MDAsInBlcm1pc3Npb25zIjpbImQiLCJlIl0sInJvbGVzIjpbInVzZXIiXSwidGVuYW50cyI6eyJ0ZW5hbnQiOnsicGVybWlzc2lvbnMiOlsiYSIsImIiLCJjIl0sInJvbGVzIjpbImFkbWluIl19fX0.signature_not_verified"
 
     @Test
     fun jwt_decode() {
@@ -36,6 +37,31 @@ class TokenTest {
         assertEquals(listOf("a", "b", "c"), token.permissions(tenant = "tenant"))
         assertEquals(listOf("admin"), token.roles(tenant = "tenant"))
         assertEquals(emptyList<String>(), token.permissions(tenant = "no-such-tenant"))
+    }
+
+    @Test
+    fun jwt_decode_largeExp() {
+        val token = Token(jwtWithLargeExp)
+
+        assertEquals(jwtWithLargeExp, token.jwt)
+
+        // Basic Fields
+        assertEquals("9999999999", token.entityId)
+        assertEquals("P789", token.projectId)
+        assertEquals(1777458948000, token.issuedAt)
+        assertEquals(4102444800000, token.expiresAt)
+
+        // Custom Claims
+        assertEquals("Far Future", token.claims["name"])
+        assertEquals(1, token.claims.size)
+
+        // Authorization
+        assertEquals(listOf("d", "e"), token.permissions(tenant = null))
+        assertEquals(listOf("user"), token.roles(tenant = null))
+
+        // Tenant Authorization
+        assertEquals(listOf("a", "b", "c"), token.permissions(tenant = "tenant"))
+        assertEquals(listOf("admin"), token.roles(tenant = "tenant"))
     }
 
     @Test
