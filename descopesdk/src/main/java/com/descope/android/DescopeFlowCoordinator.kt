@@ -167,6 +167,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
+        val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
 
         val nativeOptions = JSONObject().apply {
@@ -175,6 +176,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             put("oauthProvider", oauthProvider)
             put("oauthRedirect", oauthRedirect)
             put("ssoRedirect", ssoRedirect)
+            put("externalAuthRedirect", externalAuthRedirect)
             put("magicLinkRedirect", magicLinkRedirect)
             put("origin", origin)
         }
@@ -281,6 +283,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 is FlowBridgeRequest.OAuthNative -> handleOAuthNative(request)
                 is FlowBridgeRequest.OAuthWeb -> handleOAuthWeb(request)
                 is FlowBridgeRequest.Sso -> handleSso(request)
+                is FlowBridgeRequest.ExternalAuth -> handleExternalAuth(request)
                 is FlowBridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(request)
                 is FlowBridgeRequest.WebAuthnGet -> handleWebAuthnGet(request)
             }
@@ -314,6 +317,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private fun handleSso(request: FlowBridgeRequest.Sso) {
         logger.info("Launching custom tab for sso")
+        try {
+            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
+        } catch (e: DescopeException) {
+            logger.error("Failed to launch custom tab", e)
+            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
+        }
+    }
+
+    private fun handleExternalAuth(request: FlowBridgeRequest.ExternalAuth) {
+        logger.info("Launching custom tab for external auth")
         try {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
         } catch (e: DescopeException) {

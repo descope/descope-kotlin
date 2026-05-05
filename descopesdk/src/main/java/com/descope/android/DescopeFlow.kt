@@ -80,7 +80,7 @@ class DescopeFlow {
     var oauthNativeProvider: OAuthProvider? = null
 
     /**
-     * An optional deep link link URL to use when performing OAuth authentication, overriding
+     * An optional deep link URL to use when performing OAuth authentication, overriding
      * whatever is configured in the flow or project.
      * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
      * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
@@ -99,7 +99,7 @@ class DescopeFlow {
     var oauthRedirectCustomScheme: String? = null
 
     /**
-     * An optional deep link link URL to use performing SSO authentication, overriding
+     * An optional deep link URL to use performing SSO authentication, overriding
      * whatever is configured in the flow or project
      * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
      * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
@@ -118,7 +118,26 @@ class DescopeFlow {
     var ssoRedirectCustomScheme: String? = null
 
     /**
-     * An optional deep link link URL to use when sending magic link emails, overriding
+     * An optional deep link URL to use when performing external authentication, overriding
+     * whatever is configured in the flow or project.
+     * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
+     * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.
+     * It is possible to circumvent this issue by providing a custom scheme via [externalAuthRedirectCustomScheme]
+     */
+    var externalAuthRedirect: String? = null
+
+    /**
+     * An optional custom scheme based URL, e.g. `mycustomscheme://myhost`,
+     * to use when performing external authentication overriding whatever is configured in the flow or project.
+     * Functionally, this URL is exactly the same as [externalAuthRedirect], and will be used in its stead, only
+     * when the user has a default browser that does not honor App Links by default.
+     * That means the `https` based App Links are opened inline in the browser, instead
+     * of being handled by the application.
+     */
+    var externalAuthRedirectCustomScheme: String? = null
+
+    /**
+     * An optional deep link URL to use when sending magic link emails, overriding
      * whatever is configured in the flow or project
      */
     var magicLinkRedirect: String? = null
