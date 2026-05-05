@@ -410,18 +410,18 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = $$"""
+private fun makeSetupScript(systemInfo: SystemInfo) = """
 
 window.descopeBridge = {
     hostInfo: {
         sdkName: 'android',
-        sdkVersion: $${DescopeSdk.VERSION.javaScriptLiteralString()},
+        sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
         platformName: 'android',
-        platformVersion: $${systemInfo.platformVersion.javaScriptLiteralString()},
-        appName: $${systemInfo.appName.javaScriptLiteralString()},
-        appVersion: $${systemInfo.appVersion.javaScriptLiteralString()},
-        device: $${systemInfo.device.javaScriptLiteralString()},
-        webauthn: $$isWebAuthnSupported,
+        platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
+        appName: ${systemInfo.appName.javaScriptLiteralString()},
+        appVersion: ${systemInfo.appVersion.javaScriptLiteralString()},
+        device: ${systemInfo.device.javaScriptLiteralString()},
+        webauthn: $isWebAuthnSupported,
     },
 
     abortFlow(reason) {
@@ -517,7 +517,7 @@ window.descopeBridge = {
             const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
 
             const headers = config?.baseHeaders || {}
-            console.debug(`Descope ${headers['x-descope-sdk-name'] || 'unknown'} package version "${headers['x-descope-sdk-version'] || 'unknown'}"`)
+            console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
 
             const hostInfo = window.descopeBridge.hostInfo
             headers['x-descope-bridge-name'] = hostInfo.sdkName
@@ -564,7 +564,7 @@ window.descopeBridge = {
         updateRefreshJwt(refreshJwt) {
             if (refreshJwt) {
                 const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + $${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
             }
         },
