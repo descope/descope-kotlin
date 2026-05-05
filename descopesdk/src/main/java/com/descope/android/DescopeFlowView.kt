@@ -145,13 +145,14 @@ class DescopeFlowView : ViewGroup {
     
     /**
      * Resume an already running flow after a deep link
-     * event. This function should be called to complete `Magic Link`
-     * and web-based `OAuth` authentication.
+     * event. This function should be called to complete `Magic Link`,
+     * web-based `OAuth`, `SSO`, and external authentication.
      *
      * @param deepLink The incoming deep link URI
+     * @return `true` if the running flow consumed the URI, `false` otherwise.
      */
-    fun resumeFromDeepLink(deepLink: Uri) {
-        flowCoordinator.resumeFromDeepLink(deepLink)
+    fun resumeFromDeepLink(deepLink: Uri): Boolean {
+        return flowCoordinator.resumeFromDeepLink(deepLink)
     }
 
     // Internal 

@@ -98,23 +98,30 @@ class DescopeFlowCoordinator(val webView: WebView) {
         this.flow = flow
         bridge.flow = flow
         bridge.logger = logger
+        sdk?.resume = resumeClosure
         handleStarted()
         bridge.start()
     }
 
-    internal fun resumeFromDeepLink(deepLink: Uri) {
-        if (flow == null) {
-            logger.error("resumeFromDeepLink cannot be called before startFlow")
-            return
+    private val resumeClosure: (Uri) -> Boolean by lazy {
+        val ref = WeakReference(this)
+        val closure: (Uri) -> Boolean = { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
+        closure
+    }
+
+    internal fun resumeFromDeepLink(deepLink: Uri): Boolean {
+        if (state != Started && state != Ready) {
+            logger.debug("Ignoring resume URL", state)
+            return false
         }
         activityHelper.closeCustomTab(webView.context)
-        val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
-        val response = if (type == "magicLink") {
-            FlowBridgeResponse.MagicLink(url = deepLink.toString())
-        } else {
-            FlowBridgeResponse.WebAuth(type = type, url = deepLink.toString())
+        // magic links don't go through the bridge as a request, so detect them from the URL itself
+        val type = when {
+            deepLink.queryParameterNames.contains("t") -> "magicLink"
+            else -> bridge.pendingDeepLinkType ?: "oauthWeb"
         }
-        sendResponse(response)
+        sendResponse(FlowBridgeResponse.DeepLink(type = type, url = deepLink.toString()))
+        return true
     }
 
     // Bridge Events

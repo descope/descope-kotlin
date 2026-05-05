@@ -50,6 +50,7 @@ internal class FlowBridge(val webView: WebView) {
     var listener: Listener? = null
     var logger: DescopeLogger? = null
     var attributes = FlowBridgeAttributes()
+    var pendingDeepLinkType: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var alreadySetUp = false
@@ -116,6 +117,7 @@ internal class FlowBridge(val webView: WebView) {
         handler.post {
             try {
                 val request = FlowBridgeRequest.fromJson(response)
+                if (request is FlowBridgeRequest.WebAuth) pendingDeepLinkType = request.variant
                 listener?.onRequest(request)
             } catch (e: DescopeException) {
                 listener?.onError(e)
@@ -247,6 +249,7 @@ internal class FlowBridge(val webView: WebView) {
         alreadySetUp = false
         startedAt = System.currentTimeMillis()
         attempts = 1
+        pendingDeepLinkType = null
         webView.loadUrl(url)
     }
 
@@ -268,6 +271,7 @@ internal class FlowBridge(val webView: WebView) {
     }
 
     fun postResponse(response: FlowBridgeResponse) {
+        if (response is FlowBridgeResponse.DeepLink) pendingDeepLinkType = null
         call("handleResponse", response.typeName, response.payload)
     }
 
@@ -337,16 +341,14 @@ internal sealed class FlowBridgeRequest {
 internal sealed class FlowBridgeResponse {
     class OAuthNative(val stateId: String, val identityToken: String) : FlowBridgeResponse()
     class WebAuthn(val type: String, val transactionId: String, val response: String) : FlowBridgeResponse()
-    class WebAuth(val type: String, val url: String) : FlowBridgeResponse()
-    class MagicLink(val url: String) : FlowBridgeResponse()
+    class DeepLink(val type: String, val url: String) : FlowBridgeResponse()
     class Failure(val failure: String) : FlowBridgeResponse()
 
     val typeName: String
         get() = when (this) {
             is OAuthNative -> "oauthNative"
             is WebAuthn -> type
-            is WebAuth -> type
-            is MagicLink -> "magicLink"
+            is DeepLink -> type
             is Failure -> "failure"
         }
 
@@ -362,8 +364,7 @@ internal sealed class FlowBridgeResponse {
                 put("transactionId", transactionId)
                 put("response", response)
             }.toString()
-            is WebAuth -> JSONObject().apply { put("url", url) }.toString()
-            is MagicLink -> JSONObject().apply { put("url", url) }.toString()
+            is DeepLink -> JSONObject().apply { put("url", url) }.toString()
             is Failure -> JSONObject().apply { put("failure", failure) }.toString()
         }
 }
