@@ -99,7 +99,7 @@ class DescopeFlow {
     var oauthRedirectCustomScheme: String? = null
 
     /**
-     * An optional deep link URL to use performing SSO authentication, overriding
+     * An optional deep link URL to use when performing SSO authentication, overriding
      * whatever is configured in the flow or project
      * - **IMPORTANT NOTE**: even though App Links are the recommended way to configure
      * deep links, some browsers, such as Opera, do not respect them and open the URLs inline.

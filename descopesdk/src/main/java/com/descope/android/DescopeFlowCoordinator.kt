@@ -281,9 +281,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         scope.launch(Dispatchers.Main) {
             when (request) {
                 is FlowBridgeRequest.OAuthNative -> handleOAuthNative(request)
-                is FlowBridgeRequest.OAuthWeb -> handleOAuthWeb(request)
-                is FlowBridgeRequest.Sso -> handleSso(request)
-                is FlowBridgeRequest.ExternalAuth -> handleExternalAuth(request)
+                is FlowBridgeRequest.WebAuth -> handleWebAuth(request)
                 is FlowBridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(request)
                 is FlowBridgeRequest.WebAuthnGet -> handleWebAuthnGet(request)
             }
@@ -305,28 +303,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
-    private fun handleOAuthWeb(request: FlowBridgeRequest.OAuthWeb) {
-        logger.info("Launching custom tab for web-based oauth")
-        try {
-            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
-        } catch (e: DescopeException) {
-            logger.error("Failed to launch custom tab", e)
-            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
-        }
-    }
-
-    private fun handleSso(request: FlowBridgeRequest.Sso) {
-        logger.info("Launching custom tab for sso")
-        try {
-            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
-        } catch (e: DescopeException) {
-            logger.error("Failed to launch custom tab", e)
-            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
-        }
-    }
-
-    private fun handleExternalAuth(request: FlowBridgeRequest.ExternalAuth) {
-        logger.info("Launching custom tab for external auth")
+    private fun handleWebAuth(request: FlowBridgeRequest.WebAuth) {
+        logger.info("Launching custom tab for ${request.variant}")
         try {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
         } catch (e: DescopeException) {

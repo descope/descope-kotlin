@@ -305,18 +305,14 @@ internal data class FlowBridgeAttributes(
 
 internal sealed class FlowBridgeRequest {
     class OAuthNative(val start: JSONObject) : FlowBridgeRequest()
-    class OAuthWeb(val startUrl: String) : FlowBridgeRequest()
-    class Sso(val startUrl: String) : FlowBridgeRequest()
-    class ExternalAuth(val startUrl: String) : FlowBridgeRequest()
+    class WebAuth(val variant: String, val startUrl: String) : FlowBridgeRequest()
     class WebAuthnCreate(val transactionId: String, val options: String) : FlowBridgeRequest()
     class WebAuthnGet(val transactionId: String, val options: String) : FlowBridgeRequest()
 
     val type
         get() = when (this) {
             is OAuthNative -> "oauthNative"
-            is OAuthWeb -> "oauthWeb"
-            is Sso -> "sso"
-            is ExternalAuth -> "externalAuth"
+            is WebAuth -> variant
             is WebAuthnCreate -> "webauthnCreate"
             is WebAuthnGet -> "webauthnGet"
         }
@@ -328,9 +324,7 @@ internal sealed class FlowBridgeRequest {
             return json.getJSONObject("payload").run {
                 when (type) {
                     "oauthNative" -> OAuthNative(start = getJSONObject("start"))
-                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
-                    "sso" -> Sso(startUrl = getString("startUrl"))
-                    "externalAuth" -> ExternalAuth(startUrl = getString("startUrl"))
+                    "oauthWeb", "sso", "externalAuth" -> WebAuth(variant = type, startUrl = getString("startUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
                     else -> throw DescopeException.flowFailed.with(message = "Unexpected server response in flow")
