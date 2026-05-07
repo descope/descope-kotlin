@@ -3,6 +3,7 @@
 package com.descope
 
 import android.content.Context
+import android.net.Uri
 import com.descope.sdk.DescopeAuth
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeEnchantedLink
@@ -114,7 +115,32 @@ object Descope {
     /** Authentication with passwords. */
     val password: DescopePassword
         get() = sdk.password
-    
+
+    /**
+     * Resumes an ongoing authentication that's waiting for an external authentication step.
+     *
+     * When a flow performs authentication via Magic Link, OAuth, SSO, or external
+     * authentication at some point it will wait for the user to be redirected back to
+     * the app via a deep link. The host application is expected to intercept the deep
+     * link via App Links (or a custom scheme) and resume the running flow with it.
+     *
+     * You can do this by calling this function and passing the URI from the incoming
+     * intent. For example, from your Activity.onNewIntent:
+     *
+     *     override fun onNewIntent(intent: Intent) {
+     *         super.onNewIntent(intent)
+     *         intent.data?.let { Descope.handleUri(it) }
+     *     }
+     *
+     * - **Important**: This function must be called on the main thread, or it will throw
+     * a [com.descope.types.DescopeException.flowSetup] error.
+     *
+     * @param uri The URI to use for resuming the authentication.
+     * @return `true` when an ongoing authentication handled the URI or `false` to
+     *   let the caller know that the function didn't handle it.
+     */
+    fun handleUri(uri: Uri): Boolean = sdk.handleUri(uri)
+
     // The underlying `DescopeSdk` object used by the `Descope` singleton.
     internal lateinit var sdk: DescopeSdk
     

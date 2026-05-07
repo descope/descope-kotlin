@@ -305,16 +305,14 @@ internal data class FlowBridgeAttributes(
 
 internal sealed class FlowBridgeRequest {
     class OAuthNative(val start: JSONObject) : FlowBridgeRequest()
-    class OAuthWeb(val startUrl: String) : FlowBridgeRequest()
-    class Sso(val startUrl: String) : FlowBridgeRequest()
+    class WebAuth(val variant: String, val startUrl: String) : FlowBridgeRequest()
     class WebAuthnCreate(val transactionId: String, val options: String) : FlowBridgeRequest()
     class WebAuthnGet(val transactionId: String, val options: String) : FlowBridgeRequest()
 
     val type
         get() = when (this) {
             is OAuthNative -> "oauthNative"
-            is OAuthWeb -> "oauthWeb"
-            is Sso -> "sso"
+            is WebAuth -> variant
             is WebAuthnCreate -> "webauthnCreate"
             is WebAuthnGet -> "webauthnGet"
         }
@@ -326,8 +324,7 @@ internal sealed class FlowBridgeRequest {
             return json.getJSONObject("payload").run {
                 when (type) {
                     "oauthNative" -> OAuthNative(start = getJSONObject("start"))
-                    "oauthWeb" -> OAuthWeb(startUrl = getString("startUrl"))
-                    "sso" -> Sso(startUrl = getString("startUrl"))
+                    "oauthWeb", "sso", "externalAuth" -> WebAuth(variant = type, startUrl = getString("startUrl"))
                     "webauthnCreate" -> WebAuthnCreate(transactionId = getString("transactionId"), options = getString("options"))
                     "webauthnGet" -> WebAuthnGet(transactionId = getString("transactionId"), options = getString("options"))
                     else -> throw DescopeException.flowFailed.with(message = "Unexpected server response in flow")
@@ -340,16 +337,14 @@ internal sealed class FlowBridgeRequest {
 internal sealed class FlowBridgeResponse {
     class OAuthNative(val stateId: String, val identityToken: String) : FlowBridgeResponse()
     class WebAuthn(val type: String, val transactionId: String, val response: String) : FlowBridgeResponse()
-    class WebAuth(val type: String, val url: String) : FlowBridgeResponse()
-    class MagicLink(val url: String) : FlowBridgeResponse()
+    class DeepLink(val type: String, val url: String) : FlowBridgeResponse()
     class Failure(val failure: String) : FlowBridgeResponse()
 
     val typeName: String
         get() = when (this) {
             is OAuthNative -> "oauthNative"
             is WebAuthn -> type
-            is WebAuth -> type
-            is MagicLink -> "magicLink"
+            is DeepLink -> type
             is Failure -> "failure"
         }
 
@@ -365,8 +360,7 @@ internal sealed class FlowBridgeResponse {
                 put("transactionId", transactionId)
                 put("response", response)
             }.toString()
-            is WebAuth -> JSONObject().apply { put("url", url) }.toString()
-            is MagicLink -> JSONObject().apply { put("url", url) }.toString()
+            is DeepLink -> JSONObject().apply { put("url", url) }.toString()
             is Failure -> JSONObject().apply { put("failure", failure) }.toString()
         }
 }
@@ -410,18 +404,18 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = $$"""
+private fun makeSetupScript(systemInfo: SystemInfo) = """
 
 window.descopeBridge = {
     hostInfo: {
         sdkName: 'android',
-        sdkVersion: $${DescopeSdk.VERSION.javaScriptLiteralString()},
+        sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
         platformName: 'android',
-        platformVersion: $${systemInfo.platformVersion.javaScriptLiteralString()},
-        appName: $${systemInfo.appName.javaScriptLiteralString()},
-        appVersion: $${systemInfo.appVersion.javaScriptLiteralString()},
-        device: $${systemInfo.device.javaScriptLiteralString()},
-        webauthn: $$isWebAuthnSupported,
+        platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
+        appName: ${systemInfo.appName.javaScriptLiteralString()},
+        appVersion: ${systemInfo.appVersion.javaScriptLiteralString()},
+        device: ${systemInfo.device.javaScriptLiteralString()},
+        webauthn: $isWebAuthnSupported,
     },
 
     abortFlow(reason) {
@@ -517,7 +511,7 @@ window.descopeBridge = {
             const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
 
             const headers = config?.baseHeaders || {}
-            console.debug(`Descope ${headers['x-descope-sdk-name'] || 'unknown'} package version "${headers['x-descope-sdk-version'] || 'unknown'}"`)
+            console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
 
             const hostInfo = window.descopeBridge.hostInfo
             headers['x-descope-bridge-name'] = hostInfo.sdkName
@@ -564,7 +558,7 @@ window.descopeBridge = {
         updateRefreshJwt(refreshJwt) {
             if (refreshJwt) {
                 const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + $${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
             }
         },

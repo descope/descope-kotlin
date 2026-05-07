@@ -62,6 +62,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private val bridge = FlowBridge(webView)
     private var flow: DescopeFlow? = null
+    private var pendingDeepLinkType: String? = null
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk?
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
@@ -98,23 +99,25 @@ class DescopeFlowCoordinator(val webView: WebView) {
         this.flow = flow
         bridge.flow = flow
         bridge.logger = logger
+        sdk?.resume = createResumeClosure(WeakReference(this))
         handleStarted()
         bridge.start()
     }
 
-    internal fun resumeFromDeepLink(deepLink: Uri) {
-        if (flow == null) {
-            logger.error("resumeFromDeepLink cannot be called before startFlow")
-            return
+    internal fun resumeFromDeepLink(deepLink: Uri): Boolean {
+        if (state != Started && state != Ready) {
+            logger.debug("Ignoring resume URL", state)
+            return false
         }
         activityHelper.closeCustomTab(webView.context)
-        val type = if (deepLink.queryParameterNames.contains("t")) "magicLink" else "oauthWeb"
-        val response = if (type == "magicLink") {
-            FlowBridgeResponse.MagicLink(url = deepLink.toString())
-        } else {
-            FlowBridgeResponse.WebAuth(type = type, url = deepLink.toString())
+        // magic links don't go through the bridge as a request, so detect them from the URL itself
+        val type = when {
+            deepLink.queryParameterNames.contains("t") -> "magicLink"
+            else -> pendingDeepLinkType ?: "oauthWeb"
         }
-        sendResponse(response)
+        pendingDeepLinkType = null
+        sendResponse(FlowBridgeResponse.DeepLink(type = type, url = deepLink.toString()))
+        return true
     }
 
     // Bridge Events
@@ -167,6 +170,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
+        val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
 
         val nativeOptions = JSONObject().apply {
@@ -175,6 +179,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             put("oauthProvider", oauthProvider)
             put("oauthRedirect", oauthRedirect)
             put("ssoRedirect", ssoRedirect)
+            put("externalAuthRedirect", externalAuthRedirect)
             put("magicLinkRedirect", magicLinkRedirect)
             put("origin", origin)
         }
@@ -279,8 +284,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         scope.launch(Dispatchers.Main) {
             when (request) {
                 is FlowBridgeRequest.OAuthNative -> handleOAuthNative(request)
-                is FlowBridgeRequest.OAuthWeb -> handleOAuthWeb(request)
-                is FlowBridgeRequest.Sso -> handleSso(request)
+                is FlowBridgeRequest.WebAuth -> handleWebAuth(request)
                 is FlowBridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(request)
                 is FlowBridgeRequest.WebAuthnGet -> handleWebAuthnGet(request)
             }
@@ -302,18 +306,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
-    private fun handleOAuthWeb(request: FlowBridgeRequest.OAuthWeb) {
-        logger.info("Launching custom tab for web-based oauth")
-        try {
-            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
-        } catch (e: DescopeException) {
-            logger.error("Failed to launch custom tab", e)
-            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
-        }
-    }
-
-    private fun handleSso(request: FlowBridgeRequest.Sso) {
-        logger.info("Launching custom tab for sso")
+    private fun handleWebAuth(request: FlowBridgeRequest.WebAuth) {
+        pendingDeepLinkType = request.variant
+        logger.info("Launching custom tab for ${request.variant}")
         try {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
         } catch (e: DescopeException) {
@@ -456,4 +451,8 @@ private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (Time
             coordinator.periodicRefreshJwtUpdate()
         }
     }
+}
+
+private fun createResumeClosure(ref: WeakReference<DescopeFlowCoordinator>): (Uri) -> Boolean {
+    return { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
 }
