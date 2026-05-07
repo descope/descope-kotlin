@@ -50,7 +50,6 @@ internal class FlowBridge(val webView: WebView) {
     var listener: Listener? = null
     var logger: DescopeLogger? = null
     var attributes = FlowBridgeAttributes()
-    var pendingDeepLinkType: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var alreadySetUp = false
@@ -117,7 +116,6 @@ internal class FlowBridge(val webView: WebView) {
         handler.post {
             try {
                 val request = FlowBridgeRequest.fromJson(response)
-                if (request is FlowBridgeRequest.WebAuth) pendingDeepLinkType = request.variant
                 listener?.onRequest(request)
             } catch (e: DescopeException) {
                 listener?.onError(e)
@@ -249,7 +247,6 @@ internal class FlowBridge(val webView: WebView) {
         alreadySetUp = false
         startedAt = System.currentTimeMillis()
         attempts = 1
-        pendingDeepLinkType = null
         webView.loadUrl(url)
     }
 
@@ -271,7 +268,6 @@ internal class FlowBridge(val webView: WebView) {
     }
 
     fun postResponse(response: FlowBridgeResponse) {
-        if (response is FlowBridgeResponse.DeepLink) pendingDeepLinkType = null
         call("handleResponse", response.typeName, response.payload)
     }
 

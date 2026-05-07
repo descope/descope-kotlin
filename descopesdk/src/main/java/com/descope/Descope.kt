@@ -119,13 +119,13 @@ object Descope {
     /**
      * Resumes an ongoing authentication that's waiting for an external authentication step.
      *
-     * When a flow performs authentication via `Magic Link`, OAuth, SSO, or external
+     * When a flow performs authentication via Magic Link, OAuth, SSO, or external
      * authentication at some point it will wait for the user to be redirected back to
      * the app via a deep link. The host application is expected to intercept the deep
      * link via App Links (or a custom scheme) and resume the running flow with it.
      *
      * You can do this by calling this function and passing the URI from the incoming
-     * intent. For example, from your `Activity.onNewIntent`:
+     * intent. For example, from your Activity.onNewIntent:
      *
      *     override fun onNewIntent(intent: Intent) {
      *         super.onNewIntent(intent)

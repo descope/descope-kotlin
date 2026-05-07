@@ -62,6 +62,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private val bridge = FlowBridge(webView)
     private var flow: DescopeFlow? = null
+    private var pendingDeepLinkType: String? = null
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk?
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
@@ -98,15 +99,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
         this.flow = flow
         bridge.flow = flow
         bridge.logger = logger
-        sdk?.resume = resumeClosure
+        sdk?.resume = createResumeClosure(WeakReference(this))
         handleStarted()
         bridge.start()
-    }
-
-    private val resumeClosure: (Uri) -> Boolean by lazy {
-        val ref = WeakReference(this)
-        val closure: (Uri) -> Boolean = { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
-        closure
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri): Boolean {
@@ -118,8 +113,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
         // magic links don't go through the bridge as a request, so detect them from the URL itself
         val type = when {
             deepLink.queryParameterNames.contains("t") -> "magicLink"
-            else -> bridge.pendingDeepLinkType ?: "oauthWeb"
+            else -> pendingDeepLinkType ?: "oauthWeb"
         }
+        pendingDeepLinkType = null
         sendResponse(FlowBridgeResponse.DeepLink(type = type, url = deepLink.toString()))
         return true
     }
@@ -311,6 +307,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleWebAuth(request: FlowBridgeRequest.WebAuth) {
+        pendingDeepLinkType = request.variant
         logger.info("Launching custom tab for ${request.variant}")
         try {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
@@ -454,4 +451,8 @@ private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (Time
             coordinator.periodicRefreshJwtUpdate()
         }
     }
+}
+
+private fun createResumeClosure(ref: WeakReference<DescopeFlowCoordinator>): (Uri) -> Boolean {
+    return { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
 }
