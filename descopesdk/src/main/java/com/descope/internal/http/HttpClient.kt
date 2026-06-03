@@ -74,19 +74,21 @@ internal open class HttpClient(
         val result = try {
             val response = networkClient.sendRequest(url, method, body, combinedHeaders)
             if (response.code != HttpsURLConnection.HTTP_OK) {
-                exceptionFromResponse(response.body)?.let { e ->
+                val cfRay = response.headers.entries.find { it.key.equals("cf-ray", ignoreCase = true) }?.value?.firstOrNull()
+                val trace = if (cfRay != null) " [CF-Ray: $cfRay]" else ""
+                exceptionFromResponse(response.body)?.with(traceId = cfRay)?.let { e ->
                     if (logger.isUnsafeEnabled) {
-                        logger.error("Network call failed with server error", url, e)
+                        logger.error("Network call failed with server error$trace", url, e)
                     } else {
-                        logger.error("Network call to $route failed with ${e.code} server error")
+                        logger.error("Network call to $route failed with ${e.code} server error$trace")
                     }
                     throw e
                 }
-                exceptionFromResponseCode(response.code)?.let { e ->
+                exceptionFromResponseCode(response.code)?.with(traceId = cfRay)?.let { e ->
                     if (logger.isUnsafeEnabled) {
-                        logger.error("Network call failed with ${response.code} http error", url, e)
+                        logger.error("Network call failed with ${response.code} http error$trace", url, e)
                     } else {
-                        logger.error("Network call to $route failed with ${response.code} http error")
+                        logger.error("Network call to $route failed with ${response.code} http error$trace")
                     }
                     throw e
                 }
@@ -140,6 +142,9 @@ private val Map<String, List<String>>.cookies: List<HttpCookie>
         }
         return cookies.toList()
     }
+
+private fun DescopeException.with(traceId: String?): DescopeException =
+    if (traceId == null) this else DescopeException(code = code, desc = desc, message = message, cause = cause, traceId = traceId)
 
 private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetworkClient {
     override suspend fun sendRequest(url: URL, method: String, body: Map<String, Any?>?, headers: Map<String, String>): DescopeNetworkClient.Response {
