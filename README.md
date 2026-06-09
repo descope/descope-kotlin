@@ -4,6 +4,24 @@ The Descope SDK for Android provides convenient access
 to the Descope user management and authentication APIs for applications
 written for Android. You can read more on the [Descope Website](https://descope.com).
 
+## Migrating from earlier versions
+
+The introduction of the [User Profile Widget](#running-the-user-profile-widget) prompted a
+package reorganization: every WebView-based bridge type now lives under its own sub-package,
+and the previously per-stack hook type is now a single shared `DescopeBridgeHook`.
+
+| Old | New |
+| --- | --- |
+| `com.descope.android.DescopeFlow`, `DescopeFlowView`, `DescopeFlowCoordinator`, `DescopeFlowBridge` | `com.descope.android.flow.*` |
+| `com.descope.android.DescopeFlowHook` and the `disableZoom` / `setUpWebView` / `runJavaScript` / `addStyles` / `setTransparentBody` / `setBackgroundColor` helpers | `com.descope.android.bridge.DescopeBridgeHook` (single hook type for both flows and widgets) |
+
+`Optimize Imports` in Android Studio (`⌃⌥O` / `Ctrl+Alt+O`) handles the import paths
+automatically. The remaining changes are name-only:
+
+- References to `DescopeFlowHook` become `DescopeBridgeHook` (IDE find/replace).
+- If you subclassed `DescopeFlowHook` directly, widen the `execute(...)` parameter type
+  from `DescopeFlowCoordinator` to `com.descope.android.bridge.Coordinator`.
+
 ## Setup
 
 Add the following to your `build.gradle` dependencies:
@@ -333,6 +351,73 @@ descopeFlow.oauthRedirect = "<URL_FOR_APP_LINK_IN_SETUP_#2>"
 descopeFlow.presentation = flowPresentation
 // run the flow
 descopeFlowView.run(descopeFlow)
+```
+
+## Running the User Profile Widget
+
+The Descope [User Profile Widget](https://docs.descope.com/widgets/users#user-profile-widget) is a
+prebuilt UI for letting an already-authenticated user manage their account - change email or
+phone, add or remove a passkey, connect a social account, log out, and so on. The widget is defined
+and built in the [Descope console](https://app.descope.com/widgets). While every project ships with a default
+**User Profile Widget**, you can customize it, or build multiple versions that apply to specific use-cases, such as mobile.
+The widget runs several Descope flows internally (which can also be customized via the console) and the mobile SDK 
+delegates each one through the same native bridge that powers `DescopeFlowView` (native OAuth, passkeys, magic links, etc.).
+
+### Setup
+
+Unlike flows, widgets do not currently have a Descope hosted option — you must host the widget
+component yourself.
+
+The same [App Links setup](#optional-setup-2-enable-app-links-for-magic-link-and-oauth-social) used
+for flows is required to complete `Magic Link`, web `OAuth`, `SSO`, and external authentication
+sub-flows. Forward the incoming URI to the widget view's `resumeFromDeepLink()`:
+
+```kotlin
+intent?.data?.run {
+    descopeUserProfileWidgetView.resumeFromDeepLink(this)
+}
+```
+
+### Run the widget
+
+A widget always runs on behalf of an authenticated user, so make sure the
+[`DescopeSessionManager`](#session-management) (or a custom `sessionProvider` on the
+`DescopeUserProfileWidget` instance) has a valid session before calling `startWidget`. If no
+session is available the listener's `onError` callback is invoked with
+`DescopeException.widgetAuthenticationRequired`.
+
+```kotlin
+descopeUserProfileWidgetView.listener = object : DescopeUserProfileWidgetView.Listener {
+    override fun onReady() {
+        // present the widget view via animation, or however you see fit
+    }
+
+    override fun onLogout() {
+        // the user logged out from inside the widget — the session was
+        // revoked on the server and cleared locally, so navigate to your
+        // "logged out" UI from here
+    }
+
+    override fun onError(exception: DescopeException) {
+        // handle any errors here
+    }
+
+    override fun onNavigation(uri: Uri): DescopeUserProfileWidgetView.NavigationStrategy {
+        // manage navigation event by deciding whether to open the URI
+        // in a custom tab (default behavior), inline, or do nothing.
+    }
+}
+
+val widget = DescopeUserProfileWidget("<URL_WHERE_YOU_HOST_THE_WIDGET>")
+// set the OAuth provider ID only if it is configured to "sign in with Google"
+widget.oauthNativeProvider = OAuthProvider.Google
+// set the oauth redirect URI to use your app's deep link
+widget.oauthRedirect = "<URL_FOR_APP_LINK_SAME_AS_FLOW_SETUP>"
+// ...
+// customize the widget further as you see fit
+// ...
+// run the widget
+descopeUserProfileWidgetView.startWidget(widget)
 ```
 
 ## Authentication Methods

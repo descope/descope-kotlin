@@ -109,6 +109,10 @@ class DescopeException(
         val flowCancelled = DescopeException(code = "K100002", desc = "Flow cancelled")
         val flowSetup = DescopeException(code = "K100003", desc = "Flow not properly set up")
 
+        val widgetFailed = DescopeException(code = "K100101", desc = "Widget failed to run")
+        val widgetAuthenticationRequired = DescopeException(code = "K100102", desc = "Widget requires an authenticated session")
+        val widgetSetup = DescopeException(code = "K100103", desc = "Widget not properly set up")
+
         val passkeyFailed = DescopeException(code = "K110001", desc = "Passkey authentication failed")
         val passkeyCancelled = DescopeException(code = "K110002", desc = "Passkey authentication cancelled")
         val passkeyNoPasskeys = DescopeException(code = "K110003", desc = "No passkeys found")

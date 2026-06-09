@@ -1,4 +1,4 @@
-package com.descope.android
+package com.descope.android.widget
 
 import android.app.Activity
 import android.content.Context
@@ -7,22 +7,20 @@ import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.webkit.WebView
-import com.descope.Descope
-import com.descope.session.DescopeSession
-import com.descope.types.AuthenticationResponse
+import com.descope.android.WebViewUtils
 import com.descope.types.DescopeException
 
 /**
- * Authenticate a user using Descope Flows.
+ * Display Descope's User Profile Widget inside your app.
  *
- * Embed this view into your UI to be able to run flows built with the
- * [Descope Flow builder](https://app.descope.com/flows)
+ * Embed this view into your UI to be able to use widgets built in the
+ * [Descope console](https://app.descope.com). The widget always runs on behalf of an
+ * authenticated user.
  *
  * **Setup**
  *
- * - As a prerequisite, the flow itself must be defined and hosted.
- * It's possible to use Descope's auth hosting solution, or host it
- * yourself. Read more [here.](https://docs.descope.com/auth-hosting-app)
+ * - As a prerequisite, the widget itself must be hosted by you — Descope does not
+ * currently offer a hosted version for widgets.
  *
  * - To use the Descope authentication methods, it is required
  * to configure the desired authentication methods in the [Descope console.](https://app.descope.com/settings/authentication)
@@ -50,112 +48,109 @@ import com.descope.types.DescopeException
  *
  * **Usage**
  *
- * Add a [DescopeFlowView] to your UI via XML, compose, or code.
+ * Add a [DescopeUserProfileWidgetView] to your UI via XML, compose, or code.
  * **IMPORTANT**: When inflating programmatically, make sure to provide an Activity context.
  *
- * Running a flow requires providing an instance of [DescopeFlow] to the [DescopeFlowView].
- * The [DescopeFlow] object defines where and how a flow is run.
- * Read the [DescopeFlow] documentation for a detailed,
+ * Running a widget requires providing an instance of [DescopeUserProfileWidget] to the [DescopeUserProfileWidgetView].
+ * The [DescopeUserProfileWidget] object defines where and how a widget is run.
+ * Read the [DescopeUserProfileWidget] documentation for a detailed,
  * explanation of the available required and optional configurations.
  *
- *     descopeFlowView.listener = object : DescopeFlowView.Listener {
+ *     widgetView.listener = object : DescopeUserProfileWidgetView.Listener {
  *         override fun onReady() {
- *             // present the flow view via animation, or however you see fit
+ *             // present the widget view via animation, or however you see fit
  *         }
  *
- *         override fun onSuccess(response: AuthenticationResponse) {
- *             // optionally hide the flow UI
- *
- *             // manage the incoming session
- *             Descope.sessionManager.manageSession(DescopeSession(response))
- *
- *             // launch the "logged in" UI of your app
+ *         override fun onLogout() {
+ *             // the user logged out from inside the widget — the session was
+ *             // revoked on the server and cleared locally, so navigate to your
+ *             // "logged out" UI from here
  *         }
  *
  *         override fun onError(exception: DescopeException) {
  *             // handle any errors here
  *         }
  *
- *         override fun onNavigation(uri: Uri): DescopeFlowView.NavigationStrategy {
+ *         override fun onNavigation(uri: Uri): DescopeUserProfileWidgetView.NavigationStrategy {
  *             // manage navigation event by deciding whether to open the URI
  *             // in a custom tab (default behavior), inline, or do nothing.
  *         }
  *     }
  *
- *     val descopeFlow = DescopeFlow("https://example.com")
+ *     val widget = DescopeUserProfileWidget("https://example.com/mywidget")
  *     // set the OAuth provider ID that is configured to "sign in with Google"
- *     descopeFlow.oauthNativeProvider = OAuthProvider.Google
+ *     widget.oauthNativeProvider = OAuthProvider.Google
  *     // set the oauth redirect URI to use your app's deep link
- *     descopeFlow.oauthRedirect = "my-redirect-deep-link"
- *     // customize the flow presentation further
- *     descopeFlow.presentation = flowPresentation
+ *     widget.oauthRedirect = "my-redirect-deep-link"
+ *     // customize the widget presentation further
+ *     widget.presentation = widgetPresentation
  *
- *     // run the flow
- *     descopeFlowView.run(descopeFlow)
+ *     // run the widget
+ *     widgetView.startWidget(widget)
  */
-class DescopeFlowView : ViewGroup {
-    /** The state the flow view is in. See [State] for more details. */
+class DescopeUserProfileWidgetView : ViewGroup {
+    /** The state the widget view is in. See [State] for more details. */
     val state: State
-        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.state else State.Initial
+        get() = if (this::coordinator.isInitialized) coordinator.state else State.Initial
 
-    /** The [Listener] property is called according to the Flow's state */
+    /** The [Listener] property is called according to the Widget's state */
     var listener: Listener?
-        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.listener else null
+        get() = if (this::coordinator.isInitialized) coordinator.listener else null
         set(value) {
-            if (this::flowCoordinator.isInitialized) {
-                flowCoordinator.listener = value
+            if (this::coordinator.isInitialized) {
+                coordinator.listener = value
             }
         }
 
-    private lateinit var flowCoordinator: DescopeFlowCoordinator
+    private lateinit var coordinator: DescopeUserProfileWidgetCoordinator
 
     constructor(context: Context) : super(context) {
-        initFlowView()
+        initWidgetView()
     }
 
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
-        initFlowView()
+        initWidgetView()
     }
 
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
-        initFlowView()
+        initWidgetView()
     }
 
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int, defStyleRes: Int) : super(context, attrs, defStyleAttr, defStyleRes) {
-        initFlowView()
+        initWidgetView()
     }
 
-    private fun initFlowView() {
+    private fun initWidgetView() {
         val webView = WebView(context)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        this.flowCoordinator = DescopeFlowCoordinator(webView)
+        this.coordinator = DescopeUserProfileWidgetCoordinator(webView)
     }
 
     // API
 
     /**
-     * Start a flow based on the configuration provided
-     * via a [DescopeFlowView]
+     * Start a widget based on the configuration provided
+     * via a [DescopeUserProfileWidgetView]
      *
-     * @param flow The [DescopeFlow] to execute
+     * @param widget The [DescopeUserProfileWidget] to execute
      */
-    fun startFlow(flow: DescopeFlow) {
-        flowCoordinator.startFlow(flow)
+    fun startWidget(widget: DescopeUserProfileWidget) {
+        coordinator.startWidget(widget)
     }
-    
+
     /**
-     * Resume an already running flow after a deep link
+     * Resume an already running widget after a deep link
      * event. This function should be called to complete `Magic Link`,
      * web-based `OAuth`, `SSO`, and external authentication.
      *
      * @param deepLink The incoming deep link URI
-     * @return `true` if the running flow consumed the URI, `false` otherwise.
+     * @return `true` if the running widget consumed the URI, `false` otherwise.
      */
     fun resumeFromDeepLink(deepLink: Uri): Boolean {
-        return flowCoordinator.resumeFromDeepLink(deepLink)
+        return coordinator.resumeFromDeepLink(deepLink)
     }
 
-    // Internal 
+    // Internal
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         for (i in 0 until childCount) {
@@ -167,34 +162,34 @@ class DescopeFlowView : ViewGroup {
     // Helper Classes
 
     /**
-     * The [Listener] interface is used to communicate Flow lifecycle events back to the caller.
+     * The [Listener] interface is used to communicate Widget lifecycle events back to the caller.
      */
     interface Listener {
         /**
-         * Called when a flow is fully loaded and ready to be displayed
+         * Called when a widget is fully loaded and ready to be displayed
          */
         fun onReady()
 
         /**
-         * Called when a flow has completed successfully. Typically create a [DescopeSession]
-         * and manage it using [Descope.sessionManager]
-         * 
-         * @param response The successful authentication response
+         * Called when the user logs out from inside the widget. By the time this
+         * callback fires the host SDK has already revoked the session on the
+         * server and cleared it locally — typically navigate to your
+         * "logged out" UI from here.
          */
-        fun onSuccess(response: AuthenticationResponse)
+        fun onLogout()
 
         /**
-         * Called when a flow has encountered an error.
+         * Called when a widget has encountered an error.
          *
-         * Typically a flow will not to be restarted at this point.
+         * Typically a widget will not be restarted at this point.
          *
          * @param exception What caused the error
          */
         fun onError(exception: DescopeException)
 
         /**
-         * Called when the flow attempts to navigate to a different URL.
-         * The [DescopeFlowView] will act upon the response from this function.
+         * Called when the widget attempts to navigate to a different URL.
+         * The [DescopeUserProfileWidgetView] will act upon the response from this function.
          * It will either open an external custom tab, if [NavigationStrategy.OpenBrowser] is returned,
          * allow the navigation to happen [NavigationStrategy.Inline] or allow the caller to
          * override the navigation altogether if [NavigationStrategy.DoNothing] is returned.
@@ -206,19 +201,17 @@ class DescopeFlowView : ViewGroup {
     }
 
     /**
-     * Represents the state the flow is in.
+     * Represents the state the widget is in.
      */
     enum class State {
-        /** Initial state - when the [DescopeFlowView] is initially create. */
+        /** Initial state - when the [DescopeUserProfileWidgetView] is initially create. */
         Initial,
-        /** Started state - a flow has begun but not yet ready to be displayed. */
+        /** Started state - a widget has begun but not yet ready to be displayed. */
         Started,
-        /** Ready state - the [DescopeFlowView] is ready to be presented and interacted with. */
+        /** Ready state - the [DescopeUserProfileWidgetView] is ready to be presented and interacted with. */
         Ready,
-        /** Failed state - the flow finished unsuccessfully. This state cannot be recovered from. */
+        /** Failed state - the widget finished unsuccessfully. This state cannot be recovered from. */
         Failed,
-        /** Finished state - the final state when a flow has completed successfully. */
-        Finished,
     }
 
     /**
@@ -231,31 +224,31 @@ class DescopeFlowView : ViewGroup {
         Inline,
         DoNothing,
     }
-    
+
     // Warm up
-    
+
     companion object {
         /**
-         * Prepares the Android [WebView] class for use by [DescopeFlowView] ahead of time.
-         * 
+         * Prepares the Android [WebView] class for use by [DescopeUserProfileWidgetView] ahead of time.
+         *
          * This function is experimental. Calling it is strictly optional, but it might improve
-         * the initial flow loading time on some devices, and it might help workaround some
+         * the initial widget loading time on some devices, and it might help workaround some
          * internal Android bugs (e.g., https://issuetracker.google.com/issues/447973113 ).
-         * 
+         *
          * You can call this function when you expect your app to be idle, for example,
          * in a home screen or splash screen [Activity]'s `onStart()` method. Alternatively,
          * if you're using Jetpack Compose you can add a method such as the one below and
          * call it somewhere in your code:
-         * 
+         *
          *     @Composable
-         *     fun warmupFlowView() {
+         *     fun warmupWidgetView() {
          *         val context = LocalContext.current
          *         LaunchedEffect(Unit) {
          *             delay(1000)
-         *             DescopeFlowView.warmup(context)
+         *             DescopeUserProfileWidgetView.warmup(context)
          *         }
          *     }
-         * 
+         *
          * By default, calling this function schedules the actual WebView warmup to happen when
          * the main thread is idle, unless the `immediately` parameter is set to `true`. It's safe
          * to call this function multiple times as subsequent calls do nothing.
@@ -264,12 +257,4 @@ class DescopeFlowView : ViewGroup {
             WebViewUtils.warmup(context, immediately)
         }
     }
-    
-    // Deprecated
-
-    @Deprecated("Use startFlow instead", replaceWith = ReplaceWith("startFlow(flow)"))
-    fun run(flow: DescopeFlow) {
-        startFlow(flow)
-    }
-    
 }
