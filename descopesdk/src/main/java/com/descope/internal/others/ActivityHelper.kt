@@ -73,7 +73,7 @@ internal val activityHelper = object : ActivityHelper {
     }
 }
 
-sealed class FileResponse {
+internal sealed class FileResponse {
     object None : FileResponse()
     class Selected(val uris: Array<Uri>) : FileResponse()
     class Failure(val e: Exception) : FileResponse()
