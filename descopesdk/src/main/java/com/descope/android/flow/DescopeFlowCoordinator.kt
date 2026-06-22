@@ -269,12 +269,26 @@ internal class DescopeFlowCoordinator(override val webView: WebView) : Coordinat
 
     private fun handleRequest(request: BridgeRequest) {
         if (request is BridgeRequest.WebAuth) {
-            pendingDeepLinkType = request.variant
+            handleWebAuth(request)
+            return
         }
         val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
         scope.launch(Dispatchers.Main) {
             val response = common.handleNativeAction(request)
             response?.let { sendResponse(it) }
+        }
+    }
+
+    // WebAuth handled separately here to track state, and cancellation
+    private fun handleWebAuth(request: BridgeRequest.WebAuth) {
+        pendingDeepLinkType = request.variant
+        val failure = common.launchWebAuth(request) {
+            pendingDeepLinkType = null
+            sendResponse(BridgeResponse.Failure("WebAuthCancelled"))
+        }
+        failure?.let {
+            pendingDeepLinkType = null
+            sendResponse(it)
         }
     }
 

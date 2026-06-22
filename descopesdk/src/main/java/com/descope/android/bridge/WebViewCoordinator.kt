@@ -73,9 +73,20 @@ internal class WebViewCoordinator(webView: WebView) {
     suspend fun handleNativeAction(request: BridgeRequest): BridgeResponse? {
         return when (request) {
             is BridgeRequest.OAuthNative -> handleOAuthNative(request)
-            is BridgeRequest.WebAuth -> handleWebAuth(request)
             is BridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(request)
             is BridgeRequest.WebAuthnGet -> handleWebAuthnGet(request)
+            is BridgeRequest.WebAuth -> null // dispatched via launchWebAuth
+        }
+    }
+
+    fun launchWebAuth(request: BridgeRequest.WebAuth, onCancel: () -> Unit): BridgeResponse? {
+        logger.info("Launching custom tab for ${request.variant}")
+        return try {
+            launchCustomTab(context, request.startUrl, customTabsIntent, onCancel)
+            null
+        } catch (e: DescopeException) {
+            logger.error("Failed to launch custom tab", e)
+            BridgeResponse.Failure("CustomTabFailure")
         }
     }
 
@@ -87,21 +98,10 @@ internal class WebViewCoordinator(webView: WebView) {
         } catch (e: DescopeException) {
             if (e == DescopeException.oauthNativeCancelled) {
                 logger.info("OAuth native canceled")
-                return null
+                return BridgeResponse.Failure("OAuthNativeCancelled")
             }
             logger.error("OAuth native failed", e)
             BridgeResponse.Failure("OAuthNativeFailed")
-        }
-    }
-
-    private fun handleWebAuth(request: BridgeRequest.WebAuth): BridgeResponse? {
-        logger.info("Launching custom tab for ${request.variant}")
-        return try {
-            launchCustomTab(context, request.startUrl, customTabsIntent)
-            null
-        } catch (e: DescopeException) {
-            logger.error("Failed to launch custom tab", e)
-            BridgeResponse.Failure("CustomTabFailure")
         }
     }
 
@@ -128,7 +128,7 @@ internal class WebViewCoordinator(webView: WebView) {
     private fun mapPasskeyException(e: DescopeException): BridgeResponse? {
         if (e == DescopeException.passkeyCancelled) {
             logger.info("Passkeys canceled")
-            return null
+            return BridgeResponse.Failure("PasskeyCancelled")
         }
         val failure = when (e) {
             DescopeException.passkeyFailed -> {

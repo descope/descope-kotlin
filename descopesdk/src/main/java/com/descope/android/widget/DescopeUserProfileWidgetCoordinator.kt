@@ -257,17 +257,29 @@ internal class DescopeUserProfileWidgetCoordinator(override val webView: WebView
 
     private fun handleRequest(request: BridgeRequest) {
         if (request is BridgeRequest.WebAuth) {
-            request.handle?.let { pendingDeepLink = request.variant to it }
+            handleWebAuth(request)
+            return
         }
         val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
         scope.launch(Dispatchers.Main) {
             val response = common.handleNativeAction(request)
-            if (request is BridgeRequest.WebAuth && response is BridgeResponse.Failure) {
-                pendingDeepLink = null
-            }
             response?.let { resp ->
                 request.handle?.let { sendResponse(it, resp) }
             }
+        }
+    }
+
+    // WebAuth handled separately here to track state, and cancellation
+    private fun handleWebAuth(request: BridgeRequest.WebAuth) {
+        val handle = request.handle ?: return
+        pendingDeepLink = request.variant to handle
+        val failure = common.launchWebAuth(request) {
+            pendingDeepLink = null
+            sendResponse(handle, BridgeResponse.Failure("WebAuthCancelled"))
+        }
+        failure?.let {
+            pendingDeepLink = null
+            sendResponse(handle, it)
         }
     }
 

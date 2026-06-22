@@ -63,6 +63,7 @@ class DescopeHelperActivity : Activity() {
         // interfere with user input, etc.
         if (listenForClose) {
             listenForClose = false
+            activityHelper.onCustomTabCanceled()
             finish()
         } else {
             listenForClose = true
