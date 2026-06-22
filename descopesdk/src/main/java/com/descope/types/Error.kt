@@ -49,12 +49,18 @@ private const val API_DESC = "Descope API error"
  * @property cause An optional underlying [Throwable] that caused this error.
  * For example, when a [DescopeException.networkError] is caught the [cause] property
  * will usually have the [Exception] object thrown by the internal `HttpsURLConnection` call.
+ * @property traceId An optional trace identifier for a failed network request.
+ * When the Descope server is accessed through its CDN (the default), this holds the value
+ * of the `CF-Ray` response header of the failed request. You can log this value or send it
+ * to Descope support to help trace and diagnose server errors. It is `null` for errors not
+ * associated with a server response, such as [DescopeException.networkError].
  */
 class DescopeException(
     val code: String,
     val desc: String,
     override val message: String? = null,
     override val cause: Throwable? = null,
+    val traceId: String? = null,
 ) : Exception(), Comparable<DescopeException> {
     
     override fun compareTo(other: DescopeException): Int {
@@ -79,6 +85,9 @@ class DescopeException(
         }
         cause?.run {
             str += ", cause: {$this}"
+        }
+        traceId?.run {
+            str += """, traceId: "$this""""
         }
         str += ")"
         return str
