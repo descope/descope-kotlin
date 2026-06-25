@@ -108,6 +108,7 @@ class DescopeException(
         val flowFailed = DescopeException(code = "K100001", desc = "Flow failed to run")
         val flowCancelled = DescopeException(code = "K100002", desc = "Flow cancelled")
         val flowSetup = DescopeException(code = "K100003", desc = "Flow not properly set up")
+        val flowAborted = DescopeException(code = "E102122", desc = "Flow aborted")
 
         val widgetFailed = DescopeException(code = "K100101", desc = "Widget failed to run")
         val widgetAuthenticationRequired = DescopeException(code = "K100102", desc = "Widget requires an authenticated session")
