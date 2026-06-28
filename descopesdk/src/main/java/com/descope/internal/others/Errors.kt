@@ -10,9 +10,9 @@ internal fun DescopeException.with(desc: String? = null, message: String? = null
     cause = cause ?: this.cause,
 )
 
-internal fun String.toDescopeException(): DescopeException? {
+internal fun parseServerError(response: String): DescopeException? {
     try {
-        val map = JSONObject(this).toMap()
+        val map = JSONObject(response).toMap()
         val code = map["errorCode"] as? String ?: return null
         val desc = map["errorDescription"] as? String ?: "Descope server error"
         val message = map["errorMessage"] as? String

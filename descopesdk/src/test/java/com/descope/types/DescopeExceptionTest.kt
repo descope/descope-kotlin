@@ -1,6 +1,6 @@
 package com.descope.types
 
-import com.descope.internal.others.toDescopeException
+import com.descope.internal.others.parseServerError
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -16,7 +16,7 @@ class DescopeExceptionTest {
             put("errorDescription", "server description")
             put("errorMessage", "some reason")
         }.toString()
-        val serverException = mockResponse.toDescopeException()
+        val serverException = parseServerError(mockResponse)
         assertEquals(DescopeException.wrongOtpCode, serverException)
         when (serverException) {
             DescopeException.wrongOtpCode -> assertEquals("server description", serverException.desc)
@@ -25,21 +25,22 @@ class DescopeExceptionTest {
     }
 
     @Test
-    fun flow_aborted_parsing() {
+    fun error_message_preserved() {
         val payload = JSONObject().apply {
             put("errorCode", "E102122")
             put("errorDescription", "Flow aborted")
             put("errorMessage", "User canceled")
         }.toString()
-        val exception = payload.toDescopeException()
-        assertEquals(DescopeException.flowAborted, exception)
+        val exception = parseServerError(payload)
+        assertEquals("E102122", exception?.code)
+        assertEquals("Flow aborted", exception?.desc)
         assertEquals("User canceled", exception?.message)
     }
 
     @Test
     fun invalid_error_payload_parsing() {
-        assertNull("not a json error".toDescopeException())
-        assertNull(JSONObject().apply { put("errorMessage", "no code here") }.toString().toDescopeException())
+        assertNull(parseServerError("not a json error"))
+        assertNull(parseServerError(JSONObject().apply { put("errorMessage", "no code here") }.toString()))
     }
 
 }

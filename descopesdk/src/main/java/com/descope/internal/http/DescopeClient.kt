@@ -1,7 +1,7 @@
 package com.descope.internal.http
 
 import com.descope.android.SystemInfo
-import com.descope.internal.others.toDescopeException
+import com.descope.internal.others.parseServerError
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod
@@ -506,7 +506,7 @@ internal open class DescopeClient(internal val config: DescopeConfig, systemInfo
 
     override val defaultHeaders: Map<String, String> = makeDefaultHeaders(config, systemInfo)
         
-    override fun exceptionFromResponse(response: String): DescopeException? = response.toDescopeException()
+    override fun exceptionFromResponse(response: String): DescopeException? = parseServerError(response)
 
     // Internal
 

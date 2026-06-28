@@ -15,7 +15,7 @@ import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.stringOrEmptyAsNull
-import com.descope.internal.others.toDescopeException
+import com.descope.internal.others.parseServerError
 import com.descope.internal.others.with
 import com.descope.sdk.DescopeLogger
 import com.descope.types.DescopeException
@@ -100,8 +100,14 @@ internal class FlowBridge(webView: WebView) {
     }
 
     private fun bridgeOnError(error: String) {
+        val parsed = parseServerError(error)
+        val exception = when {
+            parsed == null -> DescopeException.flowFailed.with(message = error)
+            parsed.code == "E102122" -> DescopeException.flowCancelled.with(message = parsed.message)
+            else -> parsed
+        }
         handler.post {
-            listener?.onError(error.toDescopeException() ?: DescopeException.flowFailed.with(message = error))
+            listener?.onError(exception)
         }
     }
 
