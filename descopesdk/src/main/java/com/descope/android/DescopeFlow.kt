@@ -1,41 +1,42 @@
-package com.descope.android.widget
+package com.descope.android
 
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.Descope
-import com.descope.android.bridge.DescopeBridgeHook
+import com.descope.internal.others.with
 import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
 import com.descope.session.DescopeSessionManager
+import com.descope.types.DescopeException
 import com.descope.types.OAuthProvider
 
 /**
- * The configuration class required to run a User Profile Widget. Provide an instance
- * of this class when calling [DescopeUserProfileWidgetView.startWidget] to run a widget
+ * The configuration class required to run a Flow. Provide an instance
+ * of this class when calling [DescopeFlowView.run] to run a flow
  * according to the properties provided here.
  */
-class DescopeUserProfileWidget {
+class DescopeFlow {
 
-    /** The URL where the widget is hosted. */
+    /** The URL where the flow is hosted. */
     var url: String
 
     /** Provide an instance of `DescopeSdk` if a custom instance was initialized. Leave `null` to use [Descope]*/
     var sdk: DescopeSdk? = null
 
     /**
-     * A list of hooks that customize how the widget webpage looks or behaves.
+     * A list of hooks that customize how the flow webpage looks or behaves.
      *
      * You can use the built-in hooks or create custom ones. See the documentation
-     * for [DescopeBridgeHook] for more details.
+     * for [DescopeFlowHook] for more details.
      */
-    var hooks: List<DescopeBridgeHook> = emptyList()
+    var hooks: List<DescopeFlowHook> = emptyList()
 
     /**
-     * An optional map of client inputs that will be provided to the widget.
-     *
-     * These values can be used to customize the widget's behavior during execution.
-     * The values set on the map must be valid JSON types.
+     * An optional map of client inputs that will be provided to the flow.
+     * 
+     * These values can be used in the flow editor to customize the flow's behavior
+     * during execution. The values set on the map must be valid JSON types.
      */
     var clientInputs: Map<String, Any> = emptyMap()
 
@@ -43,28 +44,32 @@ class DescopeUserProfileWidget {
      * An object that provides the [DescopeSession] value for the currently authenticated
      * user if there is one, or `null` otherwise.
      *
-     * This is required because a widget always runs on behalf of an authenticated user.
+     * This is used when running a flow that expects the user to already be signed in.
+     * For example, a flow to update a user's email or account recovery details, or that
+     * does step-up authentication.
+     *
      * The default behavior is to check whether the [DescopeSessionManager] is currently
      * managing a valid session, and return it if that's the case.
      *
      * - **Note**: The default behavior checks the [DescopeSessionManager] from the [Descope]
-     * singleton, or the one from the widget's [sdk] property if it is set.
+     * singleton, or the one from the flow's [sdk] property if it is set.
      *
      * If you're not using the [DescopeSessionManager] but rather managing the tokens
-     * manually, then you should set your own [sessionProvider]. For example:
+     * manually, and if you also need to start a flow for an authenticated user, then you
+     * should set your own [sessionProvider]. For example:
      *
-     *     // create a widget object with the URL where the widget is hosted
-     *     val widget = DescopeUserProfileWidget("https://example.com/mywidget")
+     *     // create a flow object with the URL where the flow is hosted
+     *     val flow = DescopeFlow("https://example.com/myflow")
      *
      *     // fetch the latest session from our model layer when needed
-     *     widget.sessionProvider = {
+     *     flow.sessionProvider = {
      *         return modelLayer.fetchDescopeSession()
      *     }
      *
-     * - **Important**: The provider may be called multiple times to ensure that the widget uses
-     * the newest tokens, even if the session is refreshed while the widget is running.
+     * - **Important**: The provider may be called multiple times to ensure that the flow uses
+     * the newest tokens, even if the session is refreshed while the flow is running.
      * This is especially important for projects that use refresh token rotation.
-     */
+     */ 
     var sessionProvider: (() -> DescopeSession?)? = null
 
     /**
@@ -138,34 +143,56 @@ class DescopeUserProfileWidget {
     var magicLinkRedirect: String? = null
 
     /**
-     * Customize the [DescopeUserProfileWidgetView] presentation by providing a [Presentation] implementation
+     * Customize the [DescopeFlowView] presentation by providing a [Presentation] implementation
      */
     var presentation: Presentation? = null
 
     /**
-     * Creates a new [DescopeUserProfileWidget] object.
+     * Creates a new [DescopeFlow] object.
      */
     constructor(url: String) {
         this.url = url
     }
 
     /**
-     * Creates a new [DescopeUserProfileWidget] object from a parsed `Uri` instance.
+     * Creates a new [DescopeFlow] object from a parsed `Uri` instance.
      * */
     constructor(uri: Uri) {
         this.url = uri.toString()
     }
 
     /**
-     * Customize the widget's presentation by implementing the [Presentation] interface.
+     * Customize the flow's presentation by implementing the [Presentation] interface.
      */
     interface Presentation {
         /**
          * Provide your own [CustomTabsIntent] that will be used when a custom tab
-         * is required, e.g. when performing web-based OAuth authentication.
-         * @param context The context the [DescopeUserProfileWidgetView] resides inside.
+         * is required, e.g. when performing web-based OAuth authentication,
+         * or when [DescopeFlowView.NavigationStrategy.OpenBrowser] is returned for navigation events,
+         * which is also the default behavior.
+         * @param context The context the [DescopeFlowView] resides inside.
          * @return A [CustomTabsIntent]. Returning `null` will use the default custom tab intent.
          */
         fun createCustomTabsIntent(context: Context): CustomTabsIntent?
     }
+
+    companion object {
+        /**
+         * Create a new [DescopeFlow] instance with the provided flow ID.
+         *
+         * Note: This method is only applicable when using Descope's Flow hosting service.
+         * If you host your own flows, use the default constructor instead.
+         *
+         * @param flowId The flow ID.
+         * @param sdk An optional `DescopeSdk` to use instead of the the [Descope] singleton.
+         * @return A new [DescopeFlow] instance.
+         */
+        fun hosted(flowId: String, sdk: DescopeSdk? = null): DescopeFlow {
+            val descope = sdk ?: if (Descope.isInitialized) Descope.sdk else throw DescopeException.flowSetup.with(message = "The Descope SDK must be initialized before use")
+            val url = "${descope.client.baseUrl}/login/${descope.client.config.projectId}?shadow=false&flow=$flowId"
+            val flow = DescopeFlow(url)
+            flow.sdk = sdk
+            return flow
+        }
+    }    
 }

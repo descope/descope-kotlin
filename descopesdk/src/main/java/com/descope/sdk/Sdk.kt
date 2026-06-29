@@ -9,7 +9,6 @@ import android.os.Looper
 import com.descope.android.DescopeSystemInfo
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.ConsoleLogger
-import com.descope.internal.others.with
 import com.descope.internal.routes.Auth
 import com.descope.internal.routes.EnchantedLink
 import com.descope.internal.routes.Flow
@@ -20,6 +19,7 @@ import com.descope.internal.routes.Passkey
 import com.descope.internal.routes.Password
 import com.descope.internal.routes.Sso
 import com.descope.internal.routes.Totp
+import com.descope.internal.others.with
 import com.descope.session.DescopeSessionManager
 import com.descope.session.SessionLifecycle
 import com.descope.session.SessionStorage
@@ -83,8 +83,8 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     // Internal
 
     /**
-     * While a flow or widget is running this is set to a closure with a weak reference to
-     * the corresponding coordinator to provide it with the resume URI.
+     * While the flow is running this is set to a closure with a weak reference to
+     * the [DescopeFlowCoordinator] to provide it with the resume URI.
      */
     internal var resume: (Uri) -> Boolean = { false }
 

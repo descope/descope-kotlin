@@ -1,6 +1,6 @@
 package com.descope.session
 
-import com.descope.android.flow.findJwtInCookies
+import com.descope.android.findJwtInCookies
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import org.junit.Assert.assertEquals
