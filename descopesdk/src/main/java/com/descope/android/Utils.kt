@@ -27,12 +27,12 @@ fun sendViewIntent(context: Context, uri: Uri) {
 
 // Custom Tab
 
-fun launchCustomTab(context: Context, url: String, customTabsIntent: CustomTabsIntent? = null) {
-    launchCustomTab(context, url.toUri(), customTabsIntent)
+fun launchCustomTab(context: Context, url: String, customTabsIntent: CustomTabsIntent? = null, onCancel: (() -> Unit)? = null) {
+    launchCustomTab(context, url.toUri(), customTabsIntent, onCancel)
 }
 
-fun launchCustomTab(context: Context, uri: Uri, customTabsIntent: CustomTabsIntent? = null) {
-    activityHelper.openCustomTab(context, customTabsIntent ?: defaultCustomTabIntent(), uri)
+fun launchCustomTab(context: Context, uri: Uri, customTabsIntent: CustomTabsIntent? = null, onCancel: (() -> Unit)? = null) {
+    activityHelper.openCustomTab(context, customTabsIntent ?: defaultCustomTabIntent(), uri, onCancel)
 }
 
 internal fun defaultCustomTabIntent(): CustomTabsIntent {
