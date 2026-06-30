@@ -1,6 +1,7 @@
 package com.descope.internal.http
 
 import com.descope.android.SystemInfo
+import com.descope.internal.others.parseServerError
 import com.descope.sdk.DescopeConfig
 import com.descope.sdk.DescopeSdk
 import com.descope.types.DeliveryMethod

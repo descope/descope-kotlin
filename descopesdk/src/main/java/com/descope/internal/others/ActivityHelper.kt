@@ -10,14 +10,18 @@ import com.descope.types.DescopeException
 
 internal interface ActivityHelper {
     val customTabsIntent: CustomTabsIntent?
-    fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri)
+    // onCancel is registered JIT (lifecycle-bound to this custom-tab launch) so
+    // it doesn't outlive the tab and can't be hijacked by a different caller.
+    fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)? = null)
     fun closeCustomTab(context: Context)
+    fun onCustomTabCanceled()
 }
 
 internal val activityHelper = object : ActivityHelper {
+    private var cancelCallback: (() -> Unit)? = null
     override var customTabsIntent: CustomTabsIntent? = null
 
-    override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri) {
+    override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)?) {
         this.customTabsIntent = customTabsIntent
         if (!isBrowserSupported(context, url)) {
             throw DescopeException.customTabFailed.with(message = "No browser application was found")
@@ -30,11 +34,13 @@ internal val activityHelper = object : ActivityHelper {
         } catch (e: Exception) {
             throw DescopeException.customTabFailed.with(message = "Failed to open custom tab from context", cause = e)
         }
+        this.cancelCallback = onCancel
     }
 
     override fun closeCustomTab(context: Context) {
         if (this.customTabsIntent == null) return
         this.customTabsIntent = null
+        this.cancelCallback = null
         val intent = Intent(context, DescopeHelperActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         try {
@@ -42,6 +48,11 @@ internal val activityHelper = object : ActivityHelper {
         } catch (e: Exception) {
             throw DescopeException.customTabFailed.with(message = "Failed to close custom tab from context", cause = e)
         }
+    }
+
+    override fun onCustomTabCanceled() {
+        cancelCallback?.invoke()
+        cancelCallback = null
     }
 
     private fun isBrowserSupported(context: Context, uri: Uri): Boolean {

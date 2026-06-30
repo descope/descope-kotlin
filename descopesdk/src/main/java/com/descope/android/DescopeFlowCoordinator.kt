@@ -299,6 +299,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         } catch (e: DescopeException) {
             if (e == DescopeException.oauthNativeCancelled) {
                 logger.info("OAuth native canceled")
+                sendResponse(FlowBridgeResponse.Failure("OAuthNativeCancelled"))
                 return
             }
             logger.error("OAuth native failed", e)
@@ -310,9 +311,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
         pendingDeepLinkType = request.variant
         logger.info("Launching custom tab for ${request.variant}")
         try {
-            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context))
+            launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context)) {
+                // Custom tab dismissed by the user before completing the auth flow.
+                pendingDeepLinkType = null
+                sendResponse(FlowBridgeResponse.Failure("WebAuthCancelled"))
+            }
         } catch (e: DescopeException) {
             logger.error("Failed to launch custom tab", e)
+            pendingDeepLinkType = null
             sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
         }
     }
@@ -325,6 +331,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
+                sendResponse(FlowBridgeResponse.Failure("PasskeyCancelled"))
                 return
             }
             val failure = when (e) {
@@ -353,6 +360,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
+                sendResponse(FlowBridgeResponse.Failure("PasskeyCancelled"))
                 return
             }
             val failure = when (e) {
