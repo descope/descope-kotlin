@@ -76,7 +76,7 @@ import com.descope.types.DescopeException
  *             // handle any errors here
  *         }
  *
- *         override fun onNavigation(uri: Uri): DescopeFlowView.NavigationStrategy {
+ *         override fun onNavigation(uri: Uri): NavigationStrategy {
  *             // manage navigation event by deciding whether to open the URI
  *             // in a custom tab (default behavior), inline, or do nothing.
  *         }
@@ -96,16 +96,10 @@ import com.descope.types.DescopeException
 class DescopeFlowView : ViewGroup {
     /** The state the flow view is in. See [State] for more details. */
     val state: State
-        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.state else State.Initial
+        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.state.toFlowState() else State.Initial
 
-    /** The [Listener] property is called according to the Flow's state */
-    var listener: Listener?
-        get() = if (this::flowCoordinator.isInitialized) flowCoordinator.listener else null
-        set(value) {
-            if (this::flowCoordinator.isInitialized) {
-                flowCoordinator.listener = value
-            }
-        }
+    /** The [Listener] property is called according to the Flow's state. */
+    var listener: Listener? = null
 
     private lateinit var flowCoordinator: DescopeFlowCoordinator
 
@@ -128,7 +122,14 @@ class DescopeFlowView : ViewGroup {
     private fun initFlowView() {
         val webView = WebView(context)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        this.flowCoordinator = DescopeFlowCoordinator(webView)
+        flowCoordinator = DescopeFlowCoordinator(webView).apply {
+            listener = object : CoordinatorListener {
+                override fun onReady() { listener?.onReady() }
+                override fun onSuccess(response: AuthenticationResponse) { listener?.onSuccess(response) }
+                override fun onError(exception: DescopeException) { listener?.onError(exception) }
+                override fun onNavigation(uri: Uri): NavigationStrategy = listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
+            }
+        }
     }
 
     // API
@@ -155,7 +156,15 @@ class DescopeFlowView : ViewGroup {
         return flowCoordinator.resumeFromDeepLink(deepLink)
     }
 
-    // Internal 
+    // Internal
+
+    private fun CoordinatorState.toFlowState(): State = when (this) {
+        CoordinatorState.Initial -> State.Initial
+        CoordinatorState.Started -> State.Started
+        CoordinatorState.Ready -> State.Ready
+        CoordinatorState.Failed -> State.Failed
+        CoordinatorState.Finished -> State.Finished
+    }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         for (i in 0 until childCount) {
@@ -221,17 +230,6 @@ class DescopeFlowView : ViewGroup {
         Finished,
     }
 
-    /**
-     * Returned from a [Listener.onNavigation] call, and determines
-     * the how to handle navigation event. This is useful to override
-     * URL opening for certain use-cases or provide you're own implementation.
-     */
-    enum class NavigationStrategy {
-        OpenBrowser,
-        Inline,
-        DoNothing,
-    }
-    
     // Warm up
     
     companion object {
