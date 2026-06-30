@@ -12,15 +12,15 @@ import android.webkit.WebView
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.descope.Descope
+import com.descope.android.CoordinatorState.Failed
+import com.descope.android.CoordinatorState.Finished
+import com.descope.android.CoordinatorState.Initial
+import com.descope.android.CoordinatorState.Ready
+import com.descope.android.CoordinatorState.Started
 import com.descope.android.DescopeFlowHook.Event
-import com.descope.android.DescopeFlowView.NavigationStrategy.DoNothing
-import com.descope.android.DescopeFlowView.NavigationStrategy.Inline
-import com.descope.android.DescopeFlowView.NavigationStrategy.OpenBrowser
-import com.descope.android.DescopeFlowView.State.Failed
-import com.descope.android.DescopeFlowView.State.Finished
-import com.descope.android.DescopeFlowView.State.Initial
-import com.descope.android.DescopeFlowView.State.Ready
-import com.descope.android.DescopeFlowView.State.Started
+import com.descope.android.NavigationStrategy.DoNothing
+import com.descope.android.NavigationStrategy.Inline
+import com.descope.android.NavigationStrategy.OpenBrowser
 import com.descope.internal.http.JwtServerResponse
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
@@ -29,6 +29,7 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
+import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
 import com.descope.internal.routes.convert
@@ -43,6 +44,7 @@ import com.descope.session.DescopeSession
 import com.descope.session.Token
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
+import com.descope.types.RevokeType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -57,12 +59,14 @@ import kotlin.concurrent.timer
 @SuppressLint("SetJavaScriptEnabled")
 class DescopeFlowCoordinator(val webView: WebView) {
 
-    internal var listener: DescopeFlowView.Listener? = null
-    internal var state: DescopeFlowView.State = Initial
+    internal var listener: CoordinatorListener? = null
+    internal var state: CoordinatorState = Initial
+    internal var isWidgetMode: Boolean = false
 
     private val bridge = FlowBridge(webView)
     private var flow: DescopeFlow? = null
-    private var pendingDeepLinkType: String? = null
+    private val components = mutableMapOf<String, FlowBridgeAttributes>()
+    private var pendingDeepLink: Pair<String, String>? = null // (wcKey, deepLinkType)
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk?
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
@@ -75,12 +79,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private val bridgeListener = object : FlowBridge.Listener {
         override fun onLoaded() = handleLoaded()
-        override fun onFound() = initialize()
-        override fun onReady(tag: String) = handleReady(tag)
-        override fun onRequest(request: FlowBridgeRequest) = handleRequest(request)
+        override fun onRegister(wcKey: String, attributes: FlowBridgeAttributes) = handleRegister(wcKey, attributes)
+        override fun onUnregister(wcKey: String) = handleUnregister(wcKey)
+        override fun onReady(wcKey: String, tag: String) = handleReady(wcKey, tag)
+        override fun onRequest(wcKey: String, request: FlowBridgeRequest) = handleRequest(wcKey, request)
         override fun onNavigation(uri: Uri) = handleNavigation(uri)
-        override fun onSuccess(data: String?, url: String) = handleFinish(data, url)
-        override fun onError(error: DescopeException) = handleError(error)
+        override fun onSuccess(wcKey: String, data: String?, url: String) = handleFinish(wcKey, data, url)
+        override fun onError(wcKey: String, error: DescopeException) = handleError(error)
+        override fun onWidgetEvent(name: String, detail: String) = handleWidgetEvent(name, detail)
     }
 
     init {
@@ -110,13 +116,34 @@ class DescopeFlowCoordinator(val webView: WebView) {
             return false
         }
         activityHelper.closeCustomTab(webView.context)
-        // magic links don't go through the bridge as a request, so detect them from the URL itself
-        val type = when {
-            deepLink.queryParameterNames.contains("t") -> "magicLink"
-            else -> pendingDeepLinkType ?: "oauthWeb"
+
+        // magic links don't go through the bridge as a request, so detect them from the URL itself.
+        // Otherwise, prefer the pending deep-link's wcKey (the component that issued the WebAuth
+        // request); fall back to the most-recently registered component for legacy / async cases.
+        val isMagicLink = deepLink.queryParameterNames.contains("t")
+        val wcKey: String
+        val type: String
+        if (isMagicLink) {
+            wcKey = components.keys.lastOrNull() ?: run {
+                logger.error("Received magic link deep link but no component is registered")
+                return false
+            }
+            type = "magicLink"
+        } else {
+            val pending = pendingDeepLink
+            if (pending != null) {
+                wcKey = pending.first
+                type = pending.second
+            } else {
+                wcKey = components.keys.lastOrNull() ?: run {
+                    logger.error("Received deep link but no component is registered")
+                    return false
+                }
+                type = "oauthWeb"
+            }
         }
-        pendingDeepLinkType = null
-        sendResponse(FlowBridgeResponse.DeepLink(type = type, url = deepLink.toString()))
+        pendingDeepLink = null
+        sendResponse(wcKey, FlowBridgeResponse.DeepLink(type = type, url = deepLink.toString()))
         return true
     }
 
@@ -140,9 +167,21 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
-    private fun handleFinish(data: String?, url: String) {
+    private fun handleRegister(wcKey: String, attributes: FlowBridgeAttributes) {
+        components[wcKey] = attributes
+        initialize(wcKey)
+    }
+
+    private fun handleUnregister(wcKey: String) {
+        components.remove(wcKey)
+        if (pendingDeepLink?.first == wcKey) {
+            pendingDeepLink = null
+        }
+    }
+
+    private fun handleFinish(wcKey: String, data: String?, url: String) {
         if (data != null) {
-            handleAuthentication(data, url)
+            handleAuthentication(wcKey, data, url)
             return
         }
         val session = currentSession
@@ -155,7 +194,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     // Initialize
 
-    private fun initialize() {
+    private fun initialize(wcKey: String) {
         val flow = flow ?: return
 
         val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
@@ -166,7 +205,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
             ""
         }
 
-        val refreshJwt = currentSession?.refreshJwt ?: ""
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
@@ -189,7 +227,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             clientInputs = flow.clientInputs.toJsonObject().toString()
         }
 
-        bridge.initialize(nativeOptions.toString(), refreshJwt, clientInputs)
+        bridge.initialize(wcKey, nativeOptions.toString(), clientInputs)
     }
 
     // Hooks
@@ -213,12 +251,17 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private fun handleLoaded() {
         if (state != Started) return
+        // Seed the session into localStorage so any wc / widget shell that mounts
+        // afterwards can authenticate immediately. Empty JWT is a JS-side no-op.
+        bridge.setRefreshJwt(currentSession?.refreshJwt ?: "")
         executeHooks(Event.Loaded)
     }
 
-    private fun handleReady(tag: String) {
+    private fun handleReady(wcKey: String, tag: String) {
+        // in widget mode, widget-root drives ready (see handleWidgetEvent)
+        if (isWidgetMode) return
         if (ensureState(Started)) return
-        logger.info("Flow is ready ($tag)")
+        logger.info("Flow is ready ($tag)", wcKey)
         startTimer()
         state = Ready
         executeHooks(Event.Ready)
@@ -226,6 +269,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleError(e: DescopeException) {
+        // in widget mode, per-component errors are sub-flow modal concerns, not terminal
+        if (isWidgetMode) return
         if (ensureState(Initial, Started, Ready, Failed)) return
 
         // we allow multiple failure events and swallow them here instead of showing a warning above,
@@ -239,6 +284,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleSuccess(authResponse: AuthenticationResponse) {
+        // in widget mode, per-component success means a sub-flow modal completed, not the widget
+        if (isWidgetMode) return
         if (ensureState(Started, Ready)) return
         val res = if (logger.isUnsafeEnabled) authResponse else null
         logger.info("Flow finished successfully", res)
@@ -247,14 +294,15 @@ class DescopeFlowCoordinator(val webView: WebView) {
         listener?.onSuccess(authResponse)
     }
 
-    private fun handleAuthentication(data: String, url: String) {
+    private fun handleAuthentication(wcKey: String, data: String, url: String) {
         try {
             val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
             // take tokens from cookies if missing
             val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
             val urlCookieString = CookieManager.getInstance().getCookie(url)
+            val refreshCookieName = jwtServerResponse.cookieName ?: components[wcKey]?.refreshCookieName ?: REFRESH_COOKIE_NAME
             jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(jwtServerResponse.sessionCookieName ?: SESSION_COOKIE_NAME, respCookieString, urlCookieString)
-            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(jwtServerResponse.cookieName ?: bridge.attributes.refreshCookieName ?: REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(refreshCookieName, respCookieString, urlCookieString)
             val authResponse = jwtServerResponse.convert()
             logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
@@ -264,7 +312,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
-    private fun ensureState(vararg allowedStates: DescopeFlowView.State): Boolean {
+    private fun ensureState(vararg allowedStates: CoordinatorState): Boolean {
         if (allowedStates.contains(state)) {
             return false
         }
@@ -272,66 +320,140 @@ class DescopeFlowCoordinator(val webView: WebView) {
         return true
     }
 
-    private fun sendResponse(response: FlowBridgeResponse) {
-        if (ensureState(Started, Ready)) return // we get here in started state if the flow has no screens
-        bridge.postResponse(response)
+    private fun sendResponse(wcKey: String, response: FlowBridgeResponse) {
+        if (ensureState(Started, Ready)) return
+        bridge.postResponse(wcKey, response)
+    }
+
+    // Widget Events
+
+    private fun handleWidgetEvent(name: String, detail: String) {
+        when (name) {
+            "ready" -> handleWidgetReady()
+            "error" -> handleWidgetError(detail)
+            "widget-logout" -> handleWidgetLogout()
+            else -> logger.info("Unknown widget event", name)
+        }
+    }
+
+    private fun handleWidgetReady() {
+        if (ensureState(Started)) return
+        logger.info("Widget is ready")
+        startTimer()
+        state = Ready
+        executeHooks(Event.Ready)
+        listener?.onReady()
+    }
+
+    private fun handleWidgetError(detail: String) {
+        if (ensureState(Started, Ready, Failed)) return
+        if (state == Failed) return
+        val exception = parseWidgetError(detail)
+        logger.error("Widget failed with [${exception.code}] error", exception)
+        stopTimer()
+        state = Failed
+        listener?.onError(exception)
+    }
+
+    private fun handleWidgetLogout() {
+        if (ensureState(Started, Ready)) return
+        val sdk = sdk ?: return
+        val refreshJwt = currentSession?.refreshJwt
+        val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (!refreshJwt.isNullOrEmpty()) {
+                    sdk.auth.revokeSessions(RevokeType.CurrentSession, refreshJwt)
+                }
+                sdk.sessionManager.clearSession()
+                handler.post {
+                    stopTimer()
+                    listener?.onLogout()
+                }
+            } catch (e: DescopeException) {
+                logger.error("Widget logout failed", e)
+                handler.post {
+                    if (state == Failed) return@post
+                    stopTimer()
+                    state = Failed
+                    listener?.onError(DescopeException.flowFailed.with(message = "Widget logout failed", cause = e))
+                }
+            }
+        }
+    }
+
+    private fun parseWidgetError(detail: String): DescopeException {
+        if (detail.isEmpty()) return DescopeException.flowFailed.with(message = "Widget failed")
+        return try {
+            val json = JSONObject(detail)
+            val code = json.stringOrEmptyAsNull("code")
+            val description = json.stringOrEmptyAsNull("description") ?: "Widget failed"
+            val message = json.stringOrEmptyAsNull("message")
+            if (code != null) {
+                DescopeException(code = code, desc = description, message = message)
+            } else {
+                DescopeException.flowFailed.with(message = message ?: description)
+            }
+        } catch (_: Exception) {
+            DescopeException.flowFailed.with(message = detail)
+        }
     }
 
     // Native Operations
 
-    private fun handleRequest(request: FlowBridgeRequest) {
+    private fun handleRequest(wcKey: String, request: FlowBridgeRequest) {
         val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
         scope.launch(Dispatchers.Main) {
             when (request) {
-                is FlowBridgeRequest.OAuthNative -> handleOAuthNative(request)
-                is FlowBridgeRequest.WebAuth -> handleWebAuth(request)
-                is FlowBridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(request)
-                is FlowBridgeRequest.WebAuthnGet -> handleWebAuthnGet(request)
+                is FlowBridgeRequest.OAuthNative -> handleOAuthNative(wcKey, request)
+                is FlowBridgeRequest.WebAuth -> handleWebAuth(wcKey, request)
+                is FlowBridgeRequest.WebAuthnCreate -> handleWebAuthnCreate(wcKey, request)
+                is FlowBridgeRequest.WebAuthnGet -> handleWebAuthnGet(wcKey, request)
             }
         }
     }
 
-    private suspend fun handleOAuthNative(request: FlowBridgeRequest.OAuthNative) {
+    private suspend fun handleOAuthNative(wcKey: String, request: FlowBridgeRequest.OAuthNative) {
         logger.info("Launching system UI for native oauth")
         try {
             val resp = nativeAuthorization(webView.context, request.start)
-            sendResponse(FlowBridgeResponse.OAuthNative(resp.stateId, resp.identityToken))
+            sendResponse(wcKey, FlowBridgeResponse.OAuthNative(resp.stateId, resp.identityToken))
         } catch (e: DescopeException) {
             if (e == DescopeException.oauthNativeCancelled) {
                 logger.info("OAuth native canceled")
-                sendResponse(FlowBridgeResponse.Failure("OAuthNativeCancelled"))
+                sendResponse(wcKey, FlowBridgeResponse.Failure("OAuthNativeCancelled"))
                 return
             }
             logger.error("OAuth native failed", e)
-            sendResponse(FlowBridgeResponse.Failure("OAuthNativeFailed"))
+            sendResponse(wcKey, FlowBridgeResponse.Failure("OAuthNativeFailed"))
         }
     }
 
-    private fun handleWebAuth(request: FlowBridgeRequest.WebAuth) {
-        pendingDeepLinkType = request.variant
+    private fun handleWebAuth(wcKey: String, request: FlowBridgeRequest.WebAuth) {
+        pendingDeepLink = wcKey to request.variant
         logger.info("Launching custom tab for ${request.variant}")
         try {
             launchCustomTab(webView.context, request.startUrl, flow?.presentation?.createCustomTabsIntent(webView.context)) {
                 // Custom tab dismissed by the user before completing the auth flow.
-                pendingDeepLinkType = null
-                sendResponse(FlowBridgeResponse.Failure("WebAuthCancelled"))
+                pendingDeepLink = null
+                sendResponse(wcKey, FlowBridgeResponse.Failure("WebAuthCancelled"))
             }
         } catch (e: DescopeException) {
             logger.error("Failed to launch custom tab", e)
-            pendingDeepLinkType = null
-            sendResponse(FlowBridgeResponse.Failure("CustomTabFailure"))
+            pendingDeepLink = null
+            sendResponse(wcKey, FlowBridgeResponse.Failure("CustomTabFailure"))
         }
     }
 
-    private suspend fun handleWebAuthnCreate(request: FlowBridgeRequest.WebAuthnCreate) {
+    private suspend fun handleWebAuthnCreate(wcKey: String, request: FlowBridgeRequest.WebAuthnCreate) {
         logger.info("Attempting to create new a passkey")
         try {
             val res = performRegister(webView.context, request.options)
-            sendResponse(FlowBridgeResponse.WebAuthn(type = "webauthnCreate", transactionId = request.transactionId, response = res))
+            sendResponse(wcKey, FlowBridgeResponse.WebAuthn(type = "webauthnCreate", transactionId = request.transactionId, response = res))
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
-                sendResponse(FlowBridgeResponse.Failure("PasskeyCancelled"))
+                sendResponse(wcKey, FlowBridgeResponse.Failure("PasskeyCancelled"))
                 return
             }
             val failure = when (e) {
@@ -348,19 +470,19 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     "NativeFailed"
                 }
             }
-            sendResponse(FlowBridgeResponse.Failure(failure))
+            sendResponse(wcKey, FlowBridgeResponse.Failure(failure))
         }
     }
 
-    private suspend fun handleWebAuthnGet(request: FlowBridgeRequest.WebAuthnGet) {
+    private suspend fun handleWebAuthnGet(wcKey: String, request: FlowBridgeRequest.WebAuthnGet) {
         logger.info("Attempting to use an existing passkey")
         try {
             val res = performAssertion(webView.context, request.options)
-            sendResponse(FlowBridgeResponse.WebAuthn(type = "webauthnGet", transactionId = request.transactionId, response = res))
+            sendResponse(wcKey, FlowBridgeResponse.WebAuthn(type = "webauthnGet", transactionId = request.transactionId, response = res))
         } catch (e: DescopeException) {
             if (e == DescopeException.passkeyCancelled) {
                 logger.info("Passkeys canceled")
-                sendResponse(FlowBridgeResponse.Failure("PasskeyCancelled"))
+                sendResponse(wcKey, FlowBridgeResponse.Failure("PasskeyCancelled"))
                 return
             }
             val failure = when (e) {
@@ -377,7 +499,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
                     "NativeFailed"
                 }
             }
-            sendResponse(FlowBridgeResponse.Failure(failure))
+            sendResponse(wcKey, FlowBridgeResponse.Failure(failure))
         }
     }
 
@@ -401,10 +523,24 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal fun periodicRefreshJwtUpdate() {
         handler.post {
-            val refreshJwt = currentSession?.refreshJwt ?: ""
-            bridge.updateRefreshJwt(refreshJwt)
+            // Session-level write — every consumer on the page reads the same key.
+            bridge.setRefreshJwt(currentSession?.refreshJwt ?: "")
         }
     }
+}
+
+// internal lifecycle states; each View translates to its public State enum at the property boundary
+internal enum class CoordinatorState {
+    Initial, Started, Ready, Failed, Finished,
+}
+
+// internal listener; each View installs an adapter that translates to its public Listener
+internal interface CoordinatorListener {
+    fun onReady() {}
+    fun onSuccess(response: AuthenticationResponse) {}
+    fun onError(exception: DescopeException) {}
+    fun onLogout() {}
+    fun onNavigation(uri: Uri): NavigationStrategy = NavigationStrategy.OpenBrowser
 }
 
 // Cookies
