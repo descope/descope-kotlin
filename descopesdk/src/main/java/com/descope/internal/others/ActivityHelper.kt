@@ -23,7 +23,6 @@ internal val activityHelper = object : ActivityHelper {
 
     override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)?) {
         this.customTabsIntent = customTabsIntent
-        this.cancelCallback = onCancel
         if (!isBrowserSupported(context, url)) {
             throw DescopeException.customTabFailed.with(message = "No browser application was found")
         }
@@ -35,6 +34,7 @@ internal val activityHelper = object : ActivityHelper {
         } catch (e: Exception) {
             throw DescopeException.customTabFailed.with(message = "Failed to open custom tab from context", cause = e)
         }
+        this.cancelCallback = onCancel
     }
 
     override fun closeCustomTab(context: Context) {
