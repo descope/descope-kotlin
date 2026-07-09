@@ -8,6 +8,7 @@ internal fun DescopeException.with(desc: String? = null, message: String? = null
     desc = desc ?: this.desc,
     message = message ?: this.message,
     cause = cause ?: this.cause,
+    traceId = traceId,
 )
 
 internal fun parseServerError(response: String): DescopeException? {
