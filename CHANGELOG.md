@@ -4,6 +4,7 @@
 
 ### Features
 
+- Add support for push authentication (#308)
 - Expose `externalToken` on `AuthenticationResponse` (#336)
 - Flow: native cancellation signals and typed bridge errors (#329)
 
