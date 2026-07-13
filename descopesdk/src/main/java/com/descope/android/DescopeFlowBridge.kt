@@ -19,6 +19,7 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
+import com.descope.internal.others.parseServerError
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.with
 import com.descope.internal.routes.isWebAuthnSupported
@@ -103,8 +104,15 @@ internal class FlowBridge(val webView: WebView) {
     }
 
     private fun bridgeOnError(error: String) {
+        val parsed = parseServerError(error)
+        val exception = when {
+            parsed == null -> DescopeException.flowFailed.with(message = error)
+            // Convert server flow cancellation to local flow cancellation for cohesive error handling
+            parsed.code == "E102122" -> DescopeException.flowCancelled.with(message = parsed.message)
+            else -> parsed
+        }
         handler.post {
-            listener?.onError(DescopeException.flowFailed.with(message = error))
+            listener?.onError(exception)
         }
     }
 

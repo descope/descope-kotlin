@@ -9,12 +9,14 @@ import com.descope.session.DescopeToken
  * @property refreshToken the refresh token is used to refresh expired session tokens.
  * @property isFirstAuthentication whether this the user's first authentication.
  * @property user information about the user.
+ * @property externalToken a token provided by an external token connector, when configured in the project.
  */
 data class AuthenticationResponse(
     val sessionToken: DescopeToken,
     val refreshToken: DescopeToken,
     val isFirstAuthentication: Boolean,
     val user: DescopeUser,
+    val externalToken: String? = null,
 )
 
 /**

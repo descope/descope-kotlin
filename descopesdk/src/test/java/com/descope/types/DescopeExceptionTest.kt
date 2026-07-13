@@ -1,8 +1,9 @@
 package com.descope.types
 
-import com.descope.internal.http.parseServerError
+import com.descope.internal.others.parseServerError
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.fail
 import org.junit.Test
 
@@ -22,5 +23,24 @@ class DescopeExceptionTest {
             else -> fail("wrong when clause")
         }
     }
-    
+
+    @Test
+    fun error_message_preserved() {
+        val payload = JSONObject().apply {
+            put("errorCode", "E102122")
+            put("errorDescription", "Flow aborted")
+            put("errorMessage", "User canceled")
+        }.toString()
+        val exception = parseServerError(payload)
+        assertEquals("E102122", exception?.code)
+        assertEquals("Flow aborted", exception?.desc)
+        assertEquals("User canceled", exception?.message)
+    }
+
+    @Test
+    fun invalid_error_payload_parsing() {
+        assertNull(parseServerError("not a json error"))
+        assertNull(parseServerError(JSONObject().apply { put("errorMessage", "no code here") }.toString()))
+    }
+
 }
