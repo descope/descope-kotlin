@@ -10,6 +10,8 @@ jobs:
   release-please:
     name: "Release Please"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Generate GitHub App Token
         id: app-token
