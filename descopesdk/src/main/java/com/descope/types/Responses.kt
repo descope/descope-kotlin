@@ -10,6 +10,7 @@ import com.descope.session.DescopeToken
  * @property isFirstAuthentication whether this the user's first authentication.
  * @property user information about the user.
  * @property externalToken a token provided by an external token connector, when configured in the project.
+ * @property flowOutput custom data returned from a flow's output, when running a flow that sets it. Always `null` for non-flow authentications.
  */
 data class AuthenticationResponse(
     val sessionToken: DescopeToken,
@@ -17,6 +18,7 @@ data class AuthenticationResponse(
     val isFirstAuthentication: Boolean,
     val user: DescopeUser,
     val externalToken: String? = null,
+    val flowOutput: Map<String, Any>? = null,
 )
 
 /**
