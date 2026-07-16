@@ -105,6 +105,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         this.flow = flow
         bridge.flow = flow
         bridge.logger = logger
+        bridge.nativeOptions = buildNativeOptions(flow)
+        bridge.clientInputs = buildClientInputs(flow)
         sdk?.resume = createResumeClosure(WeakReference(this))
         handleStarted()
         bridge.start()
@@ -169,7 +171,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private fun handleRegister(wcKey: String, attributes: FlowBridgeAttributes) {
         components[wcKey] = attributes
-        initialize(wcKey)
     }
 
     private fun handleUnregister(wcKey: String) {
@@ -192,43 +193,31 @@ class DescopeFlowCoordinator(val webView: WebView) {
         handleError(wcKey, DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
     }
 
-    // Initialize
+    // Configuration
 
-    private fun initialize(wcKey: String) {
-        val flow = flow ?: return
-
+    // Frozen at startFlow time and baked into the JS setup script — every wc
+    // that registers reads from the same config.
+    private fun buildNativeOptions(flow: DescopeFlow): String {
         val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
-
         val origin = try {
             if (isWebAuthnSupported) getPackageOrigin(context) else ""
         } catch (_: Exception) {
             ""
         }
-
-        val oauthProvider = flow.oauthNativeProvider?.name ?: ""
-        val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
-        val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
-        val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
-        val magicLinkRedirect = flow.magicLinkRedirect ?: ""
-
-        val nativeOptions = JSONObject().apply {
+        return JSONObject().apply {
             put("platform", "android")
             put("bridgeVersion", 1)
-            put("oauthProvider", oauthProvider)
-            put("oauthRedirect", oauthRedirect)
-            put("ssoRedirect", ssoRedirect)
-            put("externalAuthRedirect", externalAuthRedirect)
-            put("magicLinkRedirect", magicLinkRedirect)
+            put("oauthProvider", flow.oauthNativeProvider?.name ?: "")
+            put("oauthRedirect", pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback))
+            put("ssoRedirect", pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback))
+            put("externalAuthRedirect", pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback))
+            put("magicLinkRedirect", flow.magicLinkRedirect ?: "")
             put("origin", origin)
-        }
-
-        var clientInputs = ""
-        if (flow.clientInputs.isNotEmpty()) {
-            clientInputs = flow.clientInputs.toJsonObject().toString()
-        }
-
-        bridge.initialize(wcKey, nativeOptions.toString(), clientInputs)
+        }.toString()
     }
+
+    private fun buildClientInputs(flow: DescopeFlow): String =
+        if (flow.clientInputs.isNotEmpty()) flow.clientInputs.toJsonObject().toString() else ""
 
     // Hooks
 

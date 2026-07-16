@@ -1,5 +1,6 @@
 package com.descope.android
 
+import android.net.Uri
 import com.descope.Descope
 import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
@@ -138,6 +139,13 @@ class DescopeUserProfileWidget {
      */
     constructor(url: String) {
         this.url = url
+    }
+
+    /**
+     * Creates a new [DescopeUserProfileWidget] object from a parsed `Uri` instance.
+     */
+    constructor(uri: Uri) {
+        this.url = uri.toString()
     }
 
     // TODO: replace with a shared CoordinatorConfig type — the widget isn't a flow,

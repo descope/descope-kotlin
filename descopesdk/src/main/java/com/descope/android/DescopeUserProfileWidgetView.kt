@@ -98,13 +98,14 @@ class DescopeUserProfileWidgetView : ViewGroup {
     private fun initWidgetView() {
         val webView = WebView(context)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        val view = this
         coordinator = DescopeFlowCoordinator(webView).apply {
             isWidgetMode = true
             listener = object : CoordinatorListener {
-                override fun onReady() { listener?.onReady() }
-                override fun onError(exception: DescopeException) { listener?.onError(exception) }
-                override fun onLogout() { listener?.onLogout() }
-                override fun onNavigation(uri: Uri): NavigationStrategy = listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
+                override fun onReady() { view.listener?.onReady() }
+                override fun onError(exception: DescopeException) { view.listener?.onError(exception) }
+                override fun onLogout() { view.listener?.onLogout() }
+                override fun onNavigation(uri: Uri): NavigationStrategy = view.listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
             }
         }
     }

@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -15,6 +16,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
+import com.descope.internal.others.FileResponse
+import com.descope.internal.others.activityHelper
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
@@ -56,6 +59,9 @@ internal class FlowBridge(val webView: WebView) {
     var flow: DescopeFlow? = null
     var listener: Listener? = null
     var logger: DescopeLogger? = null
+    // Frozen at start; baked into the setup script so every wc gets the same config.
+    var nativeOptions: String = "{}"
+    var clientInputs: String = ""
 
     private val handler = Handler(Looper.getMainLooper())
     private var alreadySetUp = false
@@ -173,6 +179,30 @@ internal class FlowBridge(val webView: WebView) {
             val message = consoleMessage?.message() ?: return false
             return handleConsoleMessage(message, consoleMessage.messageLevel())
         }
+
+        override fun onShowFileChooser(
+            webView: WebView,
+            filePathCallback: ValueCallback<Array<Uri>>,
+            fileChooserParams: FileChooserParams,
+        ): Boolean {
+            return try {
+                activityHelper.openFileChooser(webView.context, fileChooserParams.createIntent()) { response ->
+                    when (response) {
+                        is FileResponse.Failure -> {
+                            logger.error("File chooser resulted in a failure", response.e)
+                            filePathCallback.onReceiveValue(emptyArray())
+                        }
+                        is FileResponse.None -> filePathCallback.onReceiveValue(emptyArray())
+                        is FileResponse.Selected -> filePathCallback.onReceiveValue(response.uris)
+                    }
+                }
+                true
+            } catch (e: Exception) {
+                logger.error("Failed to launch file chooser", e)
+                filePathCallback.onReceiveValue(emptyArray())
+                false
+            }
+        }
     }
 
     private fun handleConsoleMessage(message: String, level: ConsoleMessage.MessageLevel): Boolean {
@@ -215,7 +245,7 @@ internal class FlowBridge(val webView: WebView) {
 
         webView.evaluateJavascript(loggingScript, {})
 
-        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context))
+        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context), nativeOptions, clientInputs)
         webView.evaluateJavascript(setupScript, {})
 
         listener?.onLoaded()
@@ -289,10 +319,6 @@ internal class FlowBridge(val webView: WebView) {
 
     // Bridge API
 
-    fun initialize(wcKey: String, nativeOptions: String, clientInputs: String) {
-        call("initialize", wcKey, nativeOptions, clientInputs)
-    }
-
     // Session-level refresh JWT write. Lands in localStorage["DSR"] — the single
     // key read by every consumer on the page (descope-wcs and the widget shell
     // alike). Idempotent; safe to call as often as needed. Empty input is a no-op
@@ -326,7 +352,7 @@ document.head.appendChild(element)
 
     private fun call(function: String, vararg params: String) {
         val escaped = params.joinToString(", ") { it.javaScriptLiteralString() }
-        val javascript = "window.descopeBridge.internal.$function($escaped)"
+        val javascript = "window.descopeBridge.$function($escaped)"
         webView.evaluateJavascript(javascript, {})
     }
 }
@@ -438,295 +464,180 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = """
+private fun makeSetupScript(systemInfo: SystemInfo, nativeOptions: String, clientInputs: String) = """
+(function() {
+    // --- Frozen config (built by native at startFlow, baked into this script) ---
+    const nativeOptions = ${if (nativeOptions.isBlank()) "{}" else nativeOptions}
+    const clientInputsBaked = ${if (clientInputs.isBlank()) "null" else clientInputs}
 
-// Widget bridge: presence + version handshake only. The actual JS->native
-// widget signals are CustomEvents dispatched on the <descope-user-profile-widget>
-// element; we subscribe to them in internal.bootstrap() below.
-window.descopeWidgetBridge = { version: 1 }
+    // --- State ---
+    const components = {}     // wcKey -> descope-wc element
+    let nextWcKey = 1
+    let refreshJwt = ''       // cached until storagePrefix is locked
+    let storagePrefix = null  // locked by first wc/widget to mount
+    let aborted = false
+    let headersConfigured = false
 
-window.descopeBridge = {
-    hostInfo: {
-        sdkName: 'android',
-        sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
-        platformName: 'android',
-        platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
-        appName: ${systemInfo.appName.javaScriptLiteralString()},
-        appVersion: ${systemInfo.appVersion.javaScriptLiteralString()},
-        device: ${systemInfo.device.javaScriptLiteralString()},
-        webauthn: $isWebAuthnSupported,
-    },
+    // --- Registration ---
 
-    // v3 multi-component opt-in API. descope-wc bridgeVersion >= 3 calls this
-    // automatically during its own init. Returns a wcKey string that native
-    // uses to route subsequent calls back to this specific element.
-    register(element) {
-        return window.descopeBridge.internal.registerComponent(element)
-    },
+    function registerComponent(element) {
+        // wcKey embeds flow-id so native logs are readable (e.g. "add-passkey_3").
+        const wcKey = (element.flowId || 'wc') + '_' + (nextWcKey++)
+        components[wcKey] = element
+        lockStoragePrefix(element.storagePrefix || '')
 
-    // v3 multi-component opt-in API. descope-wc bridgeVersion >= 3 calls this
-    // from its disconnectedCallback. Native cleans up registry entries.
-    unregister(wcKey) {
-        window.descopeBridge.internal.unregisterComponent(wcKey)
-    },
+        element.addEventListener('bridge', e => flow.native(wcKey, JSON.stringify(e.detail)))
+        element.addEventListener('error', e => flow.onError(wcKey, JSON.stringify(e.detail)))
+        element.addEventListener('success', e => {
+            const response = e.detail && Object.keys(e.detail).length ? JSON.stringify(e.detail) : null
+            flow.onSuccess(wcKey, response, window.location.href)
+        })
 
-    abortFlow(reason) {
-        this.internal.aborted = true
-        flow.onAbort(typeof reason == 'string' ? reason : '')
-    },
+        // Apply config that used to arrive via a native round-trip.
+        if (!headersConfigured) {
+            updateConfigHeaders()
+            headersConfigured = true
+        }
+        element.nativeOptions = nativeOptions
+        if (clientInputsBaked) applyClientInputs(element, clientInputsBaked)
 
-    startFlow() {
-        this.internal.start()
-    },
+        // Ready dispatch: fire immediately for legacy wc, otherwise wait.
+        if (element.flowStatus === 'error') {
+            flow.onError(wcKey, 'The flow failed during initialization')
+        } else if (element.flowStatus === 'ready' || element.shadowRoot?.querySelector('descope-container')) {
+            postReady(wcKey, 'immediate')
+        } else {
+            element.addEventListener('ready', () => postReady(wcKey, 'listener'))
+        }
+        element.lazyInit?.()
 
-    internal: {
-        // wcKey string -> descope-wc element
-        components: {},
-        nextWcKey: 1,
-        widgetSubscribed: false,
-
-        // Cached refresh JWT (last value from native) and the storage prefix
-        // discovered when the first descope-wc or widget root mounts. Writes
-        // are deferred until storagePrefix is locked so the JWT never lands
-        // at the wrong key (descope-wc reads from (prefix + REFRESH_COOKIE_NAME)).
-        refreshJwt: '',
-        storagePrefix: null,
-
-        aborted: false,
-
-        // Bootstrap polls for the first descope-wc (legacy v2 fallback) and for
-        // the <descope-user-profile-widget> root. v3+ descope-wcs auto-register
-        // via descopeBridge.register() so polling is just a safety net for them.
-        // Polling stops once either is found; later modal-opened descope-wcs
-        // auto-register without needing polling.
-        start() {
-            if (this.aborted || this.connect()) {
-                return
-            }
-
-            console.debug('Waiting for Descope component or widget')
-
-            let interval
-            interval = setInterval(() => {
-                if (this.aborted || this.connect()) {
-                    clearInterval(interval)
-                }
-            }, 20)
-        },
-
-        connect() {
-            // Subscribe to the widget root if present (idempotent).
-            this.subscribeToWidgetIfNeeded()
-            const component = document.querySelector('descope-wc')
-            if (component) {
-                if (!this.isRegistered(component)) {
-                    // v2 fallback: register on the element's behalf
-                    this.registerComponent(component)
-                }
-                return true
-            }
-            // No descope-wc, but widget subscription alone is enough on UPW pages.
-            return this.widgetSubscribed
-        },
-
-        subscribeToWidgetIfNeeded() {
-            if (this.widgetSubscribed) return
-            const widget = document.querySelector('descope-user-profile-widget')
-            if (!widget) return
-            this.widgetSubscribed = true
-            // UPW shell has no storagePrefix attribute, flush the cached refresh JWT
-            this.lockStoragePrefix('')
-            // widget-register dispatched synchronously in connectedCallback before polling could catch it,
-            // resolve the awaited Promise directly (idempotent — no-op if no resolver)
-            widget.lazyInit?.()
-            // lifecycle events fire later, subscribing now is in time
-            const events = ['ready', 'error', 'widget-logout']
-            for (const name of events) {
-                widget.addEventListener(name, (event) => {
-                    const detail = event && event.detail ? JSON.stringify(event.detail) : ''
-                    flow.onWidgetEvent(name, detail)
-                })
-            }
-        },
-
-        isRegistered(element) {
-            for (const key in this.components) {
-                if (this.components[key] === element) return true
-            }
-            return false
-        },
-
-        registerComponent(element) {
-            // Embed the wc's flow-id in the key for readable native-side logs
-            // (e.g. "add-passkey_3"). Falls back to "wc" when no flow-id is set.
-            const wcKey = (element.flowId || 'wc') + '_' + (this.nextWcKey++)
-            this.components[wcKey] = element
-            // First wc to mount determines the page's storage prefix; subsequent
-            // wcs on the same page share it (single project per WebView).
-            this.lockStoragePrefix(element.storagePrefix || '')
-            this.bindComponent(wcKey, element)
-
-            const attributes = {
-                refreshCookieName: element.refreshCookieName || null,
-            }
-            flow.onRegister(wcKey, JSON.stringify(attributes))
-            return wcKey
-        },
-
-        unregisterComponent(wcKey) {
-            if (!this.components[wcKey]) return
-            delete this.components[wcKey]
-            flow.onUnregister(wcKey)
-        },
-
-        bindComponent(wcKey, element) {
-            element.addEventListener('bridge', (event) => {
-                flow.native(wcKey, JSON.stringify(event.detail))
-            })
-
-            element.addEventListener('error', (event) => {
-                flow.onError(wcKey, JSON.stringify(event.detail))
-            })
-
-            element.addEventListener('success', (event) => {
-                const response = (event.detail && Object.keys(event.detail).length) ? JSON.stringify(event.detail) : null
-                flow.onSuccess(wcKey, response, window.location.href)
-            })
-        },
-
-        initialize(wcKey, nativeOptions, clientInputs) {
-            const element = this.components[wcKey]
-            if (!element) {
-                console.debug('Ignoring initialize for unknown wcKey', wcKey)
-                return
-            }
-
-            // update webpage sdk headers and print sdk type and version to native log
-            this.updateConfigHeaders()
-
-            element.nativeOptions = JSON.parse(nativeOptions)
-            this.updateClientInputs(wcKey, clientInputs)
-
-            if (element.flowStatus === 'error') {
-                flow.onError(wcKey, 'The flow failed during initialization')
-            } else if (element.flowStatus === 'ready' || element.shadowRoot?.querySelector('descope-container')) {
-                this.postReady(wcKey, 'immediate') // can only happen in old web-components without lazy init
-            } else {
-                element.addEventListener('ready', () => {
-                    this.postReady(wcKey, 'listener')
-                })
-            }
-
-            // ensure we support old web-components without this function
-            element.lazyInit?.()
-        },
-
-        postReady(wcKey, tag) {
-            const element = this.components[wcKey]
-            if (!element) return
-            if (!element.bridgeVersion) {
-                flow.onError(wcKey, 'The flow is using an unsupported web component version')
-                return
-            }
-            this.disableTouchInteractions(element)
-            flow.onReady(wcKey, tag)
-        },
-
-        updateConfigHeaders() {
-            const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
-
-            const headers = config?.baseHeaders || {}
-            console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
-
-            const hostInfo = window.descopeBridge.hostInfo
-            headers['x-descope-bridge-name'] = hostInfo.sdkName
-            headers['x-descope-bridge-version'] = hostInfo.sdkVersion
-            headers['x-descope-platform-name'] = hostInfo.platformName
-            headers['x-descope-platform-version'] = hostInfo.platformVersion
-            if (hostInfo.appName) {
-                headers['x-descope-app-name'] = hostInfo.appName
-            }
-            if (hostInfo.appVersion) {
-                headers['x-descope-app-version'] = hostInfo.appVersion
-            }
-            if (hostInfo.device) {
-                headers['x-descope-device'] = hostInfo.device
-            }
-        },
-
-        disableTouchInteractions(element) {
-            const stylesheet = document.createElement("style")
-            stylesheet.textContent = `
-                * {
-                    user-select: none;
-                }
-            `
-            document.head.appendChild(stylesheet)
-
-            element.injectStyle?.(`
-                #content-root * {
-                    user-select: none;
-                }
-            `)
-
-            element.shadowRoot?.querySelectorAll('descope-enriched-text').forEach(t => {
-                t.shadowRoot?.querySelectorAll('a').forEach(a => {
-                    a.draggable = false
-                })
-            })
-
-            element.shadowRoot?.querySelectorAll('img').forEach(a => {
-                a.draggable = false
-            })
-        },
-
-        // Session-level write. All descope-wcs and the widget shell on a page
-        // share one storagePrefix (single project per WebView), so we write
-        // the session under (prefix + REFRESH_COOKIE_NAME) once the prefix
-        // has been discovered. Until then we cache the JWT and write as soon
-        // as something mounts.
-        setRefreshJwt(refreshJwt) {
-            this.refreshJwt = refreshJwt || ''
-            this.writeRefreshJwt()
-        },
-
-        writeRefreshJwt() {
-            if (!this.refreshJwt || this.storagePrefix === null) return
-            const key = this.storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
-            window.localStorage.setItem(key, this.refreshJwt)
-        },
-
-        lockStoragePrefix(prefix) {
-            if (this.storagePrefix !== null) return
-            this.storagePrefix = prefix || ''
-            this.writeRefreshJwt()
-        },
-
-        updateClientInputs(wcKey, inputs) {
-            const element = this.components[wcKey]
-            if (!element) return
-            let client = {}
-            try {
-                client = JSON.parse(element.getAttribute('client') || '{}')
-            } catch (e) {}
-            client = {
-                ...client,
-                ...JSON.parse(inputs || '{}'),
-            }
-            element.setAttribute('client', JSON.stringify(client))
-        },
-
-        handleResponse(wcKey, type, payload) {
-            const element = this.components[wcKey]
-            if (!element) {
-                console.debug('Ignoring handleResponse for unknown wcKey', wcKey)
-                return
-            }
-            element.nativeResume(type, payload)
-        },
+        flow.onRegister(wcKey, JSON.stringify({ refreshCookieName: element.refreshCookieName || null }))
+        return wcKey
     }
-}
 
-window.descopeBridge.startFlow()
+    function unregisterComponent(wcKey) {
+        if (!components[wcKey]) return
+        delete components[wcKey]
+        flow.onUnregister(wcKey)
+    }
 
+    function registerWidget(widget) {
+        // UPW shell has no storagePrefix attribute — flush cached JWT under root.
+        lockStoragePrefix('')
+        widget.addEventListener('ready', () => flow.onWidgetEvent('ready', ''))
+        widget.addEventListener('error', e => flow.onWidgetEvent('error', e && e.detail ? JSON.stringify(e.detail) : ''))
+        widget.addEventListener('widget-logout', () => flow.onWidgetEvent('widget-logout', ''))
+    }
+
+    function postReady(wcKey, tag) {
+        const element = components[wcKey]
+        if (!element) return
+        if (!element.bridgeVersion) {
+            flow.onError(wcKey, 'The flow is using an unsupported web component version')
+            return
+        }
+        disableTouchInteractions(element)
+        flow.onReady(wcKey, tag)
+    }
+
+    function handleResponse(wcKey, type, payload) {
+        const element = components[wcKey]
+        if (!element) return
+        element.nativeResume(type, payload)
+    }
+
+    // --- Session storage (shared across wcs and widget on the page) ---
+
+    function setRefreshJwt(jwt) {
+        refreshJwt = jwt || ''
+        writeRefreshJwt()
+    }
+
+    function lockStoragePrefix(prefix) {
+        if (storagePrefix !== null) return
+        storagePrefix = prefix || ''
+        writeRefreshJwt()
+    }
+
+    function writeRefreshJwt() {
+        if (!refreshJwt || storagePrefix === null) return
+        const key = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+        window.localStorage.setItem(key, refreshJwt)
+        refreshJwt = ''
+    }
+
+    // --- Element mutation helpers ---
+
+    function applyClientInputs(element, inputs) {
+        let client = {}
+        try { client = JSON.parse(element.getAttribute('client') || '{}') } catch (e) {}
+        element.setAttribute('client', JSON.stringify({ ...client, ...inputs }))
+    }
+
+    function updateConfigHeaders() {
+        const config = window.customElements?.get('descope-wc')?.sdkConfigOverrides || {}
+        const headers = config?.baseHeaders || {}
+        console.debug(`Descope ${"$"}{headers['x-descope-sdk-name'] || 'unknown'} package version "${"$"}{headers['x-descope-sdk-version'] || 'unknown'}"`)
+        const h = window.descopeBridge.hostInfo
+        headers['x-descope-bridge-name'] = h.sdkName
+        headers['x-descope-bridge-version'] = h.sdkVersion
+        headers['x-descope-platform-name'] = h.platformName
+        headers['x-descope-platform-version'] = h.platformVersion
+        if (h.appName) headers['x-descope-app-name'] = h.appName
+        if (h.appVersion) headers['x-descope-app-version'] = h.appVersion
+        if (h.device) headers['x-descope-device'] = h.device
+    }
+
+    function disableTouchInteractions(element) {
+        const stylesheet = document.createElement('style')
+        stylesheet.textContent = '* { user-select: none; }'
+        document.head.appendChild(stylesheet)
+        element.injectStyle?.('#content-root * { user-select: none; }')
+        element.shadowRoot?.querySelectorAll('descope-enriched-text').forEach(t => {
+            t.shadowRoot?.querySelectorAll('a').forEach(a => { a.draggable = false })
+        })
+        element.shadowRoot?.querySelectorAll('img').forEach(a => { a.draggable = false })
+    }
+
+    // --- Bootstrap: poll for legacy descope-wc (bridgeVersion < 3) that won't self-register.
+    //     v3+ wcs and UPW widgets register themselves via the API below.
+    function poll() {
+        if (aborted) return
+        const wc = document.querySelector('descope-wc')
+        if (wc) {
+            if (!Object.values(components).includes(wc)) registerComponent(wc)
+            return
+        }
+        setTimeout(poll, 20)
+    }
+
+    // --- Public API ---
+    window.descopeBridge = {
+        hostInfo: {
+            sdkName: 'android',
+            sdkVersion: ${DescopeSdk.VERSION.javaScriptLiteralString()},
+            platformName: 'android',
+            platformVersion: ${systemInfo.platformVersion.javaScriptLiteralString()},
+            appName: ${systemInfo.appName.javaScriptLiteralString()},
+            appVersion: ${systemInfo.appVersion.javaScriptLiteralString()},
+            device: ${systemInfo.device.javaScriptLiteralString()},
+            webauthn: $isWebAuthnSupported,
+        },
+        // Called by descope-wc v3+ from its own init/disconnect.
+        register: registerComponent,
+        unregister: unregisterComponent,
+        // Called by descope-user-profile-widget from its async init.
+        registerWidget: registerWidget,
+        // Called by hooks or app code.
+        abortFlow(reason) {
+            aborted = true
+            flow.onAbort(typeof reason === 'string' ? reason : '')
+        },
+        // Called by Kotlin native.
+        handleResponse,
+        setRefreshJwt,
+    }
+
+    poll()
+})()
 """
