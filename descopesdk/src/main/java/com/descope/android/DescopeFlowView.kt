@@ -122,14 +122,12 @@ class DescopeFlowView : ViewGroup {
     private fun initFlowView() {
         val webView = WebView(context)
         addView(webView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        val view = this
-        flowCoordinator = DescopeFlowCoordinator(webView).apply {
-            listener = object : CoordinatorListener {
-                override fun onReady() { view.listener?.onReady() }
-                override fun onSuccess(response: AuthenticationResponse) { view.listener?.onSuccess(response) }
-                override fun onError(exception: DescopeException) { view.listener?.onError(exception) }
-                override fun onNavigation(uri: Uri): NavigationStrategy = view.listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
-            }
+        flowCoordinator = DescopeFlowCoordinator(webView)
+        flowCoordinator.listener = object : CoordinatorListener {
+            override fun onReady() { listener?.onReady() }
+            override fun onSuccess(response: AuthenticationResponse) { listener?.onSuccess(response) }
+            override fun onError(exception: DescopeException) { listener?.onError(exception) }
+            override fun onNavigation(uri: Uri): NavigationStrategy = listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
         }
     }
 
