@@ -47,13 +47,12 @@ class JwtServerResponseTest {
             }
         """.trimIndent()
         val response = JwtServerResponse.fromJson(json, emptyList())
-        assertNotNull(response.flowOutput)
-        assertEquals("value", response.flowOutput?.get("key"))
-        assertEquals(3, response.flowOutput?.get("count"))
+        assertEquals("value", response.flowOutput["key"])
+        assertEquals(3, response.flowOutput["count"])
     }
 
     @Test
-    fun flowOutput_nullWhenAbsent() {
+    fun flowOutput_emptyWhenAbsent() {
         val json = """
             {
                 "sessionJwt": "session",
@@ -62,11 +61,11 @@ class JwtServerResponseTest {
             }
         """.trimIndent()
         val response = JwtServerResponse.fromJson(json, emptyList())
-        assertNull(response.flowOutput)
+        assertTrue(response.flowOutput.isEmpty())
     }
 
     @Test
-    fun flowOutput_nullWhenEmpty() {
+    fun flowOutput_emptyWhenEmpty() {
         val json = """
             {
                 "sessionJwt": "session",
@@ -76,6 +75,6 @@ class JwtServerResponseTest {
             }
         """.trimIndent()
         val response = JwtServerResponse.fromJson(json, emptyList())
-        assertNull(response.flowOutput)
+        assertTrue(response.flowOutput.isEmpty())
     }
 }

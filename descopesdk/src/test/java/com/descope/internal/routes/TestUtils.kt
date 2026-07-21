@@ -112,7 +112,7 @@ internal val mockJwtResponse = JwtServerResponse(
     cookieName = null,
     sessionCookieName = null,
     externalToken = null,
-    flowOutput = null,
+    flowOutput = emptyMap(),
 )
 
 private object MockInfo: SystemInfo {

@@ -7,18 +7,18 @@ import com.descope.session.DescopeToken
  *
  * @property sessionToken the user's session token is used to perform authorized backend requests.
  * @property refreshToken the refresh token is used to refresh expired session tokens.
+ * @property externalToken a token provided by an external token connector, when configured in the project.
  * @property isFirstAuthentication whether this the user's first authentication.
  * @property user information about the user.
- * @property externalToken a token provided by an external token connector, when configured in the project.
- * @property flowOutput custom data returned from a flow's output, when running a flow that sets it. Always `null` for non-flow authentications.
+ * @property flowOutput custom data returned from a flow's output, when running a flow that sets it. Empty for non-flow authentications.
  */
 data class AuthenticationResponse(
     val sessionToken: DescopeToken,
     val refreshToken: DescopeToken,
+    val externalToken: String? = null,
     val isFirstAuthentication: Boolean,
     val user: DescopeUser,
-    val externalToken: String? = null,
-    val flowOutput: Map<String, Any>? = null,
+    val flowOutput: Map<String, Any> = emptyMap(),
 )
 
 /**
