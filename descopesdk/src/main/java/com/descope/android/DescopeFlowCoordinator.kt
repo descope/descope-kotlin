@@ -255,7 +255,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
             val urlCookieString = CookieManager.getInstance().getCookie(url)
             jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(jwtServerResponse.sessionCookieName ?: SESSION_COOKIE_NAME, respCookieString, urlCookieString)
             jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(jwtServerResponse.cookieName ?: bridge.attributes.refreshCookieName ?: REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
-            val authResponse = jwtServerResponse.convert()
+            val authResponse = try {
+                jwtServerResponse.convert()
+            } catch (e: DescopeException) {
+                // Authenticated flows return no new tokens, but may still carry flow output.
+                // Fall back to the current session and preserve the flow output.
+                val session = currentSession ?: throw e
+                AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false, flowOutput = jwtServerResponse.flowOutput)
+            }
             logger.debug("Flow received an authentication response", data)
             handleSuccess(authResponse)
         } catch (e: DescopeException) {

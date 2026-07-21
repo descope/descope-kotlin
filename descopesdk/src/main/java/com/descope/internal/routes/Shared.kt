@@ -59,9 +59,9 @@ internal fun JwtServerResponse.convert(): AuthenticationResponse {
     return AuthenticationResponse(
         refreshToken = Token(refreshJwt),
         sessionToken = Token(sessionJwt),
+        externalToken = externalToken,
         user = user.convert(),
         isFirstAuthentication = firstSeen,
-        externalToken = externalToken,
         flowOutput = flowOutput,
     )
 }
