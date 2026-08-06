@@ -53,6 +53,7 @@ import java.net.HttpCookie
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.concurrent.timer
+import androidx.core.net.toUri
 
 @SuppressLint("SetJavaScriptEnabled")
 class DescopeFlowCoordinator(val webView: WebView) {
@@ -141,16 +142,38 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleFinish(data: String?, url: String) {
-        if (data != null) {
-            handleAuthentication(data, url)
-            return
+        val jwtServerResponse = parseJwtServerResponse(data, url)
+        if (jwtServerResponse != null) {
+            try {
+                val authResponse = jwtServerResponse.convert()
+                logger.debug("Flow received an authentication response", data)
+                handleSuccess(authResponse)
+                return
+            } catch (e: Exception) {
+                logger.debug("Flow returned flow response, but it unexpectedly failed to parse", e)
+            }
         }
         val session = currentSession
         if (session != null) {
-            handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false))
+            handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false, flowOutput = jwtServerResponse?.flowOutput ?: emptyMap()))
             return
         }
         handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
+    }
+
+    private fun parseJwtServerResponse(data: String?, url: String): JwtServerResponse? {
+        if (data == null) return null
+        return try {
+            val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
+            // take tokens from cookies if missing
+            val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
+            val urlCookieString = CookieManager.getInstance().getCookie(url)
+            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(jwtServerResponse.sessionCookieName ?: SESSION_COOKIE_NAME, respCookieString, urlCookieString)
+            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(jwtServerResponse.cookieName ?: bridge.attributes.refreshCookieName ?: REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
+            return jwtServerResponse
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // Initialize
@@ -245,23 +268,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
         stopTimer()
         state = Finished
         listener?.onSuccess(authResponse)
-    }
-
-    private fun handleAuthentication(data: String, url: String) {
-        try {
-            val jwtServerResponse = JwtServerResponse.fromJson(data, emptyList())
-            // take tokens from cookies if missing
-            val respCookieString = CookieManager.getInstance().getCookie("https://${jwtServerResponse.cookieDomain}${jwtServerResponse.cookiePath}")
-            val urlCookieString = CookieManager.getInstance().getCookie(url)
-            jwtServerResponse.sessionJwt = jwtServerResponse.sessionJwt ?: findJwtInCookies(jwtServerResponse.sessionCookieName ?: SESSION_COOKIE_NAME, respCookieString, urlCookieString)
-            jwtServerResponse.refreshJwt = jwtServerResponse.refreshJwt ?: findJwtInCookies(jwtServerResponse.cookieName ?: bridge.attributes.refreshCookieName ?: REFRESH_COOKIE_NAME, respCookieString, urlCookieString)
-            val authResponse = jwtServerResponse.convert()
-            logger.debug("Flow received an authentication response", data)
-            handleSuccess(authResponse)
-        } catch (e: DescopeException) {
-            logger.error("Unexpected error handling authentication response", e, data, url)
-            handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
-        }
     }
 
     private fun ensureState(vararg allowedStates: DescopeFlowView.State): Boolean {
@@ -435,7 +441,7 @@ internal fun findJwtInCookies(name: String, vararg cookieStrings: String?): Stri
 // Default Browser
 
 private fun shouldUseCustomSchemeUrl(context: Context): Boolean {
-    val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
+    val browserIntent = Intent("android.intent.action.VIEW", "http://".toUri())
     val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
     val label = resolveInfo?.loadLabel(context.packageManager).toString()
     return when (label.lowercase()) {

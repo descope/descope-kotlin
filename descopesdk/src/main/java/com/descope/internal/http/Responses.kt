@@ -22,6 +22,7 @@ internal data class JwtServerResponse(
     val cookieName: String?,
     val sessionCookieName: String?,
     val externalToken: String?,
+    val flowOutput: Map<String, Any>,
 ) {
     companion object {
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
@@ -51,6 +52,7 @@ internal data class JwtServerResponse(
                 cookieName = cookieName,
                 sessionCookieName = sessionCookieName,
                 externalToken = stringOrEmptyAsNull("externalToken"),
+                flowOutput = optionalMap("flowOutput"),
             )
         }
     }
