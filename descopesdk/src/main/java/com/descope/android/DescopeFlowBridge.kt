@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -15,6 +16,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
+import com.descope.internal.others.FileResponse
+import com.descope.internal.others.activityHelper
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
@@ -39,18 +42,26 @@ internal class FlowBridge(val webView: WebView) {
 
     interface Listener {
         fun onLoaded()
-        fun onFound()
-        fun onReady(tag: String)
-        fun onRequest(request: FlowBridgeRequest)
+        // Per-component registration. Replaces the pre-multi-flow `onFound` single-component signal.
+        fun onRegister(wcKey: String, attributes: FlowBridgeAttributes)
+        fun onUnregister(wcKey: String)
+        fun onReady(wcKey: String, tag: String)
+        fun onRequest(wcKey: String, request: FlowBridgeRequest)
         fun onNavigation(uri: Uri): Boolean
-        fun onSuccess(data: String?, url: String)
-        fun onError(error: DescopeException)
+        fun onSuccess(wcKey: String, data: String?, url: String)
+        fun onError(wcKey: String, error: DescopeException)
+        // CustomEvents dispatched on the <descope-user-profile-widget> element:
+        // "ready" / "error" / "widget-logout". `detail` is the stringified event
+        // detail, or empty string if absent.
+        fun onWidgetEvent(name: String, detail: String)
     }
 
     var flow: DescopeFlow? = null
     var listener: Listener? = null
     var logger: DescopeLogger? = null
-    var attributes = FlowBridgeAttributes()
+    // Frozen at start; baked into the setup script so every wc gets the same config.
+    var nativeOptions: String = "{}"
+    var clientInputs: String = ""
 
     private val handler = Handler(Looper.getMainLooper())
     private var alreadySetUp = false
@@ -60,33 +71,42 @@ internal class FlowBridge(val webView: WebView) {
     // JavaScript Interface
 
     private val javascriptInterface = object {
-        @JavascriptInterface fun onFound(data: String) = bridgeOnFound(data)
-        @JavascriptInterface fun onReady(tag: String) = bridgeOnReady(tag)
-        @JavascriptInterface fun onSuccess(data: String?, url: String) = bridgeOnSuccess(data, url)
+        @JavascriptInterface fun onRegister(wcKey: String, data: String) = bridgeOnRegister(wcKey, data)
+        @JavascriptInterface fun onUnregister(wcKey: String) = bridgeOnUnregister(wcKey)
+        @JavascriptInterface fun onReady(wcKey: String, tag: String) = bridgeOnReady(wcKey, tag)
+        @JavascriptInterface fun onSuccess(wcKey: String, data: String?, url: String) = bridgeOnSuccess(wcKey, data, url)
         @JavascriptInterface fun onAbort(reason: String) = bridgeOnAbort(reason)
-        @JavascriptInterface fun onError(error: String) = bridgeOnError(error)
-        @JavascriptInterface fun native(response: String?) = bridgeOnNative(response)
+        @JavascriptInterface fun onError(wcKey: String, error: String) = bridgeOnError(wcKey, error)
+        @JavascriptInterface fun native(wcKey: String, response: String?) = bridgeOnNative(wcKey, response)
+        @JavascriptInterface fun onWidgetEvent(name: String, detail: String) = bridgeOnWidgetEvent(name, detail)
         @JavascriptInterface fun onLog(tag: String, message: String) = bridgeOnLog(tag, message)
     }
 
-    private fun bridgeOnFound(data: String) {
-        logger.info("Received found event")
+    private fun bridgeOnRegister(wcKey: String, data: String) {
+        logger.info("Component registered", wcKey)
         val json = JSONObject(data)
+        val attributes = FlowBridgeAttributes(refreshCookieName = json.stringOrEmptyAsNull("refreshCookieName"))
         handler.post {
-            attributes.refreshCookieName = json.stringOrEmptyAsNull("refreshCookieName")
-            listener?.onFound()
+            listener?.onRegister(wcKey, attributes)
         }
     }
 
-    private fun bridgeOnReady(tag: String) {
+    private fun bridgeOnUnregister(wcKey: String) {
+        logger.info("Component unregistered", wcKey)
         handler.post {
-            listener?.onReady(tag)
+            listener?.onUnregister(wcKey)
         }
     }
 
-    private fun bridgeOnSuccess(data: String?, url: String) {
+    private fun bridgeOnReady(wcKey: String, tag: String) {
         handler.post {
-            listener?.onSuccess(data, url)
+            listener?.onReady(wcKey, tag)
+        }
+    }
+
+    private fun bridgeOnSuccess(wcKey: String, data: String?, url: String) {
+        handler.post {
+            listener?.onSuccess(wcKey, data, url)
         }
     }
 
@@ -99,11 +119,13 @@ internal class FlowBridge(val webView: WebView) {
             DescopeException.flowCancelled
         }
         handler.post {
-            listener?.onError(error)
+            // Abort is a top-level signal not associated with a specific component;
+            // pass an empty wcKey so the View layer can recognize it and decide.
+            listener?.onError("", error)
         }
     }
 
-    private fun bridgeOnError(error: String) {
+    private fun bridgeOnError(wcKey: String, error: String) {
         val parsed = parseServerError(error)
         val exception = when {
             parsed == null -> DescopeException.flowFailed.with(message = error)
@@ -112,22 +134,28 @@ internal class FlowBridge(val webView: WebView) {
             else -> parsed
         }
         handler.post {
-            listener?.onError(exception)
+            listener?.onError(wcKey, exception)
         }
     }
 
-    private fun bridgeOnNative(response: String?) {
+    private fun bridgeOnNative(wcKey: String, response: String?) {
         if (response == null) {
-            logger.info("Skipping bridge call because response is null")
+            logger.info("Skipping bridge call because response is null", wcKey)
             return
         }
         handler.post {
             try {
                 val request = FlowBridgeRequest.fromJson(response)
-                listener?.onRequest(request)
+                listener?.onRequest(wcKey, request)
             } catch (e: DescopeException) {
-                listener?.onError(e)
+                listener?.onError(wcKey, e)
             }
+        }
+    }
+
+    private fun bridgeOnWidgetEvent(name: String, detail: String) {
+        handler.post {
+            listener?.onWidgetEvent(name, detail)
         }
     }
 
@@ -150,6 +178,30 @@ internal class FlowBridge(val webView: WebView) {
         override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
             val message = consoleMessage?.message() ?: return false
             return handleConsoleMessage(message, consoleMessage.messageLevel())
+        }
+
+        override fun onShowFileChooser(
+            webView: WebView,
+            filePathCallback: ValueCallback<Array<Uri>>,
+            fileChooserParams: FileChooserParams,
+        ): Boolean {
+            return try {
+                activityHelper.openFileChooser(webView.context, fileChooserParams.createIntent()) { response ->
+                    when (response) {
+                        is FileResponse.Failure -> {
+                            logger.error("File chooser resulted in a failure", response.e)
+                            filePathCallback.onReceiveValue(emptyArray())
+                        }
+                        is FileResponse.None -> filePathCallback.onReceiveValue(emptyArray())
+                        is FileResponse.Selected -> filePathCallback.onReceiveValue(response.uris)
+                    }
+                }
+                true
+            } catch (e: Exception) {
+                logger.error("Failed to launch file chooser", e)
+                filePathCallback.onReceiveValue(emptyArray())
+                false
+            }
         }
     }
 
@@ -193,7 +245,7 @@ internal class FlowBridge(val webView: WebView) {
 
         webView.evaluateJavascript(loggingScript, {})
 
-        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context))
+        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context), nativeOptions, clientInputs)
         webView.evaluateJavascript(setupScript, {})
 
         listener?.onLoaded()
@@ -214,7 +266,7 @@ internal class FlowBridge(val webView: WebView) {
             else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
         }
         val exception = DescopeException.networkError.with(message = message)
-        listener?.onError(exception)
+        listener?.onError("", exception)
     }
 
     private fun handleReceivedHttpError(statusCode: Int) {
@@ -222,7 +274,7 @@ internal class FlowBridge(val webView: WebView) {
         if (statusCode >= 500 && scheduleRetryAfterError()) return
         val message = failureFromResponseCode(statusCode)
         val exception = DescopeException.networkError.with(message = message)
-        listener?.onError(exception)
+        listener?.onError("", exception)
     }
 
     private fun scheduleRetryAfterError(): Boolean {
@@ -267,16 +319,16 @@ internal class FlowBridge(val webView: WebView) {
 
     // Bridge API
 
-    fun initialize(nativeOptions: String, refreshJwt: String, clientInputs: String) {
-        call("initialize", nativeOptions, refreshJwt, clientInputs)
+    // Session-level refresh JWT write. Lands in localStorage["DSR"] — the single
+    // key read by every consumer on the page (descope-wcs and the widget shell
+    // alike). Idempotent; safe to call as often as needed. Empty input is a no-op
+    // on the JS side so flow pages without an authenticated session work too.
+    fun setRefreshJwt(refreshJwt: String) {
+        call("setRefreshJwt", refreshJwt)
     }
 
-    fun updateRefreshJwt(refreshJwt: String) {
-        call("updateRefreshJwt", refreshJwt)
-    }
-
-    fun postResponse(response: FlowBridgeResponse) {
-        call("handleResponse", response.typeName, response.payload)
+    fun postResponse(wcKey: String, response: FlowBridgeResponse) {
+        call("handleResponse", wcKey, response.typeName, response.payload)
     }
 
     // Public Utilities
@@ -412,7 +464,7 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = """
+private fun makeSetupScript(systemInfo: SystemInfo, nativeOptions: String, clientInputs: String) = """
 
 window.descopeBridge = {
     hostInfo: {
@@ -426,6 +478,20 @@ window.descopeBridge = {
         webauthn: $isWebAuthnSupported,
     },
 
+    // v3 wcs self-register from their own init; native routes callbacks by wcKey.
+    registerFlow(element) {
+        return this.internal.registerComponent(element)
+    },
+
+    unregisterFlow(wcKey) {
+        this.internal.unregisterComponent(wcKey)
+    },
+
+    // UPW registers itself from its async init to seed the session and wire lifecycle events.
+    registerWidget(widget) {
+        this.internal.subscribeToWidget(widget)
+    },
+
     abortFlow(reason) {
         this.internal.aborted = true
         flow.onAbort(typeof reason == 'string' ? reason : '')
@@ -436,9 +502,20 @@ window.descopeBridge = {
     },
 
     internal: {
-        component: null,
+        // Config baked at startFlow — every wc reads the same values.
+        nativeOptions: ${if (nativeOptions.isBlank()) "{}" else nativeOptions},
+        clientInputs: ${if (clientInputs.isBlank()) "null" else clientInputs},
+
+        components: {},
+        nextWcKey: 1,
+        widgetSubscribed: false,
+
+        // Cached JWT + storage prefix. Writes deferred until the first wc/widget locks the prefix.
+        refreshJwt: '',
+        storagePrefix: null,
 
         aborted: false,
+        headersConfigured: false,
 
         start() {
             if (this.aborted || this.connect()) {
@@ -455,64 +532,96 @@ window.descopeBridge = {
             }, 20)
         },
 
+        // Legacy safety net for wcs < v3 that don't self-register.
         connect() {
-            this.component ||= document.querySelector('descope-wc')
-            if (!this.component) {
-                return false
+            const component = document.querySelector('descope-wc')
+            if (component && !this.isRegistered(component)) {
+                this.registerComponent(component)
             }
-
-            const attributes = {
-                refreshCookieName: this.component.refreshCookieName || null,
-            }
-
-            flow.onFound(JSON.stringify(attributes))
-            return true
+            return !!component
         },
 
-        initialize(nativeOptions, refreshJwt, clientInputs) {
+        isRegistered(element) {
+            for (const key in this.components) {
+                if (this.components[key] === element) return true
+            }
+            return false
+        },
+
+        registerComponent(element) {
+            // wcKey embeds flow-id so native logs read as e.g. "add-passkey_3".
+            const wcKey = (element.flowId || 'wc') + '_' + (this.nextWcKey++)
+            this.components[wcKey] = element
+            this.lockStoragePrefix(element.storagePrefix || '')
+
             // update webpage sdk headers and print sdk type and version to native log
-            this.updateConfigHeaders()
+            if (!this.headersConfigured) {
+                this.updateConfigHeaders()
+                this.headersConfigured = true
+            }
+            element.nativeOptions = this.nativeOptions
+            if (this.clientInputs) this.applyClientInputs(element, this.clientInputs)
 
-            this.component.nativeOptions = JSON.parse(nativeOptions)
-            this.updateRefreshJwt(refreshJwt)
-            this.updateClientInputs(clientInputs)
-
-            if (this.component.flowStatus === 'error') {
-                flow.onError('The flow failed during initialization')
-            } else if (this.component.flowStatus === 'ready' || this.component.shadowRoot?.querySelector('descope-container')) {
-                this.postReady('immediate') // can only happen in old web-components without lazy init
+            if (element.flowStatus === 'error') {
+                flow.onError(wcKey, 'The flow failed during initialization')
+            } else if (element.flowStatus === 'ready' || element.shadowRoot?.querySelector('descope-container')) {
+                this.postReady(wcKey, 'immediate') // can only happen in old web-components without lazy init
             } else {
-                this.component.addEventListener('ready', () => {
-                    this.postReady('listener')
+                element.addEventListener('ready', () => {
+                    this.postReady(wcKey, 'listener')
                 })
             }
 
-            this.component.addEventListener('bridge', (event) => {
-                flow.native(JSON.stringify(event.detail))
+            element.addEventListener('bridge', (event) => {
+                flow.native(wcKey, JSON.stringify(event.detail))
             })
 
-            this.component.addEventListener('error', (event) => {
-                flow.onError(JSON.stringify(event.detail))
+            element.addEventListener('error', (event) => {
+                flow.onError(wcKey, JSON.stringify(event.detail))
             })
 
-            this.component.addEventListener('success', (event) => {
+            element.addEventListener('success', (event) => {
                 const response = (event.detail && Object.keys(event.detail).length) ? JSON.stringify(event.detail) : null
-                flow.onSuccess(response, window.location.href)
+                flow.onSuccess(wcKey, response, window.location.href)
             })
 
             // ensure we support old web-components without this function
-            this.component.lazyInit?.()
+            element.lazyInit?.()
 
-            return true
+            flow.onRegister(wcKey, JSON.stringify({
+                refreshCookieName: element.refreshCookieName || null,
+            }))
+            return wcKey
         },
 
-        postReady(tag) {
-            if (!this.component.bridgeVersion) {
-                flow.onError('The flow is using an unsupported web component version')
+        unregisterComponent(wcKey) {
+            if (!this.components[wcKey]) return
+            delete this.components[wcKey]
+            flow.onUnregister(wcKey)
+        },
+
+        subscribeToWidget(widget) {
+            if (this.widgetSubscribed) return
+            this.widgetSubscribed = true
+            // UPW shell has no storagePrefix attribute — flush cached JWT under root.
+            this.lockStoragePrefix('')
+            widget.addEventListener('ready', () => flow.onWidgetEvent('ready', ''))
+            widget.addEventListener('error', (event) => {
+                const detail = event && event.detail ? JSON.stringify(event.detail) : ''
+                flow.onWidgetEvent('error', detail)
+            })
+            widget.addEventListener('widget-logout', () => flow.onWidgetEvent('widget-logout', ''))
+        },
+
+        postReady(wcKey, tag) {
+            const element = this.components[wcKey]
+            if (!element) return
+            if (!element.bridgeVersion) {
+                flow.onError(wcKey, 'The flow is using an unsupported web component version')
                 return
             }
-            this.disableTouchInteractions()
-            flow.onReady(tag)
+            this.disableTouchInteractions(element)
+            flow.onReady(wcKey, tag)
         },
 
         updateConfigHeaders() {
@@ -537,7 +646,7 @@ window.descopeBridge = {
             }
         },
 
-        disableTouchInteractions() {
+        disableTouchInteractions(element) {
             const stylesheet = document.createElement("style")
             stylesheet.textContent = `
                 * {
@@ -546,45 +655,58 @@ window.descopeBridge = {
             `
             document.head.appendChild(stylesheet)
 
-            this.component.injectStyle?.(`
+            element.injectStyle?.(`
                 #content-root * {
                     user-select: none;
                 }
             `)
 
-            this.component.shadowRoot?.querySelectorAll('descope-enriched-text').forEach(t => {
+            element.shadowRoot?.querySelectorAll('descope-enriched-text').forEach(t => {
                 t.shadowRoot?.querySelectorAll('a').forEach(a => {
                     a.draggable = false
                 })
             })
 
-            this.component.shadowRoot?.querySelectorAll('img').forEach(a => {
+            element.shadowRoot?.querySelectorAll('img').forEach(a => {
                 a.draggable = false
             })
         },
 
-        updateRefreshJwt(refreshJwt) {
-            if (refreshJwt) {
-                const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
-                window.localStorage.setItem(storageKey, refreshJwt)
-            }
+        // Native pushes the JWT here whenever the session rotates.
+        setRefreshJwt(refreshJwt) {
+            this.refreshJwt = refreshJwt || ''
+            this.writeRefreshJwt()
         },
 
-        updateClientInputs(inputs) {
+        lockStoragePrefix(prefix) {
+            if (this.storagePrefix !== null) return
+            this.storagePrefix = prefix || ''
+            this.writeRefreshJwt()
+        },
+
+        writeRefreshJwt() {
+            if (!this.refreshJwt || this.storagePrefix === null) return
+            const storageKey = this.storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+            window.localStorage.setItem(storageKey, this.refreshJwt)
+            this.refreshJwt = ''
+        },
+
+        applyClientInputs(element, inputs) {
             let client = {}
             try {
-                client = JSON.parse(this.component.getAttribute('client') || '{}')
+                client = JSON.parse(element.getAttribute('client') || '{}')
             } catch (e) {}
             client = {
                 ...client,
-                ...JSON.parse(inputs || '{}'),
+                ...inputs,
             }
-            this.component.setAttribute('client', JSON.stringify(client))
+            element.setAttribute('client', JSON.stringify(client))
         },
 
-        handleResponse(type, payload) {
-            this.component.nativeResume(type, payload)
+        handleResponse(wcKey, type, payload) {
+            const element = this.components[wcKey]
+            if (!element) return
+            element.nativeResume(type, payload)
         },
     }
 }
