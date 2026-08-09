@@ -149,8 +149,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
                 logger.debug("Flow received an authentication response", data)
                 handleSuccess(authResponse)
                 return
-            } catch (e: Exception) {
-                logger.debug("Flow returned flow response, but it unexpectedly failed to parse", e)
+            } catch (_: Exception) {
+                logger.debug("Flow received a partial authentication response")
             }
         }
         val session = currentSession
