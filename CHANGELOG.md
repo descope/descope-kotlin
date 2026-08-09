@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/descope/descope-kotlin/compare/0.19.1...0.19.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* fall back to generic browser check when url resolution fails ([#344](https://github.com/descope/descope-kotlin/issues/344)) ([976588f](https://github.com/descope/descope-kotlin/commit/976588fc17b8f70c6f3ecb798bc0b08caa21339b))
+
 ## 0.19.1
 
 ### Features
