@@ -31,4 +31,50 @@ class JwtServerResponseTest {
         val response = JwtServerResponse.fromJson(json, emptyList())
         assertNull(response.externalToken)
     }
+
+    @Test
+    fun flowOutput_populatedWhenPresent() {
+        val json = """
+            {
+                "sessionJwt": "session",
+                "refreshJwt": "refresh",
+                "firstSeen": true,
+                "flowOutput": {
+                    "key": "value",
+                    "count": 3,
+                    "nested": { "inner": true }
+                }
+            }
+        """.trimIndent()
+        val response = JwtServerResponse.fromJson(json, emptyList())
+        assertEquals("value", response.flowOutput["key"])
+        assertEquals(3, response.flowOutput["count"])
+    }
+
+    @Test
+    fun flowOutput_emptyWhenAbsent() {
+        val json = """
+            {
+                "sessionJwt": "session",
+                "refreshJwt": "refresh",
+                "firstSeen": true
+            }
+        """.trimIndent()
+        val response = JwtServerResponse.fromJson(json, emptyList())
+        assertTrue(response.flowOutput.isEmpty())
+    }
+
+    @Test
+    fun flowOutput_emptyWhenEmpty() {
+        val json = """
+            {
+                "sessionJwt": "session",
+                "refreshJwt": "refresh",
+                "firstSeen": true,
+                "flowOutput": {}
+            }
+        """.trimIndent()
+        val response = JwtServerResponse.fromJson(json, emptyList())
+        assertTrue(response.flowOutput.isEmpty())
+    }
 }

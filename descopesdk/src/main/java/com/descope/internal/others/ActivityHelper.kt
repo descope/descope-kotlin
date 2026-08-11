@@ -82,7 +82,15 @@ internal val activityHelper = object : ActivityHelper {
     private fun isBrowserSupported(context: Context, uri: Uri): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, uri)
         val component = intent.resolveActivity(context.packageManager)
-        return component != null
+        return when {
+            component != null -> true
+            uri.scheme?.equals("http", ignoreCase = true) == true || uri.scheme?.equals("https", ignoreCase = true) == true -> {
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.fromParts("https", "", null))
+                    .addCategory(Intent.CATEGORY_BROWSABLE)
+                context.packageManager.queryIntentActivities(browserIntent, 0).isNotEmpty()
+            }
+            else -> false
+        }
     }
 }
 
