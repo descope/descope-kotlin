@@ -60,13 +60,21 @@ internal val activityHelper = object : ActivityHelper {
     }
 
     override fun openFileChooser(context: Context, chooserIntent: Intent, callback: (FileResponse) -> Unit) {
-        this.fileCallback = callback
+        // Release any stranded prior callback (e.g. second chooser triggered before the first resolved).
+        fileCallback?.invoke(FileResponse.None)
+        fileCallback = callback
         val intent = Intent(context, DescopeHelperActivity::class.java)
         intent.putExtra(FILE_CHOOSER_INTENT, chooserIntent)
         if (context !is android.app.Activity) {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            val cb = fileCallback
+            fileCallback = null
+            cb?.invoke(FileResponse.Failure(e))
+        }
     }
 
     override fun onFileChosen(uris: Array<Uri>?, e: Exception?) {

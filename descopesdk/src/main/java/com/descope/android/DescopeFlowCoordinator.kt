@@ -29,6 +29,7 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
+import com.descope.internal.others.parseServerError
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
@@ -357,42 +358,25 @@ class DescopeFlowCoordinator(val webView: WebView) {
         val refreshJwt = currentSession?.refreshJwt
         val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
         scope.launch(Dispatchers.IO) {
-            try {
-                if (!refreshJwt.isNullOrEmpty()) {
+            if (!refreshJwt.isNullOrEmpty()) {
+                try {
                     sdk.auth.revokeSessions(RevokeType.CurrentSession, refreshJwt)
+                } catch (e: DescopeException) {
+                    logger.error("Widget logout revoke failed", e)
                 }
-                sdk.sessionManager.clearSession()
-                handler.post {
-                    stopTimer()
-                    listener?.onLogout()
-                }
-            } catch (e: DescopeException) {
-                logger.error("Widget logout failed", e)
-                handler.post {
-                    if (state == Failed) return@post
-                    stopTimer()
-                    state = Failed
-                    listener?.onError(DescopeException.flowFailed.with(message = "Widget logout failed", cause = e))
-                }
+            }
+            sdk.sessionManager.clearSession()
+            handler.post {
+                stopTimer()
+                bridge.clearRefreshJwt()
+                listener?.onLogout()
             }
         }
     }
 
     private fun parseWidgetError(detail: String): DescopeException {
         if (detail.isEmpty()) return DescopeException.flowFailed.with(message = "Widget failed")
-        return try {
-            val json = JSONObject(detail)
-            val code = json.stringOrEmptyAsNull("code")
-            val description = json.stringOrEmptyAsNull("description") ?: "Widget failed"
-            val message = json.stringOrEmptyAsNull("message")
-            if (code != null) {
-                DescopeException(code = code, desc = description, message = message)
-            } else {
-                DescopeException.flowFailed.with(message = message ?: description)
-            }
-        } catch (_: Exception) {
-            DescopeException.flowFailed.with(message = detail)
-        }
+        return parseServerError(detail) ?: DescopeException.flowFailed.with(message = detail)
     }
 
     // Native Operations

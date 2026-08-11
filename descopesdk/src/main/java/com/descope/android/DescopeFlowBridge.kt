@@ -327,6 +327,10 @@ internal class FlowBridge(val webView: WebView) {
         call("setRefreshJwt", refreshJwt)
     }
 
+    fun clearRefreshJwt() {
+        call("clearRefreshJwt")
+    }
+
     fun postResponse(wcKey: String, response: FlowBridgeResponse) {
         call("handleResponse", wcKey, response.typeName, response.payload)
     }
@@ -676,6 +680,15 @@ window.descopeBridge = {
         setRefreshJwt(refreshJwt) {
             this.refreshJwt = refreshJwt || ''
             this.writeRefreshJwt()
+        },
+
+        // Native calls this explicitly on logout to remove the stored JWT so the
+        // next widget/wc load doesn't pick up a revoked token.
+        clearRefreshJwt() {
+            this.refreshJwt = ''
+            if (this.storagePrefix === null) return
+            const storageKey = this.storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
+            window.localStorage.removeItem(storageKey)
         },
 
         lockStoragePrefix(prefix) {
