@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/descope/descope-kotlin/compare/0.19.2...0.20.0) (2026-08-12)
+
+
+### Features
+
+* expose flowOutput on AuthenticationResponse ([#338](https://github.com/descope/descope-kotlin/issues/338)) ([0742859](https://github.com/descope/descope-kotlin/commit/07428594f8e0ccbf270ff018f0a27a09f172e25d))
+* Log and return CF-Ray response header in API failures ([#322](https://github.com/descope/descope-kotlin/issues/322)) ([996acf0](https://github.com/descope/descope-kotlin/commit/996acf06f095e9f5512730c7758e40fc5bb106a9))
+
 ## [0.19.2](https://github.com/descope/descope-kotlin/compare/0.19.1...0.19.2) (2026-08-04)
 
 
