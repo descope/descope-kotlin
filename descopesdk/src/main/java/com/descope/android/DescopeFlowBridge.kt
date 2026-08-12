@@ -531,7 +531,7 @@ window.descopeBridge = {
 
             let interval
             interval = setInterval(() => {
-                if (this.aborted || this.connect()) {
+                if (this.aborted || this.widgetSubscribed || this.connect()) {
                     clearInterval(interval)
                 }
             }, 20)
