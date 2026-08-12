@@ -11,7 +11,8 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "extra-files": [
-        "descopesdk/src/main/java/com/descope/sdk/Sdk.kt"
+        "descopesdk/src/main/java/com/descope/sdk/Sdk.kt",
+        "README.md"
       ]
     }
   }

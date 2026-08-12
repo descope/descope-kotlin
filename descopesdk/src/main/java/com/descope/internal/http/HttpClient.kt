@@ -73,20 +73,22 @@ internal open class HttpClient(
 
         val result = try {
             val response = networkClient.sendRequest(url, method, body, combinedHeaders)
-            if (response.code != HttpsURLConnection.HTTP_OK) {
-                exceptionFromResponse(response.body)?.let { e ->
+            if (response.code !in 200..299) {
+                val cfRay = response.headers.entries.find { it.key.equals("cf-ray", ignoreCase = true) }?.value?.firstOrNull()
+                val trace = if (cfRay != null) " [CF-Ray: $cfRay]" else ""
+                exceptionFromResponse(response.body)?.with(traceId = cfRay)?.let { e ->
                     if (logger.isUnsafeEnabled) {
-                        logger.error("Network call failed with server error", url, e)
+                        logger.error("Network call failed with server error$trace", url, e)
                     } else {
-                        logger.error("Network call to $route failed with ${e.code} server error")
+                        logger.error("Network call to $route failed with ${e.code} server error$trace")
                     }
                     throw e
                 }
-                exceptionFromResponseCode(response.code)?.let { e ->
+                exceptionFromResponseCode(response.code)?.with(traceId = cfRay)?.let { e ->
                     if (logger.isUnsafeEnabled) {
-                        logger.error("Network call failed with ${response.code} http error", url, e)
+                        logger.error("Network call failed with ${response.code} http error$trace", url, e)
                     } else {
-                        logger.error("Network call to $route failed with ${response.code} http error")
+                        logger.error("Network call to $route failed with ${response.code} http error$trace")
                     }
                     throw e
                 }
@@ -166,7 +168,7 @@ private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetwo
 
             // Return response
             val responseCode = connection.responseCode
-            val responseBody = if (responseCode == HttpsURLConnection.HTTP_OK) {
+            val responseBody = if (responseCode in 200..299) {
                 connection.inputStream.bufferedReader().use { it.readText() }
             } else {
                 connection.errorStream.bufferedReader().use { it.readText() }
