@@ -168,7 +168,7 @@ private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetwo
 
             // Return response
             val responseCode = connection.responseCode
-            val responseBody = if (responseCode == HttpsURLConnection.HTTP_OK) {
+            val responseBody = if (responseCode in 200..299) {
                 connection.inputStream.bufferedReader().use { it.readText() }
             } else {
                 connection.errorStream.bufferedReader().use { it.readText() }
