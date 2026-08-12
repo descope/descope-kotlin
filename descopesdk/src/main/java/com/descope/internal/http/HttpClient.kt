@@ -73,7 +73,7 @@ internal open class HttpClient(
 
         val result = try {
             val response = networkClient.sendRequest(url, method, body, combinedHeaders)
-            if (response.code != HttpsURLConnection.HTTP_OK) {
+            if (response.code !in 200..299) {
                 val cfRay = response.headers.entries.find { it.key.equals("cf-ray", ignoreCase = true) }?.value?.firstOrNull()
                 val trace = if (cfRay != null) " [CF-Ray: $cfRay]" else ""
                 exceptionFromResponse(response.body)?.with(traceId = cfRay)?.let { e ->
@@ -142,9 +142,6 @@ private val Map<String, List<String>>.cookies: List<HttpCookie>
         }
         return cookies.toList()
     }
-
-private fun DescopeException.with(traceId: String?): DescopeException =
-    if (traceId == null) this else DescopeException(code = code, desc = desc, message = message, cause = cause, traceId = traceId)
 
 private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetworkClient {
     override suspend fun sendRequest(url: URL, method: String, body: Map<String, Any?>?, headers: Map<String, String>): DescopeNetworkClient.Response {

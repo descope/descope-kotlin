@@ -3,12 +3,12 @@ package com.descope.internal.others
 import com.descope.types.DescopeException
 import org.json.JSONObject
 
-internal fun DescopeException.with(desc: String? = null, message: String? = null, cause: Throwable? = null) = DescopeException(
+internal fun DescopeException.with(desc: String? = null, message: String? = null, cause: Throwable? = null, traceId: String? = null) = DescopeException(
     code = code,
     desc = desc ?: this.desc,
     message = message ?: this.message,
     cause = cause ?: this.cause,
-    traceId = traceId,
+    traceId = traceId ?: this.traceId,
 )
 
 internal fun parseServerError(response: String): DescopeException? {
