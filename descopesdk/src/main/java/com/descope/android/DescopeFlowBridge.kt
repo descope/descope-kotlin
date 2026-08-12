@@ -199,8 +199,9 @@ internal class FlowBridge(val webView: WebView) {
                 true
             } catch (e: Exception) {
                 logger.error("Failed to launch file chooser", e)
+                // return true otherwise the WebView will invoke it again internally, which throws
                 filePathCallback.onReceiveValue(emptyArray())
-                false
+                true
             }
         }
     }

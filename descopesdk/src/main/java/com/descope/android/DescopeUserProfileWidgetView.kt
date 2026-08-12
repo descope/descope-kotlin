@@ -11,7 +11,9 @@ import com.descope.Descope
 import com.descope.internal.others.error
 import com.descope.sdk.DescopeSdk
 import com.descope.session.DescopeSession
+import com.descope.session.DescopeSessionManager
 import com.descope.types.DescopeException
+import com.descope.types.DescopeUser
 
 /**
  * Display the Descope [User Profile Widget](https://app.descope.com/widgets).
@@ -104,6 +106,7 @@ class DescopeUserProfileWidgetView : ViewGroup {
             override fun onReady() { listener?.onReady() }
             override fun onError(exception: DescopeException) { listener?.onError(exception) }
             override fun onLogout() { listener?.onLogout() }
+            override fun onUserUpdated(user: DescopeUser): Boolean = listener?.onUserUpdated(user) ?: false
             override fun onNavigation(uri: Uri): NavigationStrategy = listener?.onNavigation(uri) ?: NavigationStrategy.OpenBrowser
         }
     }
@@ -181,6 +184,29 @@ class DescopeUserProfileWidgetView : ViewGroup {
          * [DescopeSdk.sessionManager].
          */
         fun onLogout()
+
+        /**
+         * Called after every successful widget-based flow completion. Since the user
+         * may have changed, the user's details are refetched from the Descope server.
+         *
+         * **IMPORTANT** - the return value indicates whether this callback handles persisting
+         * the user's data. Return `false` (the default) to have the SDK persist the updated user via the
+         * [DescopeSessionManager], if it's currently managing a session. Return `true`
+         * to take responsibility for persisting the update yourself, e.g. when managing
+         * sessions manually via [DescopeUserProfileWidget.sessionProvider]:
+         *
+         *     override fun onUserUpdated(user: DescopeUser): Boolean {
+         *         modelLayer.updateDescopeUser(user)
+         *         return true
+         *     }
+         *
+         * - **Note**: This callback may be called multiple times during a widget's uptime,
+         * and receiving it doesn't guarantee the user's details have actually changed.
+         *
+         * @param user The updated [DescopeUser]
+         * @return `true` if the caller handles persisting the updated user, `false` to let the SDK do it
+         */
+        fun onUserUpdated(user: DescopeUser): Boolean = false
 
         /**
          * Called when the widget has encountered an error.

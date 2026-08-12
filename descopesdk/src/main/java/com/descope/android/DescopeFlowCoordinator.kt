@@ -29,7 +29,7 @@ import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
-import com.descope.internal.others.parseServerError
+import com.descope.internal.others.jsonFromString
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.toJsonObject
 import com.descope.internal.others.with
@@ -45,6 +45,7 @@ import com.descope.session.DescopeSession
 import com.descope.session.Token
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
+import com.descope.types.DescopeUser
 import com.descope.types.RevokeType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +70,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private var flow: DescopeFlow? = null
     private val components = mutableMapOf<String, FlowBridgeAttributes>()
     private var pendingDeepLink: Pair<String, String>? = null // (wcKey, deepLinkType)
+    private var refreshUserInFlight = false
+    private var refreshUserPending = false
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk?
         get() = flow?.sdk ?: if (Descope.isInitialized) Descope.sdk else null
@@ -183,6 +186,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleFinish(wcKey: String, data: String?, url: String) {
+        if (isWidgetMode) {
+            // Widget flows are meant to update the user, so we try to refresh the user details
+            refreshUser()
+            return
+        }
         val jwtServerResponse = parseJwtServerResponse(wcKey, data, url)
         if (jwtServerResponse != null) {
             try {
@@ -374,9 +382,54 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
+    private fun refreshUser() {
+        if (ensureState(Started, Ready)) return
+        // protect against concurrent user updates
+        if (refreshUserInFlight) {
+            refreshUserPending = true
+            return
+        }
+        val sdk = sdk ?: return
+        val refreshJwt = currentSession?.refreshJwt ?: return
+        refreshUserInFlight = true
+        val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
+        scope.launch(Dispatchers.IO) {
+            val user = try {
+                sdk.auth.me(refreshJwt)
+            } catch (e: Exception) {
+                logger.error("Failed to fetch user details in user profile widget, continuing without", e)
+                null
+            }
+            handler.post {
+                refreshUserInFlight = false
+                if (user != null && listener?.onUserUpdated(user) != true) {
+                    sdk.sessionManager.updateUser(user)
+                }
+                if (refreshUserPending) {
+                    refreshUserPending = false
+                    refreshUser()
+                }
+            }
+        }
+    }
+
     private fun parseWidgetError(detail: String): DescopeException {
-        if (detail.isEmpty()) return DescopeException.flowFailed.with(message = "Widget failed")
-        return parseServerError(detail) ?: DescopeException.flowFailed.with(message = detail)
+        val json = jsonFromString(detail)
+        return when {
+            detail.isEmpty() -> DescopeException.flowFailed.with(message = "Widget failed")
+            json != null -> {
+                // widget dispatches errors with a `{ code, description, message }` detail
+                val code = json.stringOrEmptyAsNull("code")
+                val description = json.stringOrEmptyAsNull("description") ?: "Widget failed"
+                val message = json.stringOrEmptyAsNull("message")
+                if (code != null) {
+                    DescopeException(code = code, desc = description, message = message)
+                } else {
+                    DescopeException.flowFailed.with(message = message ?: description)
+                }
+            }
+            else -> DescopeException.flowFailed.with(message = detail)
+        }
     }
 
     // Native Operations
@@ -520,6 +573,7 @@ internal interface CoordinatorListener {
     fun onSuccess(response: AuthenticationResponse) {}
     fun onError(exception: DescopeException) {}
     fun onLogout() {}
+    fun onUserUpdated(user: DescopeUser): Boolean = false
     fun onNavigation(uri: Uri): NavigationStrategy = NavigationStrategy.OpenBrowser
 }
 
