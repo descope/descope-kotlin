@@ -315,7 +315,7 @@ descopeFlowView.listener = object : DescopeFlowView.Listener {
         // handle any errors here
     }
 
-    override fun onNavigation(uri: Uri): DescopeFlowView.NavigationStrategy {
+    override fun onNavigation(uri: Uri): NavigationStrategy {
         // manage navigation event by deciding whether to open the URI
         // in a custom tab (default behavior), inline, or do nothing.
     }
@@ -334,6 +334,10 @@ descopeFlow.presentation = flowPresentation
 // run the flow
 descopeFlowView.run(descopeFlow)
 ```
+
+> **Note**: `NavigationStrategy` and `Presentation` are now top-level types in `com.descope.android`.
+> If you previously referenced them as `DescopeFlowView.NavigationStrategy` or `DescopeFlow.Presentation`,
+> update the imports.
 
 ## Authentication Methods
 
