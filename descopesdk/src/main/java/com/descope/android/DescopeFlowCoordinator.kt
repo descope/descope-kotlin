@@ -189,14 +189,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
             ""
         }
 
-        val refreshJwt = currentSession?.refreshJwt ?: ""
+        // take one session snapshot so refreshJwt and sessionJwt can't come from different sessions
+        val session = currentSession
+        val refreshJwt = session?.refreshJwt ?: ""
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
         val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
 
-        val sessionJwt = if (flow.sendSessionToken) currentSession?.sessionJwt ?: "" else ""
+        val sessionJwt = if (flow.sendSessionToken && session != null && !session.sessionToken.isExpired) session.sessionJwt else ""
 
         val nativeOptions = JSONObject().apply {
             put("platform", "android")
