@@ -196,6 +196,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
 
+        val sessionJwt = if (flow.sendSessionToken) currentSession?.sessionJwt ?: "" else ""
+
         val nativeOptions = JSONObject().apply {
             put("platform", "android")
             put("bridgeVersion", 1)
@@ -205,6 +207,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
             put("externalAuthRedirect", externalAuthRedirect)
             put("magicLinkRedirect", magicLinkRedirect)
             put("origin", origin)
+            // only sent when the host app opted in via sendSessionToken (bridge v4+ web components use it)
+            if (sessionJwt.isNotEmpty()) put("sessionJwt", sessionJwt)
         }
 
         var clientInputs = ""
