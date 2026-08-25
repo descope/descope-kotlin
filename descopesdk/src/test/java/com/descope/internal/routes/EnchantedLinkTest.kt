@@ -1,7 +1,6 @@
 package com.descope.internal.routes
 
 import com.descope.internal.http.EnchantedLinkServerResponse
-import com.descope.types.DeliveryMethod
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
@@ -21,26 +20,9 @@ class EnchantedLinkTest {
             assertEquals(loginId, body["loginId"])
             details.validate(body)
         }
-        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedEmail = "maskedEmail")
-        val response = enchantedLink.signUp(DeliveryMethod.Email, loginId, details)
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", "maskedEmail")
+        val response = enchantedLink.signUp(loginId, details)
         assertEquals("maskedEmail", response.maskedEmail)
-        assertEquals(1, client.calls)
-    }
-
-    @Test
-    fun signUpSms() = runTest {
-        val loginId = "+972123456789"
-        val details = SignUpDetails(name = "a", phone = loginId)
-        val client = MockClient()
-        val enchantedLink = EnchantedLink(client)
-        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
-            assertEquals("auth/enchantedlink/signup/sms", route)
-            assertEquals(loginId, body["loginId"])
-            details.validate(body)
-        }
-        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
-        val response = enchantedLink.signUp(DeliveryMethod.Sms, loginId, details)
-        assertEquals("maskedPhone", response.maskedPhone)
         assertEquals(1, client.calls)
     }
 
@@ -57,25 +39,8 @@ class EnchantedLinkTest {
             assertEquals(uri, body["redirectUrl"])
             options.validate(body)
         }
-        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedEmail = "maskedEmail")
-        enchantedLink.signIn(DeliveryMethod.Email, loginId, uri, options)
-        assertEquals(1, client.calls)
-    }
-
-    @Test
-    fun signInSms() = runTest {
-        val loginId = "+972123456789"
-        val options = listOf(SignInOptions.Mfa("refreshJwt"))
-        val client = MockClient()
-        val enchantedLink = EnchantedLink(client)
-        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
-            assertEquals("auth/enchantedlink/signin/sms", route)
-            assertEquals(loginId, body["loginId"])
-            options.validate(body)
-        }
-        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
-        val response = enchantedLink.signIn(DeliveryMethod.Sms, loginId, options = options)
-        assertEquals("maskedPhone", response.maskedPhone)
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", "maskedEmail")
+        enchantedLink.signIn(loginId, uri, options)
         assertEquals(1, client.calls)
     }
 
@@ -89,14 +54,48 @@ class EnchantedLinkTest {
             assertEquals(loginId, body["loginId"])
             options.validate(body)
         }
-        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedEmail = "maskedEmail")
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", "maskedEmail")
         val enchantedLink = EnchantedLink(client)
-        enchantedLink.signUpOrIn(DeliveryMethod.Email, loginId, options = options)
+        enchantedLink.signUpOrIn(loginId, options = options)
         assertEquals(1, client.calls)
     }
 
     @Test
-    fun signUpOrInSms() = runTest {
+    fun signUpWithPhone() = runTest {
+        val loginId = "+972123456789"
+        val details = SignUpDetails(name = "a", phone = loginId)
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signup/sms", route)
+            assertEquals(loginId, body["loginId"])
+            details.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.signUpWithPhone(loginId, details)
+        assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signInWithPhone() = runTest {
+        val loginId = "+972123456789"
+        val options = listOf(SignInOptions.Mfa("refreshJwt"))
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signin/sms", route)
+            assertEquals(loginId, body["loginId"])
+            options.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.signInWithPhone(loginId, options = options)
+        assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signUpOrInWithPhone() = runTest {
         val loginId = "+972123456789"
         val options = listOf(SignInOptions.StepUp("refreshJwt"))
         val client = MockClient()
@@ -107,7 +106,7 @@ class EnchantedLinkTest {
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
         val enchantedLink = EnchantedLink(client)
-        val response = enchantedLink.signUpOrIn(DeliveryMethod.Sms, loginId, options = options)
+        val response = enchantedLink.signUpOrInWithPhone(loginId, options = options)
         assertEquals("maskedPhone", response.maskedPhone)
         assertEquals(1, client.calls)
     }

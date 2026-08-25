@@ -390,7 +390,7 @@ interface DescopeMagicLink {
  */
 interface DescopeEnchantedLink {
     /**
-     * Authenticates a new user using an enchanted link, sent via a delivery [method] of choice.
+     * Authenticates a new user using an enchanted link, sent via email.
      *
      * A new user identified by [loginId] and the optional [details] details will be added
      * upon successful authentication.
@@ -399,45 +399,42 @@ interface DescopeEnchantedLink {
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
      *
-     * @param method the delivery method to send the enchanted link.
      * @param loginId the identifier of the user to authenticate.
-     * @param details optional user information. Should contain the necessary delivery information if not provided in [loginId].
+     * @param details optional user information. Should contain an email address if not provided in [loginId].
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
+    suspend fun signUp(loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
 
     /**
-     * Authenticates an existing user using an enchanted link, sent via a delivery [method] of choice.
+     * Authenticates an existing user using an enchanted link, sent via email.
      *
      * An enchanted link will be sent to the user identified by [loginId].
      * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
      *
-     * @param method the delivery method to send the enchanted link.
      * @param loginId the identifier of the user to authenticate.
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @param options additional behaviors to perform during authentication.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
+    suspend fun signIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
     /**
      * Authenticates an existing user if one exists, or create a new user using an
-     * enchanted link, sent via a delivery [method] of choice.
-     *
+     * enchanted link, sent via email.
+     * 
      * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
-     *
-     * @param method the delivery method to send the enchanted link.
+     * 
      * @param loginId the identifier of the user to authenticate.
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @param options additional behaviors to perform during authentication.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
+    suspend fun signUpOrIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
     /**
      * Updates an existing user by adding an [email] address.
@@ -460,6 +457,53 @@ interface DescopeEnchantedLink {
      * @return masked email address the magic link was sent to.
      */
     suspend fun updateEmail(email: String, loginId: String, uri: String? = null, refreshJwt: String, options: UpdateOptions? = null): EnchantedLinkResponse
+
+    /**
+     * Authenticates a new user using an enchanted link, sent via SMS.
+     *
+     * A new user identified by [loginId] and the optional [details] details will be added
+     * upon successful authentication.
+     *
+     * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
+     * user which link they need to press in the enchanted link SMS, and then use
+     * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
+     *
+     * @param loginId the identifier of the user to authenticate.
+     * @param details optional user information. Should contain a phone number if not provided in [loginId].
+     * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
+     * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
+     */
+    suspend fun signUpWithPhone(loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
+
+    /**
+     * Authenticates an existing user using an enchanted link, sent via SMS.
+     *
+     * An enchanted link will be sent to the user identified by [loginId].
+     * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
+     * user which link they need to press in the enchanted link SMS, and then use
+     * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
+     *
+     * @param loginId the identifier of the user to authenticate.
+     * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
+     */
+    suspend fun signInWithPhone(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
+
+    /**
+     * Authenticates an existing user if one exists, or create a new user using an
+     * enchanted link, sent via SMS.
+     *
+     * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
+     * user which link they need to press in the enchanted link SMS, and then use
+     * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
+     *
+     * @param loginId the identifier of the user to authenticate.
+     * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
+     */
+    suspend fun signUpOrInWithPhone(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
     /**
      * Checks if an enchanted link authentication has been verified by the user.

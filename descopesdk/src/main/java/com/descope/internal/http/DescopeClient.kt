@@ -324,8 +324,8 @@ internal open class DescopeClient(internal val config: DescopeConfig, internal v
 
     // Enchanted Link
 
-    suspend fun enchantedLinkSignUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkServerResponse = post(
-        route = "auth/enchantedlink/signup/${method.route()}",
+    suspend fun enchantedLinkSignUp(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup/email",
         decoder = EnchantedLinkServerResponse::fromJson,
         body = mapOf(
             "loginId" to loginId,
@@ -334,8 +334,8 @@ internal open class DescopeClient(internal val config: DescopeConfig, internal v
         ),
     )
 
-    suspend fun enchantedLinkSignIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
-        route = "auth/enchantedlink/signin/${method.route()}",
+    suspend fun enchantedLinkSignIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signin/email",
         decoder = EnchantedLinkServerResponse::fromJson,
         headers = authorization(options?.refreshJwt),
         body = mapOf(
@@ -345,8 +345,40 @@ internal open class DescopeClient(internal val config: DescopeConfig, internal v
         ),
     )
 
-    suspend fun enchantedLinkSignUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
-        route = "auth/enchantedlink/signup-in/${method.route()}",
+    suspend fun enchantedLinkSignUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup-in/email",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "redirectUrl" to uri,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
+    suspend fun enchantedLinkSignUpWithPhone(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        body = mapOf(
+            "loginId" to loginId,
+            "user" to details?.toMap(),
+            "redirectUrl" to uri,
+        ),
+    )
+
+    suspend fun enchantedLinkSignInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signin/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "redirectUrl" to uri,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
+    suspend fun enchantedLinkSignUpOrInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup-in/sms",
         decoder = EnchantedLinkServerResponse::fromJson,
         headers = authorization(options?.refreshJwt),
         body = mapOf(

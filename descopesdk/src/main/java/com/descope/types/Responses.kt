@@ -51,7 +51,7 @@ data class RefreshResponse(
 data class EnchantedLinkResponse(
     val linkId: String,
     val pendingRef: String,
-    val maskedEmail: String? = null,
+    val maskedEmail: String,
     val maskedPhone: String? = null,
 )
 

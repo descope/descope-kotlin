@@ -6,7 +6,6 @@ import com.descope.sdk.DescopeEnchantedLink
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
-import com.descope.types.DeliveryMethod
 import com.descope.types.DescopeException
 import com.descope.types.EnchantedLinkResponse
 import com.descope.types.SignInOptions
@@ -18,14 +17,23 @@ private const val DEFAULT_POLL_DURATION: Long = 2 /* mins */ * 60 /* secs */ * 1
 
 internal class EnchantedLink(override val client: DescopeClient) : Route, DescopeEnchantedLink {
 
-    override suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkResponse =
-        client.enchantedLinkSignUp(method, loginId, details, uri).convert()
+    override suspend fun signUp(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkResponse =
+        client.enchantedLinkSignUp(loginId, details, uri).convert()
 
-    override suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
-        client.enchantedLinkSignIn(method, loginId, uri, options).convert()
+    override suspend fun signIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignIn(loginId, uri, options).convert()
 
-    override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
-        client.enchantedLinkSignUpOrIn(method, loginId, uri, options).convert()
+    override suspend fun signUpOrIn(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignUpOrIn(loginId, uri, options).convert()
+
+    override suspend fun signUpWithPhone(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkResponse =
+        client.enchantedLinkSignUpWithPhone(loginId, details, uri).convert()
+
+    override suspend fun signInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignInWithPhone(loginId, uri, options).convert()
+
+    override suspend fun signUpOrInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
+        client.enchantedLinkSignUpOrInWithPhone(loginId, uri, options).convert()
 
     override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
         client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert()
@@ -63,6 +71,6 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
 private fun EnchantedLinkServerResponse.convert() = EnchantedLinkResponse(
     linkId = linkId,
     pendingRef = pendingRef,
-    maskedEmail = maskedEmail,
+    maskedEmail = maskedEmail ?: "",
     maskedPhone = maskedPhone,
 )
