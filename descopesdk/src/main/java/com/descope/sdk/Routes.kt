@@ -390,7 +390,7 @@ interface DescopeMagicLink {
  */
 interface DescopeEnchantedLink {
     /**
-     * Authenticates a new user using an enchanted link, sent via email.
+     * Authenticates a new user using an enchanted link, sent via a delivery [method] of choice.
      *
      * A new user identified by [loginId] and the optional [details] details will be added
      * upon successful authentication.
@@ -399,42 +399,45 @@ interface DescopeEnchantedLink {
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
      *
+     * @param method the delivery method to send the enchanted link.
      * @param loginId the identifier of the user to authenticate.
-     * @param details optional user information. Should contain an email address if not provided in [loginId].
+     * @param details optional user information. Should contain the necessary delivery information if not provided in [loginId].
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signUp(loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
+    suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails? = null, uri: String? = null): EnchantedLinkResponse
 
     /**
-     * Authenticates an existing user using an enchanted link, sent via email.
+     * Authenticates an existing user using an enchanted link, sent via a delivery [method] of choice.
      *
      * An enchanted link will be sent to the user identified by [loginId].
      * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
      *
+     * @param method the delivery method to send the enchanted link.
      * @param loginId the identifier of the user to authenticate.
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @param options additional behaviors to perform during authentication.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
+    suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
     /**
      * Authenticates an existing user if one exists, or create a new user using an
-     * enchanted link, sent via email.
-     * 
+     * enchanted link, sent via a delivery [method] of choice.
+     *
      * The caller should use the returned [EnchantedLinkResponse.linkId] to show the
      * user which link they need to press in the enchanted link email, and then use
      * the [EnchantedLinkResponse.pendingRef] value to poll until the authentication is verified.
-     * 
+     *
+     * @param method the delivery method to send the enchanted link.
      * @param loginId the identifier of the user to authenticate.
      * @param uri optional enchanted link URI. If not given, the default URI from the Descope console will be used.
      * @param options additional behaviors to perform during authentication.
      * @return an [EnchantedLinkResponse] with the details necessary for polling and authenticating the user.
      */
-    suspend fun signUpOrIn(loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
+    suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String? = null, options: List<SignInOptions>? = null): EnchantedLinkResponse
 
     /**
      * Updates an existing user by adding an [email] address.

@@ -46,11 +46,13 @@ data class RefreshResponse(
  * @property linkId which link the user should click on
  * @property pendingRef poll for session using this reference
  * @property maskedEmail a masked version of the email address the link was sent to
+ * @property maskedPhone a masked version of the phone number the link was sent to
  */
 data class EnchantedLinkResponse(
     val linkId: String,
     val pendingRef: String,
-    val maskedEmail: String,
+    val maskedEmail: String? = null,
+    val maskedPhone: String? = null,
 )
 
 /**

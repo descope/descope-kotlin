@@ -174,14 +174,16 @@ internal data class PasswordPolicyServerResponse(
 internal data class EnchantedLinkServerResponse(
     val linkId: String,
     val pendingRef: String,
-    val maskedEmail: String,
+    val maskedEmail: String? = null,
+    val maskedPhone: String? = null,
 ) {
     companion object {
         fun fromJson(json: String, cookies: List<HttpCookie>) = JSONObject(json).run {
             EnchantedLinkServerResponse(
                 linkId = getString("linkId"),
                 pendingRef = getString("pendingRef"),
-                maskedEmail = getString("maskedEmail"),
+                maskedEmail = stringOrEmptyAsNull("maskedEmail"),
+                maskedPhone = stringOrEmptyAsNull("maskedPhone"),
             )
         }
     }
