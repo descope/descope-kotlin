@@ -276,6 +276,10 @@ internal class FlowBridge(val webView: WebView) {
         call("updateRefreshJwt", refreshJwt)
     }
 
+    fun updateSessionJwt(sessionJwt: String) {
+        call("updateSessionJwt", sessionJwt)
+    }
+
     fun postResponse(response: FlowBridgeResponse) {
         call("handleResponse", response.typeName, response.payload)
     }
@@ -575,11 +579,14 @@ window.descopeBridge = {
 
         updateSessionJwt(sessionJwt) {
             // the session JWT is only made available to web components that opted in
-            // via the send-session-token attribute
+            // via the send-session-token attribute; cleared otherwise so a value from
+            // a previous session never lingers in the page's persistent storage
+            const storagePrefix = this.component.storagePrefix || ''
+            const storageKey = storagePrefix + ${SESSION_COOKIE_NAME.javaScriptLiteralString()}
             if (sessionJwt && this.component.getAttribute('send-session-token') === 'true') {
-                const storagePrefix = this.component.storagePrefix || ''
-                const storageKey = storagePrefix + ${SESSION_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, sessionJwt)
+            } else {
+                window.localStorage.removeItem(storageKey)
             }
         },
 

@@ -414,8 +414,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal fun periodicRefreshJwtUpdate() {
         handler.post {
-            val refreshJwt = currentSession?.refreshJwt ?: ""
-            bridge.updateRefreshJwt(refreshJwt)
+            val session = currentSession
+            bridge.updateRefreshJwt(session?.refreshJwt ?: "")
+            bridge.updateSessionJwt(if (session != null && !session.sessionToken.isExpired) session.sessionJwt else "")
         }
     }
 }
