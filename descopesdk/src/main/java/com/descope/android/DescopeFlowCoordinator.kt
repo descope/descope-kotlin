@@ -198,8 +198,8 @@ class DescopeFlowCoordinator(val webView: WebView) {
         val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
 
-        // passed to the web component like the refresh JWT; the web component decides
-        // whether to send it on flow requests (send-session-token). An expired session
+        // injected into the page's local storage like the refresh JWT, but only for
+        // web components that opted in via send-session-token. An expired session
         // token is skipped so the flow never sees stale claims
         val sessionJwt = if (session != null && !session.sessionToken.isExpired) session.sessionJwt else ""
 
@@ -212,7 +212,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
             put("externalAuthRedirect", externalAuthRedirect)
             put("magicLinkRedirect", magicLinkRedirect)
             put("origin", origin)
-            if (sessionJwt.isNotEmpty()) put("sessionJwt", sessionJwt)
         }
 
         var clientInputs = ""
@@ -220,7 +219,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             clientInputs = flow.clientInputs.toJsonObject().toString()
         }
 
-        bridge.initialize(nativeOptions.toString(), refreshJwt, clientInputs)
+        bridge.initialize(nativeOptions.toString(), refreshJwt, sessionJwt, clientInputs)
     }
 
     // Hooks
