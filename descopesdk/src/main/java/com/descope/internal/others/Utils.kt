@@ -18,6 +18,12 @@ internal fun ByteArray.toBase64(): String {
 
 // JSON -> Map/List
 
+internal fun jsonFromString(data: String): JSONObject? = try {
+    JSONObject(data)
+} catch (_: JSONException) {
+    null
+}
+
 internal fun JSONObject.stringOrEmptyAsNull(key: String): String? = try {
     getString(key).ifEmpty { null }
 } catch (_: JSONException) {

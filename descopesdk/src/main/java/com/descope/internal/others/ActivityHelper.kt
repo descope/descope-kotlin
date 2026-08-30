@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.android.CUSTOM_TAB_URL
 import com.descope.android.DescopeHelperActivity
+import com.descope.android.FILE_CHOOSER_INTENT
 import com.descope.types.DescopeException
 
 internal interface ActivityHelper {
@@ -15,10 +16,13 @@ internal interface ActivityHelper {
     fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)? = null)
     fun closeCustomTab(context: Context)
     fun onCustomTabCanceled()
+    fun openFileChooser(context: Context, chooserIntent: Intent, callback: (FileResponse) -> Unit)
+    fun onFileChosen(uris: Array<Uri>?, e: Exception?)
 }
 
 internal val activityHelper = object : ActivityHelper {
     private var cancelCallback: (() -> Unit)? = null
+    private var fileCallback: ((FileResponse) -> Unit)? = null
     override var customTabsIntent: CustomTabsIntent? = null
 
     override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)?) {
@@ -55,6 +59,34 @@ internal val activityHelper = object : ActivityHelper {
         cancelCallback = null
     }
 
+    override fun openFileChooser(context: Context, chooserIntent: Intent, callback: (FileResponse) -> Unit) {
+        // Release any stranded prior callback (e.g. second chooser triggered before the first resolved).
+        fileCallback?.invoke(FileResponse.None)
+        fileCallback = callback
+        val intent = Intent(context, DescopeHelperActivity::class.java)
+        intent.putExtra(FILE_CHOOSER_INTENT, chooserIntent)
+        if (context !is android.app.Activity) {
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            val cb = fileCallback
+            fileCallback = null
+            cb?.invoke(FileResponse.Failure(e))
+        }
+    }
+
+    override fun onFileChosen(uris: Array<Uri>?, e: Exception?) {
+        val cb = fileCallback
+        fileCallback = null
+        when {
+            e != null -> cb?.invoke(FileResponse.Failure(e))
+            uris.isNullOrEmpty() -> cb?.invoke(FileResponse.None)
+            else -> cb?.invoke(FileResponse.Selected(uris))
+        }
+    }
+
     private fun isBrowserSupported(context: Context, uri: Uri): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, uri)
         val component = intent.resolveActivity(context.packageManager)
@@ -68,4 +100,10 @@ internal val activityHelper = object : ActivityHelper {
             else -> false
         }
     }
+}
+
+internal sealed class FileResponse {
+    object None : FileResponse()
+    class Selected(val uris: Array<Uri>) : FileResponse()
+    class Failure(val e: Exception) : FileResponse()
 }
