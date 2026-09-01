@@ -74,10 +74,6 @@ class DescopeFlowCoordinator(val webView: WebView) {
     private val currentSession: DescopeSession?
         get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
 
-    // the session JWT is only forwarded to the page while it's still valid
-    private fun validSessionJwt(session: DescopeSession?): String =
-        if (session != null && !session.sessionToken.isExpired) session.sessionJwt else ""
-
     private val bridgeListener = object : FlowBridge.Listener {
         override fun onLoaded() = handleLoaded()
         override fun onFound() = initialize()
@@ -196,16 +192,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
         // take one session snapshot so refreshJwt and sessionJwt can't come from different sessions
         val session = currentSession
         val refreshJwt = session?.refreshJwt ?: ""
+        val sessionJwt = validSessionJwt(session)
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
         val externalAuthRedirect = pickRedirectUrl(flow.externalAuthRedirect, flow.externalAuthRedirectCustomScheme, useCustomSchemeFallback)
         val magicLinkRedirect = flow.magicLinkRedirect ?: ""
-
-        // injected into the page's local storage like the refresh JWT, but only for
-        // web components that opted in via send-session-token. An expired session
-        // token is skipped so the flow never sees stale claims
-        val sessionJwt = validSessionJwt(session)
 
         val nativeOptions = JSONObject().apply {
             put("platform", "android")
@@ -482,3 +474,7 @@ private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (Time
 private fun createResumeClosure(ref: WeakReference<DescopeFlowCoordinator>): (Uri) -> Boolean {
     return { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
 }
+
+// the session JWT is only forwarded to the page while it's still valid
+private fun validSessionJwt(session: DescopeSession?): String =
+    if (session != null && !session.sessionToken.isExpired) session.sessionJwt else ""
