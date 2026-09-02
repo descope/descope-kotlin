@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/descope/descope-kotlin/compare/0.20.0...0.21.0) (2026-09-02)
+
+
+### Features
+
+* **flows:** opt-in sendSessionToken to expose session JWT claims to flows ([#356](https://github.com/descope/descope-kotlin/issues/356)) RELEASE ([dfcf9ed](https://github.com/descope/descope-kotlin/commit/dfcf9ed4052b39d358afb0686cb879798233cef4))
+
 ## [0.20.0](https://github.com/descope/descope-kotlin/compare/0.19.2...0.20.0) (2026-08-12)
 
 
