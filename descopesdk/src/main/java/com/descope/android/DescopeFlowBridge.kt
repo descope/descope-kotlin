@@ -14,6 +14,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.descope.internal.http.REFRESH_COOKIE_NAME
+import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
@@ -267,12 +268,16 @@ internal class FlowBridge(val webView: WebView) {
 
     // Bridge API
 
-    fun initialize(nativeOptions: String, refreshJwt: String, clientInputs: String) {
-        call("initialize", nativeOptions, refreshJwt, clientInputs)
+    fun initialize(nativeOptions: String, refreshJwt: String, sessionJwt: String, clientInputs: String) {
+        call("initialize", nativeOptions, refreshJwt, sessionJwt, clientInputs)
     }
 
     fun updateRefreshJwt(refreshJwt: String) {
         call("updateRefreshJwt", refreshJwt)
+    }
+
+    fun updateSessionJwt(sessionJwt: String) {
+        call("updateSessionJwt", sessionJwt)
     }
 
     fun postResponse(response: FlowBridgeResponse) {
@@ -469,12 +474,13 @@ window.descopeBridge = {
             return true
         },
 
-        initialize(nativeOptions, refreshJwt, clientInputs) {
+        initialize(nativeOptions, refreshJwt, sessionJwt, clientInputs) {
             // update webpage sdk headers and print sdk type and version to native log
             this.updateConfigHeaders()
 
             this.component.nativeOptions = JSON.parse(nativeOptions)
             this.updateRefreshJwt(refreshJwt)
+            this.updateSessionJwt(sessionJwt)
             this.updateClientInputs(clientInputs)
 
             if (this.component.flowStatus === 'error') {
@@ -568,6 +574,16 @@ window.descopeBridge = {
                 const storagePrefix = this.component.storagePrefix || ''
                 const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
+            }
+        },
+
+        updateSessionJwt(sessionJwt) {
+            const storagePrefix = this.component.storagePrefix || ''
+            const storageKey = storagePrefix + ${SESSION_COOKIE_NAME.javaScriptLiteralString()}
+            if (sessionJwt && this.component.getAttribute('send-session-token') === 'true') {
+                window.localStorage.setItem(storageKey, sessionJwt)
+            } else {
+                window.localStorage.removeItem(storageKey)
             }
         },
 

@@ -189,7 +189,10 @@ class DescopeFlowCoordinator(val webView: WebView) {
             ""
         }
 
-        val refreshJwt = currentSession?.refreshJwt ?: ""
+        // take one session snapshot so refreshJwt and sessionJwt can't come from different sessions
+        val session = currentSession
+        val refreshJwt = session?.refreshJwt ?: ""
+        val sessionJwt = validSessionJwt(session)
         val oauthProvider = flow.oauthNativeProvider?.name ?: ""
         val oauthRedirect = pickRedirectUrl(flow.oauthRedirect, flow.oauthRedirectCustomScheme, useCustomSchemeFallback)
         val ssoRedirect = pickRedirectUrl(flow.ssoRedirect, flow.ssoRedirectCustomScheme, useCustomSchemeFallback)
@@ -212,7 +215,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             clientInputs = flow.clientInputs.toJsonObject().toString()
         }
 
-        bridge.initialize(nativeOptions.toString(), refreshJwt, clientInputs)
+        bridge.initialize(nativeOptions.toString(), refreshJwt, sessionJwt, clientInputs)
     }
 
     // Hooks
@@ -407,8 +410,9 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal fun periodicRefreshJwtUpdate() {
         handler.post {
-            val refreshJwt = currentSession?.refreshJwt ?: ""
-            bridge.updateRefreshJwt(refreshJwt)
+            val session = currentSession
+            bridge.updateRefreshJwt(session?.refreshJwt ?: "")
+            bridge.updateSessionJwt(validSessionJwt(session))
         }
     }
 }
@@ -470,3 +474,7 @@ private fun createTimerAction(ref: WeakReference<DescopeFlowCoordinator>): (Time
 private fun createResumeClosure(ref: WeakReference<DescopeFlowCoordinator>): (Uri) -> Boolean {
     return { uri -> ref.get()?.resumeFromDeepLink(uri) ?: false }
 }
+
+// the session JWT is only forwarded to the page while it's still valid
+private fun validSessionJwt(session: DescopeSession?): String =
+    if (session != null && !session.sessionToken.isExpired) session.sessionJwt else ""
