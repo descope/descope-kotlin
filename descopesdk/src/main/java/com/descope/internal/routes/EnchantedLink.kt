@@ -2,12 +2,14 @@ package com.descope.internal.routes
 
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.EnchantedLinkServerResponse
+import com.descope.internal.others.with
 import com.descope.sdk.DescopeEnchantedLink
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
 import com.descope.types.EnchantedLinkResponse
+import com.descope.types.PhoneEnchantedLinkResponse
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
@@ -28,6 +30,18 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
 
     override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
         client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert()
+
+    override suspend fun signUpWithPhone(loginId: String, details: SignUpDetails?, uri: String?): PhoneEnchantedLinkResponse =
+        client.enchantedLinkSignUpWithPhone(loginId, details, uri).convertWithPhone()
+
+    override suspend fun signInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): PhoneEnchantedLinkResponse =
+        client.enchantedLinkSignInWithPhone(loginId, uri, options).convertWithPhone()
+
+    override suspend fun signUpOrInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): PhoneEnchantedLinkResponse =
+        client.enchantedLinkSignUpOrInWithPhone(loginId, uri, options).convertWithPhone()
+
+    override suspend fun updatePhone(phone: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): PhoneEnchantedLinkResponse =
+        client.enchantedLinkUpdatePhone(phone, loginId, uri, refreshJwt, options).convertWithPhone()
 
     override suspend fun checkForSession(pendingRef: String): AuthenticationResponse =
         client.enchantedLinkCheckForSession(pendingRef).convert()
@@ -62,5 +76,11 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
 private fun EnchantedLinkServerResponse.convert() = EnchantedLinkResponse(
     linkId = linkId,
     pendingRef = pendingRef,
-    maskedEmail = maskedEmail,
+    maskedEmail = maskedEmail ?: throw DescopeException.decodeError.with(message = "masked email not received"),
+)
+
+private fun EnchantedLinkServerResponse.convertWithPhone() = PhoneEnchantedLinkResponse(
+    linkId = linkId,
+    pendingRef = pendingRef,
+    maskedPhone = maskedPhone ?: throw DescopeException.decodeError.with(message = "masked phone not received"),
 )

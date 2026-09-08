@@ -6,6 +6,7 @@ import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EnchantedLinkTest {
@@ -74,6 +75,81 @@ class EnchantedLinkTest {
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", "maskedEmail")
         enchantedLink.updateEmail("test2@test.com", loginId, refreshJwt = "refreshJwt", options = options)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signUpWithPhone() = runTest {
+        val loginId = "+972123456789"
+        val details = SignUpDetails(name = "a", phone = loginId, givenName = "b", middleName = "c", familyName = "d")
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signup/sms", route)
+            assertEquals(loginId, body["loginId"])
+            details.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.signUpWithPhone(loginId, details)
+        assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals("linkId", response.linkId)
+        assertEquals("pendingRef", response.pendingRef)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signInWithPhone() = runTest {
+        val loginId = "+972123456789"
+        val uri = "https://mysite.com"
+        val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signin/sms", route)
+            assertEquals(loginId, body["loginId"])
+            assertEquals(uri, body["redirectUrl"])
+            options.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.signInWithPhone(loginId, uri, options)
+        assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signUpOrInWithPhone() = runTest {
+        val loginId = "+972123456789"
+        val options = listOf(SignInOptions.StepUp("refreshJwt"))
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signup-in/sms", route)
+            assertEquals(loginId, body["loginId"])
+            options.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.signUpOrInWithPhone(loginId, options = options)
+        assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun updatePhone() = runTest {
+        val loginId = "test@test.com"
+        val phone = "+972123456789"
+        val options = UpdateOptions(addToLoginIds = true, onMergeUseExisting = false)
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, headers: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/update/phone/sms", route)
+            assertEquals(loginId, body["loginId"])
+            assertEquals(phone, body["phone"])
+            assertTrue(headers["Authorization"]!!.contains("refreshJwt"))
+            options.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
+        val response = enchantedLink.updatePhone(phone, loginId, refreshJwt = "refreshJwt", options = options)
+        assertEquals("maskedPhone", response.maskedPhone)
         assertEquals(1, client.calls)
     }
 

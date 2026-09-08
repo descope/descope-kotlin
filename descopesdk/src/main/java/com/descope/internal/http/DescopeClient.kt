@@ -356,6 +356,38 @@ internal open class DescopeClient(internal val config: DescopeConfig, internal v
         ),
     )
 
+    suspend fun enchantedLinkSignUpWithPhone(loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        body = mapOf(
+            "loginId" to loginId,
+            "user" to details?.toMap(),
+            "redirectUrl" to uri,
+        ),
+    )
+
+    suspend fun enchantedLinkSignInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signin/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "redirectUrl" to uri,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
+    suspend fun enchantedLinkSignUpOrInWithPhone(loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/signup-in/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(options?.refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "redirectUrl" to uri,
+            "loginOptions" to options?.toMap(),
+        ),
+    )
+
     suspend fun enchantedLinkUpdateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkServerResponse = post(
         route = "auth/enchantedlink/update/email",
         decoder = EnchantedLinkServerResponse::fromJson,
@@ -363,6 +395,19 @@ internal open class DescopeClient(internal val config: DescopeConfig, internal v
         body = mapOf(
             "loginId" to loginId,
             "email" to email,
+            "redirectUrl" to uri,
+            "addToLoginIDs" to options?.addToLoginIds,
+            "onMergeUseExisting" to options?.onMergeUseExisting,
+        ),
+    )
+
+    suspend fun enchantedLinkUpdatePhone(phone: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkServerResponse = post(
+        route = "auth/enchantedlink/update/phone/sms",
+        decoder = EnchantedLinkServerResponse::fromJson,
+        headers = authorization(refreshJwt),
+        body = mapOf(
+            "loginId" to loginId,
+            "phone" to phone,
             "redirectUrl" to uri,
             "addToLoginIDs" to options?.addToLoginIds,
             "onMergeUseExisting" to options?.onMergeUseExisting,
