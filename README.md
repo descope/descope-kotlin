@@ -411,17 +411,16 @@ until they do.
 
 ```kotlin
 try {
-    val response = Descope.enchantedLink.signUpOrIn("andy@example.com")
+    val response = Descope.enchantedLink.signUpOrIn(DeliveryMethod.Email, "andy@example.com")
     val authResponse = Descope.enchantedLink.pollForSession(response.pendingRef)
 } catch (e: DescopeException) {
     // Handle errors here
 }
 ```
 
-The enchanted link can also be delivered by SMS, by passing a `DeliveryMethod`. The
-login ID is a phone number, and the returned `EnchantedLinkDeliveryResponse` carries
-`maskedPhone` instead of `maskedEmail`. Only the correct link is sent in the text
-message, so the user has nothing to choose.
+The enchanted link can also be delivered by SMS. The login ID is a phone number, and
+the response carries `maskedPhone` instead of `maskedEmail`. Only the correct link is
+sent in the text message, so the user has nothing to choose.
 
 ```kotlin
 try {
