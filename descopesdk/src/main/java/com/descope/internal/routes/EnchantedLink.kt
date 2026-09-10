@@ -2,7 +2,6 @@ package com.descope.internal.routes
 
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.EnchantedLinkServerResponse
-import com.descope.internal.others.with
 import com.descope.sdk.DescopeEnchantedLink
 import com.descope.sdk.DescopeLogger.Level.Error
 import com.descope.sdk.DescopeLogger.Level.Info
@@ -20,19 +19,19 @@ private const val DEFAULT_POLL_DURATION: Long = 2 /* mins */ * 60 /* secs */ * 1
 internal class EnchantedLink(override val client: DescopeClient) : Route, DescopeEnchantedLink {
 
     override suspend fun signUp(method: DeliveryMethod, loginId: String, details: SignUpDetails?, uri: String?): EnchantedLinkResponse =
-        client.enchantedLinkSignUp(method.asEnchantedLinkMethod(), loginId, details, uri).convert(method)
+        client.enchantedLinkSignUp(method, loginId, details, uri).convert()
 
     override suspend fun signIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
-        client.enchantedLinkSignIn(method.asEnchantedLinkMethod(), loginId, uri, options).convert(method)
+        client.enchantedLinkSignIn(method, loginId, uri, options).convert()
 
     override suspend fun signUpOrIn(method: DeliveryMethod, loginId: String, uri: String?, options: List<SignInOptions>?): EnchantedLinkResponse =
-        client.enchantedLinkSignUpOrIn(method.asEnchantedLinkMethod(), loginId, uri, options).convert(method)
+        client.enchantedLinkSignUpOrIn(method, loginId, uri, options).convert()
 
     override suspend fun updateEmail(email: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
-        client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert(DeliveryMethod.Email)
+        client.enchantedLinkUpdateEmail(email, loginId, uri, refreshJwt, options).convert()
 
     override suspend fun updatePhone(phone: String, loginId: String, uri: String?, refreshJwt: String, options: UpdateOptions?): EnchantedLinkResponse =
-        client.enchantedLinkUpdatePhone(phone, loginId, uri, refreshJwt, options).convert(DeliveryMethod.Sms)
+        client.enchantedLinkUpdatePhone(phone, loginId, uri, refreshJwt, options).convert()
 
     override suspend fun checkForSession(pendingRef: String): AuthenticationResponse =
         client.enchantedLinkCheckForSession(pendingRef).convert()
@@ -64,21 +63,9 @@ internal class EnchantedLink(override val client: DescopeClient) : Route, Descop
     }
 }
 
-private fun EnchantedLinkServerResponse.convert(method: DeliveryMethod) = when (method) {
-    DeliveryMethod.Email -> EnchantedLinkResponse(
-        linkId = linkId,
-        pendingRef = pendingRef,
-        maskedEmail = maskedEmail ?: throw DescopeException.decodeError.with(message = "masked email not received"),
-    )
-
-    else -> EnchantedLinkResponse(
-        linkId = linkId,
-        pendingRef = pendingRef,
-        maskedPhone = maskedPhone ?: throw DescopeException.decodeError.with(message = "masked phone not received"),
-    )
-}
-
-private fun DeliveryMethod.asEnchantedLinkMethod() = when (this) {
-    DeliveryMethod.Email, DeliveryMethod.Sms -> this
-    DeliveryMethod.Whatsapp -> throw DescopeException.invalidArguments.with(message = "Enchanted link is not delivered over WhatsApp")
-}
+private fun EnchantedLinkServerResponse.convert() = EnchantedLinkResponse(
+    linkId = linkId,
+    pendingRef = pendingRef,
+    maskedEmail = maskedEmail,
+    maskedPhone = maskedPhone,
+)
