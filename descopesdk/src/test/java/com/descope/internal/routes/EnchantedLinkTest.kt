@@ -1,12 +1,16 @@
 package com.descope.internal.routes
 
 import com.descope.internal.http.EnchantedLinkServerResponse
+import com.descope.types.DeliveryMethod
+import com.descope.types.DescopeException
 import com.descope.types.SignInOptions
 import com.descope.types.SignUpDetails
 import com.descope.types.UpdateOptions
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class EnchantedLinkTest {
@@ -79,7 +83,25 @@ class EnchantedLinkTest {
     }
 
     @Test
-    fun signUpWithPhone() = runTest {
+    fun signUpOverEmail() = runTest {
+        val loginId = "test@test.com"
+        val details = SignUpDetails(name = "a", email = loginId, givenName = "b", middleName = "c", familyName = "d")
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
+            assertEquals("auth/enchantedlink/signup/email", route)
+            assertEquals(loginId, body["loginId"])
+            details.validate(body)
+        }
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedEmail = "maskedEmail")
+        val response = enchantedLink.signUp(DeliveryMethod.Email, loginId, details)
+        assertEquals("maskedEmail", response.maskedEmail)
+        assertNull(response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun signUpOverSms() = runTest {
         val loginId = "+972123456789"
         val details = SignUpDetails(name = "a", phone = loginId, givenName = "b", middleName = "c", familyName = "d")
         val client = MockClient()
@@ -90,15 +112,16 @@ class EnchantedLinkTest {
             details.validate(body)
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
-        val response = enchantedLink.signUpWithPhone(loginId, details)
+        val response = enchantedLink.signUp(DeliveryMethod.Sms, loginId, details)
         assertEquals("maskedPhone", response.maskedPhone)
+        assertNull(response.maskedEmail)
         assertEquals("linkId", response.linkId)
         assertEquals("pendingRef", response.pendingRef)
         assertEquals(1, client.calls)
     }
 
     @Test
-    fun signInWithPhone() = runTest {
+    fun signInOverSms() = runTest {
         val loginId = "+972123456789"
         val uri = "https://mysite.com"
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
@@ -111,13 +134,13 @@ class EnchantedLinkTest {
             options.validate(body)
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
-        val response = enchantedLink.signInWithPhone(loginId, uri, options)
+        val response = enchantedLink.signIn(DeliveryMethod.Sms, loginId, uri, options)
         assertEquals("maskedPhone", response.maskedPhone)
         assertEquals(1, client.calls)
     }
 
     @Test
-    fun signUpOrInWithPhone() = runTest {
+    fun signUpOrInOverSms() = runTest {
         val loginId = "+972123456789"
         val options = listOf(SignInOptions.StepUp("refreshJwt"))
         val client = MockClient()
@@ -128,8 +151,35 @@ class EnchantedLinkTest {
             options.validate(body)
         }
         client.response = EnchantedLinkServerResponse("linkId", "pendingRef", maskedPhone = "maskedPhone")
-        val response = enchantedLink.signUpOrInWithPhone(loginId, options = options)
+        val response = enchantedLink.signUpOrIn(DeliveryMethod.Sms, loginId, options = options)
         assertEquals("maskedPhone", response.maskedPhone)
+        assertEquals(1, client.calls)
+    }
+
+    @Test
+    fun whatsappIsRejectedWithoutCallingTheServer() = runTest {
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        try {
+            enchantedLink.signUpOrIn(DeliveryMethod.Whatsapp, "+972123456789")
+            fail("Expected a DescopeException to be thrown")
+        } catch (e: DescopeException) {
+            assertEquals(DescopeException.invalidArguments.code, e.code)
+        }
+        assertEquals(0, client.calls)
+    }
+
+    @Test
+    fun missingMaskedPhoneFailsToDecode() = runTest {
+        val client = MockClient()
+        val enchantedLink = EnchantedLink(client)
+        client.response = EnchantedLinkServerResponse("linkId", "pendingRef")
+        try {
+            enchantedLink.signUpOrIn(DeliveryMethod.Sms, "+972123456789")
+            fail("Expected a DescopeException to be thrown")
+        } catch (e: DescopeException) {
+            assertEquals("masked phone not received", e.message)
+        }
         assertEquals(1, client.calls)
     }
 
