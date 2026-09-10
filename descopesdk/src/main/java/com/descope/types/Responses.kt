@@ -38,19 +38,21 @@ data class RefreshResponse(
  * Returned from calls that start an enchanted link flow.
  *
  * The [linkId] value needs to be displayed to the user so they know which
- * link should be clicked on in the enchanted link email. The [maskedEmail]
- * field can also be shown to inform the user to which address the email
- * was sent. The [pendingRef] field is used to poll the server for the
- * enchanted link flow result.
+ * link should be clicked on in the enchanted link email or text message. The
+ * [maskedEmail] or [maskedPhone] field matching the delivery method used can
+ * also be shown to inform the user where the link was sent. The [pendingRef]
+ * field is used to poll the server for the enchanted link flow result.
  *
  * @property linkId which link the user should click on
  * @property pendingRef poll for session using this reference
- * @property maskedEmail a masked version of the email address the link was sent to
+ * @property maskedEmail a masked version of the email address the link was sent to, when delivered by email
+ * @property maskedPhone a masked version of the phone number the link was sent to, when delivered by SMS
  */
 data class EnchantedLinkResponse(
     val linkId: String,
     val pendingRef: String,
-    val maskedEmail: String,
+    val maskedEmail: String? = null,
+    val maskedPhone: String? = null,
 )
 
 /**
