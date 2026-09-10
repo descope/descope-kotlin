@@ -403,6 +403,38 @@ try {
 }
 ```
 
+### Enchanted Link
+
+Send a user an Enchanted Link over email. The email contains three links, and the
+returned `linkId` tells the user which one to press. Use the `pendingRef` to poll
+until they do.
+
+```kotlin
+try {
+    val response = Descope.enchantedLink.signUpOrIn("andy@example.com")
+    val authResponse = Descope.enchantedLink.pollForSession(response.pendingRef)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
+```
+
+The enchanted link can also be delivered by SMS, using `signUpWithPhone`,
+`signInWithPhone` and `signUpOrInWithPhone`. The login ID is a phone number, and these
+return a `PhoneEnchantedLinkResponse` carrying `maskedPhone` instead of `maskedEmail`.
+Only the correct link is sent in the text message, so the user has nothing to choose.
+
+```kotlin
+try {
+    val response = Descope.enchantedLink.signUpOrInWithPhone("+15551234567")
+    val authResponse = Descope.enchantedLink.pollForSession(response.pendingRef)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
+```
+
+`updatePhone` adds a phone number to an existing user, verified by an enchanted link
+sent over SMS, using the `refreshJwt` of their active session.
+
 ### OAuth
 
 Users can authenticate using their social logins, using the OAuth protocol.
