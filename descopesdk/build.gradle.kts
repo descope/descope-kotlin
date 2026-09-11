@@ -95,8 +95,13 @@ publishing {
 }
 
 signing {
+    // Signing requires real PGP credentials, which only the official release CI has. Guarding this
+    // lets JitPack (and a plain `publishToMavenLocal`) build this module for interim fork
+    // consumption without those secrets — see jitpack.yml.
     val signingKey = System.getenv("PGP_KEY")
     val signingPassword = System.getenv("PGP_PASSWORD")
-    useInMemoryPgpKeys(signingKey, signingPassword)
-    sign(publishing.publications["release"]) 
+    if (!signingKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["release"])
+    }
 }
