@@ -1,2 +1,5 @@
+jdk:
+  - openjdk17
+
 before_install:
   - export DESCOPESDK_VERSION=$VERSION
