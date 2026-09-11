@@ -1,0 +1,2 @@
+before_install:
+  - export DESCOPESDK_VERSION=$VERSION
