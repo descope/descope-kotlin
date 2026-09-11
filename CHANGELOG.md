@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/descope/descope-kotlin/compare/0.21.0...0.22.0) (2026-09-11)
+
+
+### Features
+
+* **enchantedlink:** support enchanted link over SMS ([#360](https://github.com/descope/descope-kotlin/issues/360)) ([1cc8222](https://github.com/descope/descope-kotlin/commit/1cc82229f434c14b9ac90c1556550c70f94778de))
+
 ## [0.21.0](https://github.com/descope/descope-kotlin/compare/0.20.0...0.21.0) (2026-09-02)
 
 
