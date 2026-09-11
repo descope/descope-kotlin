@@ -21,6 +21,7 @@ import com.descope.internal.others.error
 import com.descope.internal.others.info
 import com.descope.internal.others.isUnsafeEnabled
 import com.descope.internal.others.parseServerError
+import com.descope.internal.others.scriptletFailureMessage
 import com.descope.internal.others.stringOrEmptyAsNull
 import com.descope.internal.others.with
 import com.descope.internal.routes.isWebAuthnSupported
@@ -133,8 +134,17 @@ internal class FlowBridge(val webView: WebView) {
     }
 
     private fun bridgeOnLog(tag: String, message: String) {
+        val scriptletMessage = if (tag == "error") scriptletFailureMessage(message) else null
         if (tag == "fail") {
             logger.error("Bridge encountered script error in webpage", message)
+        } else if (scriptletMessage != null) {
+            // The web component handles some task failures (errorHandlingType: Automatic) itself,
+            // showing an inline error banner instead of dispatching an 'error' event, so this is
+            // the only point where such a failure can be detected and surfaced to the app.
+            logger.error("Bridge detected an automatically-handled scriptlet failure", message)
+            handler.post {
+                listener?.onError(DescopeException.flowScriptletFailed.with(message = scriptletMessage))
+            }
         } else if (logger.isUnsafeEnabled && !message.contains("Fetched theme")) {
             val logMessage = "Webview console.$tag: $message"
             when (tag) {
