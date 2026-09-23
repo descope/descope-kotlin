@@ -1,6 +1,7 @@
 package com.descope.types
 
 import com.descope.internal.others.parseServerError
+import com.descope.internal.others.scriptletFailureMessage
 import com.descope.internal.others.with
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -64,6 +65,27 @@ class DescopeExceptionTest {
     fun invalid_error_payload_parsing() {
         assertNull(parseServerError("not a json error"))
         assertNull(parseServerError(JSONObject().apply { put("errorMessage", "no code here") }.toString()))
+    }
+
+    @Test
+    fun scriptlet_failure_message_extracted() {
+        val logged = "[Descope] [E181001]: Failed to execute script Unexpected error occurred - Error: USER_NOT_FOUND: no such user at 12:34 {}"
+        assertEquals("USER_NOT_FOUND: no such user", scriptletFailureMessage(logged))
+    }
+
+    @Test
+    fun scriptlet_failure_message_ignores_unrelated_logs() {
+        assertNull(scriptletFailureMessage("some unrelated console.error message"))
+        assertNull(scriptletFailureMessage("[Descope] [E181001]: some other log line"))
+    }
+
+    @Test
+    fun flow_scriptlet_failed_carries_extracted_message() {
+        val logged = "[Descope] [E181001]: Failed to execute script Unexpected error occurred - Error: USER_NOT_FOUND: no such user at 12:34 {}"
+        val extracted = scriptletFailureMessage(logged)
+        val exception = DescopeException.flowScriptletFailed.with(message = extracted)
+        assertEquals(DescopeException.flowScriptletFailed, exception)
+        assertEquals("USER_NOT_FOUND: no such user", exception.message)
     }
 
 }
