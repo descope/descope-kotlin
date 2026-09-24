@@ -13,6 +13,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.lang.ref.WeakReference
 import java.util.Timer
 import java.util.TimerTask
@@ -52,15 +54,9 @@ class SessionLifecycle(
     var periodicCheckFrequency: Long = 30 /* seconds */ * SECOND
 
     init {
-        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) {
-                resetTimer()
-            }
-
-            override fun onStop(owner: LifecycleOwner) {
-                stopTimer()
-            }
-        })
+        val ref = WeakReference(this)
+        val observer = createLifecycleObserver(ref)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
     }
 
     override var session: DescopeSession? = null
@@ -77,7 +73,7 @@ class SessionLifecycle(
             resetTimer()
         }
 
-    override suspend fun refreshSessionIfNeeded(): Boolean {
+    override suspend fun refreshSessionIfNeeded(): Boolean = mutex.withLock {
         val current = session
         if (current == null || !shouldRefresh(current)) {
             return false
@@ -96,6 +92,8 @@ class SessionLifecycle(
 
     // Internal
 
+    private val mutex = Mutex()
+
     private fun shouldRefresh(session: DescopeSession): Boolean {
         val isRefreshValid = !session.refreshToken.isExpired  
         val isSessionAlmostExpired = session.sessionToken.expiresAt - System.currentTimeMillis() <= refreshTriggerInterval
@@ -106,7 +104,7 @@ class SessionLifecycle(
 
     private var timer: Timer? = null
     
-    private fun resetTimer() {
+    internal fun resetTimer() {
         val refreshToken = session?.refreshToken
         if (periodicCheckFrequency > 0 && refreshToken != null && !refreshToken.isExpired) {
             startTimer()
@@ -123,7 +121,7 @@ class SessionLifecycle(
         timer = timer(name = "DescopeSessionLifecycle", period = periodicCheckFrequency, action = action)
     }
 
-    private fun stopTimer() {
+    internal fun stopTimer() {
         timer?.cancel()
         timer = null
     }
@@ -170,6 +168,28 @@ private fun createTimerAction(ref: WeakReference<SessionLifecycle>): (TimerTask.
         } else {
             GlobalScope.launch(Dispatchers.Main) {
                 lifecycle.periodicRefresh()
+            }
+        }
+    }
+}
+
+private fun createLifecycleObserver(ref: WeakReference<SessionLifecycle>): DefaultLifecycleObserver {
+    return object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) {
+            val lifecycle = ref.get()
+            if (lifecycle == null) {
+                owner.lifecycle.removeObserver(this)
+            } else {
+                lifecycle.resetTimer()
+            }
+        }
+
+        override fun onStop(owner: LifecycleOwner) {
+            val lifecycle = ref.get()
+            if (lifecycle == null) {
+                owner.lifecycle.removeObserver(this)
+            } else {
+                lifecycle.stopTimer()
             }
         }
     }
