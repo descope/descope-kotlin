@@ -73,26 +73,33 @@ class SessionLifecycle(
             resetTimer()
         }
 
-    override suspend fun refreshSessionIfNeeded(): Boolean = mutex.withLock {
-        val current = session
-        if (current == null || !shouldRefresh(current)) {
+    override suspend fun refreshSessionIfNeeded(): Boolean {
+        if (sessionToRefresh() == null) {
             return false
         }
-        
-        logger.info("Refreshing session that is about to expire", current.sessionToken.expiresAt)
-        val response = auth.refreshSession(current.refreshJwt)
-        if (session?.sessionJwt != current.sessionJwt) {
-            logger.info("Skipping refresh because session has changed in the meantime")
-            return false
+
+        return mutex.withLock {
+            val current = sessionToRefresh() ?: return false
+
+            logger.info("Refreshing session that is about to expire", current.sessionToken.expiresAt)
+            val response = auth.refreshSession(current.refreshJwt)
+            if (session?.sessionJwt != current.sessionJwt) {
+                logger.info("Skipping refresh because session has changed in the meantime")
+                return false
+            }
+
+            session = session?.withUpdatedTokens(response)
+            return true
         }
-        
-        session = session?.withUpdatedTokens(response)
-        return true
     }
 
     // Internal
 
     private val mutex = Mutex()
+
+    private fun sessionToRefresh(): DescopeSession? {
+        return session?.takeIf { shouldRefresh(it) }
+    }
 
     private fun shouldRefresh(session: DescopeSession): Boolean {
         val isRefreshValid = !session.refreshToken.isExpired  
