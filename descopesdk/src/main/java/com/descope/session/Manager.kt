@@ -4,6 +4,8 @@ import com.descope.internal.others.error
 import com.descope.sdk.DescopeLogger
 import com.descope.types.DescopeUser
 import com.descope.types.RefreshResponse
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import java.net.URLConnection
 
 /**
@@ -188,13 +190,24 @@ class DescopeSessionManager(
      * its session JWT expires within the next 60 seconds. If that's the case then
      * the session is refreshed and persisted before returning.
      *
+     * Concurrent calls share a single refresh, and all of them return or throw
+     * with its result once it completes.
+     *
      * - **Note:** When using a custom [DescopeSessionManager] object the exact behavior
      *     here depends on the `storage` and `lifecycle` objects.
      */
     suspend fun refreshSessionIfNeeded() {
-        val refreshed = lifecycle.refreshSessionIfNeeded()
-        if (refreshed) {
-            onUpdateTokens()
+        while (true) {
+            val (refresh, noRefreshInFlight) = startOrJoinRefresh()
+            if (noRefreshInFlight) {
+                performRefresh(refresh)
+                return
+            }
+            when (val outcome = refresh.await()) {
+                is RefreshOutcome.Completed -> return
+                is RefreshOutcome.Failed -> throw outcome.error
+                is RefreshOutcome.Abandoned -> continue
+            }
         }
     }
 
@@ -243,6 +256,51 @@ class DescopeSessionManager(
     // Internal
 
     private val listeners = mutableSetOf<Listener>()
+    private val refreshLock = Any()
+    private var inFlight: CompletableDeferred<RefreshOutcome>? = null
+
+    private fun startOrJoinRefresh(): Pair<CompletableDeferred<RefreshOutcome>, Boolean> {
+        synchronized(refreshLock) {
+            // join the refresh if already in flight
+            val current = inFlight
+            if (current != null) {
+                return Pair(current, false)
+            }
+            // create the refresh job otherwise
+            val refresh = CompletableDeferred<RefreshOutcome>()
+            inFlight = refresh
+            return Pair(refresh, true)
+        }
+    }
+
+    private suspend fun performRefresh(refresh: CompletableDeferred<RefreshOutcome>) {
+        var outcome: RefreshOutcome = RefreshOutcome.Abandoned
+        var updated: DescopeSession? = null
+        try {
+            val refreshed = lifecycle.refreshSessionIfNeeded()
+            val current = session
+            if (refreshed && current != null) {
+                storage.saveSession(current)
+                updated = current
+            }
+            outcome = RefreshOutcome.Completed
+        } catch (e: Exception) {
+            // a canceled refresh stays abandoned so a waiting caller takes over
+            if (e !is CancellationException) {
+                outcome = RefreshOutcome.Failed(e)
+            }
+            throw e
+        } finally {
+            // clear before completing so callers that retry start a new refresh
+            synchronized(refreshLock) {
+                inFlight = null
+            }
+            refresh.complete(outcome)
+        }
+        // notify listeners only after waiting callers were released
+        val session = updated ?: return
+        notifyListeners { it.onUpdateTokens(session) }
+    }
 
     private fun onUpdateTokens() {
         val session = session ?: return
@@ -265,4 +323,10 @@ class DescopeSessionManager(
             }
         }
     }
+}
+
+private sealed class RefreshOutcome {
+    object Completed : RefreshOutcome()
+    object Abandoned : RefreshOutcome()
+    class Failed(val error: Exception) : RefreshOutcome()
 }
