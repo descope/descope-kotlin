@@ -203,11 +203,13 @@ class DescopeSessionManager(
                 performRefresh(refresh)
                 return
             }
+            // use the result only if the session wasn't replaced while the refresh was in flight
             when (val outcome = refresh.await()) {
-                is RefreshOutcome.Completed -> return
-                is RefreshOutcome.Failed -> throw outcome.error
-                is RefreshOutcome.Abandoned -> continue
+                is RefreshOutcome.Completed -> if (outcome.sessionJwt == session?.sessionJwt) return
+                is RefreshOutcome.Failed -> if (outcome.sessionJwt == session?.sessionJwt) throw outcome.error
+                is RefreshOutcome.Abandoned -> {}
             }
+            // otherwise check again for the current session
         }
     }
 
@@ -276,6 +278,7 @@ class DescopeSessionManager(
     private suspend fun performRefresh(refresh: CompletableDeferred<RefreshOutcome>) {
         var outcome: RefreshOutcome = RefreshOutcome.Abandoned
         var updated: DescopeSession? = null
+        val initialJwt = session?.sessionJwt
         try {
             val refreshed = lifecycle.refreshSessionIfNeeded()
             val current = session
@@ -283,11 +286,12 @@ class DescopeSessionManager(
                 storage.saveSession(current)
                 updated = current
             }
-            outcome = RefreshOutcome.Completed
+            val sessionJwt = if (updated != null) updated.sessionJwt else initialJwt
+            outcome = RefreshOutcome.Completed(sessionJwt)
         } catch (e: Exception) {
             // a canceled refresh stays abandoned so a waiting caller takes over
             if (e !is CancellationException) {
-                outcome = RefreshOutcome.Failed(e)
+                outcome = RefreshOutcome.Failed(e, initialJwt)
             }
             throw e
         } finally {
@@ -326,7 +330,7 @@ class DescopeSessionManager(
 }
 
 private sealed class RefreshOutcome {
-    object Completed : RefreshOutcome()
+    class Completed(val sessionJwt: String?) : RefreshOutcome()
+    class Failed(val error: Exception, val sessionJwt: String?) : RefreshOutcome()
     object Abandoned : RefreshOutcome()
-    class Failed(val error: Exception) : RefreshOutcome()
 }

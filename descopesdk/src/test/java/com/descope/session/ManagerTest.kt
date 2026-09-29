@@ -19,6 +19,7 @@ import org.junit.Test
 class ManagerTest {
 
     private val session = DescopeSession(mockJwtResponse.convert())
+    private val otherSession = DescopeSession(otherJwt, session.refreshJwt, session.user)
 
     @Test
     fun listeners_failureIsolated() {
@@ -38,8 +39,13 @@ class ManagerTest {
     @Test
     fun refresh_singleFlight() = runTest {
         val gate = CompletableDeferred<Unit>()
-        var calls = 0
-        val lifecycle = MockLifecycle(session) { calls++; gate.await(); true }
+        var refreshes = 0
+        val lifecycle = MockLifecycle(session) {
+            if (refreshes > 0) return@MockLifecycle false
+            refreshes++
+            gate.await()
+            true
+        }
         val storage = MockStorage(session)
         val manager = DescopeSessionManager(storage, lifecycle)
         val listener = CountingListener()
@@ -50,7 +56,7 @@ class ManagerTest {
         gate.complete(Unit)
         callers.awaitAll()
 
-        assertEquals(1, calls)
+        assertEquals(1, refreshes)
         assertEquals(1, storage.saves)
         assertEquals(1, listener.tokenUpdates)
     }
@@ -89,7 +95,47 @@ class ManagerTest {
         assertEquals(2, calls)
         assertEquals(1, listener.tokenUpdates)
     }
+
+    @Test
+    fun refresh_sessionReplacedDuringSuccess() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var calls = 0
+        val lifecycle = MockLifecycle(session) { calls++; if (calls == 1) { gate.await(); false } else true }
+        val manager = DescopeSessionManager(MockStorage(session), lifecycle)
+
+        val owner = async { manager.refreshSessionIfNeeded() }
+        runCurrent()
+        manager.manageSession(otherSession)
+        val waiter = async { manager.refreshSessionIfNeeded() }
+        runCurrent()
+        gate.complete(Unit)
+        owner.await()
+        waiter.await()
+
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun refresh_sessionReplacedDuringFailure() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var calls = 0
+        val lifecycle = MockLifecycle(session) { calls++; if (calls == 1) { gate.await(); throw DescopeException.networkError } else true }
+        val manager = DescopeSessionManager(MockStorage(session), lifecycle)
+
+        val owner = async { runCatching { manager.refreshSessionIfNeeded() } }
+        runCurrent()
+        manager.manageSession(otherSession)
+        val waiter = async { runCatching { manager.refreshSessionIfNeeded() } }
+        runCurrent()
+        gate.complete(Unit)
+
+        assertTrue(owner.await().isFailure)
+        assertTrue(waiter.await().isSuccess)
+        assertEquals(2, calls)
+    }
 }
+
+private const val otherJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNzI4OTk1ODc1LCJpc3MiOiJodHRwczovL2Rlc2NvcGUuY29tL2JsYS9QMTIzIiwiZXhwIjoxNjAzMTc2NjE0LCJwZXJtaXNzaW9ucyI6WyJkIiwiZSJdLCJyb2xlcyI6WyJ1c2VyIl0sInRlbmFudHMiOnsidGVuYW50Ijp7InBlcm1pc3Npb25zIjpbImEiLCJiIiwiYyJdLCJyb2xlcyI6WyJhZG1pbiJdfX19.XKZku4wncwDMtaWJp_-ZBC5TliB4Gci_UiGJnLcDOqk"
 
 private class MockLifecycle(
     override var session: DescopeSession?,
