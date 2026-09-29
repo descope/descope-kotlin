@@ -16,6 +16,8 @@ import java.net.HttpCookie
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
+private const val DEFAULT_TIMEOUT = 15 /* secs */ * 1000 /* ms */
+
 internal open class HttpClient(
     internal val baseUrl: String,
     private val logger: DescopeLogger?,
@@ -148,6 +150,8 @@ private fun defaultNetworkClient(logger: DescopeLogger?) = object : DescopeNetwo
         val connection = url.openConnection() as HttpsURLConnection
         try {
             connection.requestMethod = method
+            connection.connectTimeout = DEFAULT_TIMEOUT
+            connection.readTimeout = DEFAULT_TIMEOUT
             connection.setRequestProperty("Accept", "application/json")
             headers.forEach { connection.setRequestProperty(it.key, it.value) }
 
