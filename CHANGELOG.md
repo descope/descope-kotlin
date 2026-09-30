@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.22.0](https://github.com/descope/descope-kotlin/compare/0.21.0...0.22.0) (2026-09-30)
+
+
+### Features
+
+* **enchantedlink:** support enchanted link over SMS ([#360](https://github.com/descope/descope-kotlin/issues/360)) ([1cc8222](https://github.com/descope/descope-kotlin/commit/1cc82229f434c14b9ac90c1556550c70f94778de))
+
+
+### Bug Fixes
+
+* session lifecycle leak and duplicate concurrent refreshes ([#366](https://github.com/descope/descope-kotlin/issues/366)) ([bcff2a7](https://github.com/descope/descope-kotlin/commit/bcff2a7a332727ed35d82f5e36a9ce8d2e61456c))
+
 ## [0.21.0](https://github.com/descope/descope-kotlin/compare/0.20.0...0.21.0) (2026-09-02)
 
 
