@@ -356,7 +356,7 @@ class DescopeSessionManager internal constructor(
             logger.info("Refreshing session that is about to expire", current.sessionToken.expiresAt)
             val response = auth.refreshSession(current.refreshJwt)
             if (session?.sessionJwt == current.sessionJwt) {
-                session = current.withUpdatedTokens(response)
+                session = session?.withUpdatedTokens(response)
                 onUpdateTokens()
             } else {
                 logger.info("Skipping refresh because session has changed in the meantime")
@@ -373,20 +373,20 @@ class DescopeSessionManager internal constructor(
 
     private var timer: Timer? = null
 
-    private fun resetTimer() {
+    private fun resetTimer(initialDelay: Long = periodicCheckFrequency) {
         val refreshToken = session?.refreshToken
         if (periodicCheckFrequency > 0 && refreshToken != null && !refreshToken.isExpired) {
-            startTimer()
+            startTimer(initialDelay)
         } else {
             stopTimer()
         }
     }
 
-    private fun startTimer() {
+    private fun startTimer(initialDelay: Long) {
         stopTimer()
         val ref = WeakReference(this)
         val action = createTimerAction(ref)
-        timer = timer(name = "DescopeSessionManager", initialDelay = periodicCheckFrequency, period = periodicCheckFrequency, action = action)
+        timer = timer(name = "DescopeSessionManager", initialDelay = initialDelay, period = periodicCheckFrequency, action = action)
     }
 
     private fun stopTimer() {
@@ -395,7 +395,8 @@ class DescopeSessionManager internal constructor(
     }
 
     internal fun onForeground() {
-        resetTimer()
+        // check right away since the session might have expired while the app was in the background
+        resetTimer(initialDelay = 0)
     }
 
     internal fun onBackground() {

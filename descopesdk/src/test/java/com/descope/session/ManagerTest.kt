@@ -162,6 +162,22 @@ class ManagerTest {
         assertEquals(2, calls)
     }
 
+    @Test
+    fun refresh_keepsUserUpdatedDuringRefresh() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val manager = makeManager(MockAuth { gate.await(); refreshed })
+        val updatedUser = user.copy(name = "Updated")
+
+        val caller = async { manager.refreshSessionIfNeeded() }
+        runCurrent()
+        manager.updateUser(updatedUser)
+        gate.complete(Unit)
+        caller.await()
+
+        assertEquals(refreshed.sessionToken.jwt, manager.session?.sessionJwt)
+        assertEquals(updatedUser, manager.session?.user)
+    }
+
     private fun makeManager(auth: DescopeAuth, storage: MockStorage = MockStorage(session)): DescopeSessionManager {
         return DescopeSessionManager(storage, auth, null, null).apply { periodicCheckFrequency = 0 }
     }
