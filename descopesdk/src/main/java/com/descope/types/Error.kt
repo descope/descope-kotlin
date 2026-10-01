@@ -118,6 +118,17 @@ class DescopeException(
         val flowCancelled = DescopeException(code = "K100002", desc = "Flow cancelled")
         val flowSetup = DescopeException(code = "K100003", desc = "Flow not properly set up")
 
+        /**
+         * Thrown when a flow task fails inside a scriptlet with automatic error handling.
+         *
+         * The flow's web component swallows this kind of failure itself (showing an inline error
+         * banner on the current step) instead of ending the flow, so this error is only surfaced as
+         * a best-effort signal derived from the flow's console output. The [message] carries the
+         * original thrown text, so apps that need to detect a specific failure can pattern-match
+         * their own marker inside it.
+         */
+        val flowScriptletFailed = DescopeException(code = "K100004", desc = "Flow scriptlet failed")
+
         val passkeyFailed = DescopeException(code = "K110001", desc = "Passkey authentication failed")
         val passkeyCancelled = DescopeException(code = "K110002", desc = "Passkey authentication cancelled")
         val passkeyNoPasskeys = DescopeException(code = "K110003", desc = "No passkeys found")

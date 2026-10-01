@@ -22,3 +22,24 @@ internal fun parseServerError(response: String): DescopeException? {
         return null
     }
 }
+
+/**
+ * Detects whether a `console.error` message logged by the web component is its generic report
+ * of a task that failed inside a scriptlet with `errorHandlingType: Automatic`, and if so, returns
+ * the original thrown text.
+ *
+ * The web component logs a message shaped like this for such failures:
+ *
+ *     [Descope] [E181001]: Failed to execute script Unexpected error occurred - Error: <message> at <line>:<col> {}
+ *
+ * This matches on that shape rather than on any specific error text, so it isn't tied to what a
+ * particular scriptlet happens to throw.
+ */
+internal fun scriptletFailureMessage(message: String): String? {
+    if (!message.startsWith("[Descope] [") || !message.contains("]: Failed to execute script")) return null
+    val errorIndex = message.indexOf("Error: ")
+    if (errorIndex == -1) return message
+    val remainder = message.substring(errorIndex + "Error: ".length)
+    val atIndex = remainder.lastIndexOf(" at ")
+    return if (atIndex == -1) remainder else remainder.substring(0, atIndex)
+}
