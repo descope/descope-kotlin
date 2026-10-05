@@ -206,9 +206,8 @@ Descope.sessionManager.session?.refreshJwt?.let { refreshJwt ->
 
 It is also possible to revoke all sessions by providing the appropriate `RevokeType` parameter.
 
-You can customize how the `DescopeSessionManager` behaves by using
-your own `storage` and `lifecycle` objects. See the documentation
-for more details.
+You can customize how the `DescopeSessionManager` stores the session by
+using your own `storage` object. See the documentation for more details.
 
 ## Running Flows
 
