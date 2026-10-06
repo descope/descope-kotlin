@@ -116,6 +116,9 @@ class DescopeSessionManager internal constructor(
 
     /**
      * A set of listener methods for events about the session managed by a [DescopeSessionManager].
+     *
+     * - **Important:** Listener methods should never throw. Any exception thrown by
+     *     a listener is logged and ignored.
      */
     interface Listener {
         /**
