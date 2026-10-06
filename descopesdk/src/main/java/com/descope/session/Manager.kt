@@ -211,10 +211,10 @@ class DescopeSessionManager internal constructor(
         // notify the listeners if the session has been updated
         if (current == null) return
         if (current.sessionJwt != session.sessionJwt || current.refreshJwt != session.refreshJwt) {
-            listeners.forEach { it.onUpdateTokens(session) }
+            notifyListeners { it.onUpdateTokens(session) }
         }
         if (current.user != session.user) {
-            listeners.forEach { it.onUpdateUser(session) }
+            notifyListeners { it.onUpdateUser(session) }
         }
     }
 
@@ -319,13 +319,23 @@ class DescopeSessionManager internal constructor(
     private fun onUpdateTokens() {
         val session = session ?: return
         storage.saveSession(session)
-        listeners.forEach { it.onUpdateTokens(session) }
+        notifyListeners { it.onUpdateTokens(session) }
     }
 
     private fun onUpdateUser() {
         val session = session ?: return
         storage.saveSession(session)
-        listeners.forEach { it.onUpdateUser(session) }
+        notifyListeners { it.onUpdateUser(session) }
+    }
+
+    private fun notifyListeners(action: (Listener) -> Unit) {
+        listeners.forEach {
+            try {
+                action(it)
+            } catch (e: Exception) {
+                logger.error("Session manager listener threw an exception during update", e)
+            }
+        }
     }
 
     // Refresh
