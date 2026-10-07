@@ -386,9 +386,12 @@ class DescopeSessionManager internal constructor(
 
     private var timer: Timer? = null
 
+    // the process might be started in the background without any UI
+    private var isForeground = appLifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) ?: true
+
     private fun resetTimer(initialDelay: Long = periodicCheckFrequency) {
         val refreshToken = session?.refreshToken
-        if (periodicCheckFrequency > 0 && refreshToken != null && !refreshToken.isExpired) {
+        if (isForeground && periodicCheckFrequency > 0 && refreshToken != null && !refreshToken.isExpired) {
             startTimer(initialDelay)
         } else {
             stopTimer()
@@ -408,11 +411,13 @@ class DescopeSessionManager internal constructor(
     }
 
     internal fun onForeground() {
+        isForeground = true
         // check right away since the session might have expired while the app was in the background
         resetTimer(initialDelay = 0)
     }
 
     internal fun onBackground() {
+        isForeground = false
         stopTimer()
     }
 
