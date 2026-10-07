@@ -46,6 +46,34 @@ class ManagerTest {
     }
 
     @Test
+    fun listeners_failureIsolated() {
+        val manager = makeManager(MockAuth { refreshed })
+        val listener = CountingListener()
+        manager.addListener(FailingListener())
+        manager.addListener(listener)
+
+        manager.manageSession(otherSession)
+        manager.updateUser(user)
+
+        assertEquals(1, listener.tokenUpdates)
+        assertEquals(1, listener.userUpdates)
+    }
+
+    @Test
+    fun refresh_listenerFailureNotShared() = runTest {
+        val manager = makeManager(MockAuth { refreshed })
+        val listener = CountingListener()
+        manager.addListener(FailingListener())
+        manager.addListener(listener)
+
+        val callers = List(3) { async { runCatching { manager.refreshSessionIfNeeded() } } }
+        val results = callers.awaitAll()
+
+        assertTrue(results.all { it.isSuccess })
+        assertEquals(1, listener.tokenUpdates)
+    }
+
+    @Test
     fun refresh_notNeeded() = runTest {
         var calls = 0
         val fresh = DescopeSession(makeJwt(expiresIn = 600), makeJwt(expiresIn = 3600), user)
@@ -208,8 +236,14 @@ private class MockStorage(private val session: DescopeSession) : DescopeSessionS
     override fun removeSession() {}
 }
 
+private class FailingListener : DescopeSessionManager.Listener {
+    override fun onUpdateTokens(session: DescopeSession) = throw IllegalStateException()
+    override fun onUpdateUser(session: DescopeSession) = throw IllegalStateException()
+}
+
 private class CountingListener : DescopeSessionManager.Listener {
     var tokenUpdates = 0
+    var userUpdates = 0
     override fun onUpdateTokens(session: DescopeSession) { tokenUpdates++ }
-    override fun onUpdateUser(session: DescopeSession) {}
+    override fun onUpdateUser(session: DescopeSession) { userUpdates++ }
 }
