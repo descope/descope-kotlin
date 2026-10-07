@@ -1,5 +1,8 @@
 package com.descope.session
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import com.descope.internal.routes.convert
 import com.descope.internal.routes.mockJwtResponse
 import com.descope.sdk.DescopeAuth
@@ -34,10 +37,11 @@ class ManagerTest {
     private val session = DescopeSession(makeJwt(expiresIn = 30), makeJwt(expiresIn = 3600), user)
     private val otherSession = DescopeSession(makeJwt(expiresIn = 20), makeJwt(expiresIn = 3600), user)
     private val refreshed = RefreshResponse(Token(makeJwt(expiresIn = 600)), null)
+    private val dispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
+        Dispatchers.setMain(dispatcher)
     }
 
     @After
@@ -204,6 +208,58 @@ class ManagerTest {
 
         assertEquals(refreshed.sessionToken.jwt, manager.session?.sessionJwt)
         assertEquals(updatedUser, manager.session?.user)
+    }
+
+    @Test
+    fun periodic_notStartedInBackground() {
+        var calls = 0
+        val lifecycle = makeLifecycle(Lifecycle.State.CREATED)
+        val manager = DescopeSessionManager(MockStorage(session), MockAuth { calls++; refreshed }, null, lifecycle)
+        manager.periodicCheckFrequency = 10
+
+        awaitPeriodicChecks()
+        assertEquals(0, calls)
+
+        lifecycle.currentState = Lifecycle.State.STARTED
+        awaitPeriodicChecks()
+        assertEquals(1, calls)
+
+        manager.periodicCheckFrequency = 0
+    }
+
+    @Test
+    fun periodic_notRestartedInBackground() {
+        var calls = 0
+        val fresh = DescopeSession(makeJwt(expiresIn = 600), makeJwt(expiresIn = 3600), user)
+        val lifecycle = makeLifecycle(Lifecycle.State.STARTED)
+        val manager = DescopeSessionManager(MockStorage(fresh), MockAuth { calls++; refreshed }, null, lifecycle)
+        awaitPeriodicChecks()
+
+        lifecycle.currentState = Lifecycle.State.CREATED
+        manager.periodicCheckFrequency = 10
+        manager.manageSession(otherSession)
+
+        awaitPeriodicChecks()
+        assertEquals(0, calls)
+
+        lifecycle.currentState = Lifecycle.State.STARTED
+        awaitPeriodicChecks()
+        assertEquals(1, calls)
+
+        manager.periodicCheckFrequency = 0
+    }
+
+    private fun awaitPeriodicChecks() {
+        Thread.sleep(100)
+        dispatcher.scheduler.runCurrent()
+    }
+
+    private fun makeLifecycle(state: Lifecycle.State): LifecycleRegistry {
+        val owner = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        return owner.registry.apply { currentState = state }
     }
 
     private fun makeManager(auth: DescopeAuth, storage: MockStorage = MockStorage(session)): DescopeSessionManager {
