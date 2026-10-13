@@ -17,7 +17,8 @@ internal fun parseServerError(response: String): DescopeException? {
         val code = map["errorCode"] as? String ?: return null
         val desc = map["errorDescription"] as? String ?: "Descope server error"
         val message = map["errorMessage"] as? String
-        return DescopeException(code = code, desc = desc, message = message)
+        val traceId = (map["traceId"] as? String)?.ifEmpty { null }
+        return DescopeException(code = code, desc = desc, message = message, traceId = traceId)
     } catch (_: Exception) {
         return null
     }
