@@ -109,7 +109,7 @@ internal class FlowBridge(val webView: WebView) {
         val exception = when {
             parsed == null -> DescopeException.flowFailed.with(message = error)
             // Convert server flow cancellation to local flow cancellation for cohesive error handling
-            parsed.code == "E102122" -> DescopeException.flowCancelled.with(message = parsed.message)
+            parsed.code == "E102122" -> DescopeException.flowCancelled.with(message = parsed.message, traceId = parsed.traceId)
             else -> parsed
         }
         handler.post {
