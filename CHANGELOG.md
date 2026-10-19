@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/descope/descope-kotlin/compare/0.22.0...0.23.0) (2026-10-19)
+
+
+### Features
+
+* return trace id in flow errors ([#378](https://github.com/descope/descope-kotlin/issues/378)) ([bab3f8b](https://github.com/descope/descope-kotlin/commit/bab3f8bd6014b52fc89e986962a0624728ca8a5b))
+
 ## [0.22.0](https://github.com/descope/descope-kotlin/compare/0.21.0...0.22.0) (2026-10-08)
 
 
