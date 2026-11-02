@@ -5,9 +5,11 @@ import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.browser.customtabs.CustomTabsIntent
+import com.descope.Descope
 import com.descope.session.DescopeSession
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DeliveryMethod
+import com.descope.types.DescopeException
 import com.descope.types.DescopeTenant
 import com.descope.types.DescopeUser
 import com.descope.types.EnchantedLinkResponse
@@ -661,6 +663,33 @@ interface DescopeOAuth {
     suspend fun exchange(code: String): AuthenticationResponse
 
     /**
+     * Authenticates the user with OAuth using a Custom Tab.
+     *
+     * This API is a convenience method that calls [signUpOrIn], presents the OAuth webpage
+     * using a Custom Tab, and then finally calls [exchange].
+     *
+     *     val authResponse = Descope.oauth.web(activity, OAuthProvider.Google)
+     *
+     * - **Important:** The redirect URL must open the app using a deep link, and the
+     *   app must pass the incoming URI to [Descope.handleUri]. See the README
+     *   for more information.
+     *
+     * Note: This is an asynchronous operation that performs network requests before and
+     * after displaying the Custom Tab. It is thus recommended to switch the user interface
+     * to a loading state before calling this function, otherwise the user might accidentally
+     * interact with the app when the Custom Tab is not being displayed.
+     *
+     * @param context the Activity context used to launch the Custom Tab.
+     * @param provider which provider to authenticate against.
+     * @param redirectUrl optional redirect URL. If null, the default redirect URL in Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @param customTabsIntent optional [CustomTabsIntent] to customize the Custom Tab.
+     * @return an [AuthenticationResponse] upon successful authentication.
+     * @throws DescopeException.customTabCancelled if the Custom Tab is closed or cancelled by the user.
+     */
+    suspend fun web(context: Context, provider: OAuthProvider, redirectUrl: String? = null, options: List<SignInOptions>? = null, customTabsIntent: CustomTabsIntent? = null): AuthenticationResponse
+
+    /**
      * Authenticates the user using the native Sign in with Google dialog.
      *
      * This API enables a more streamlined user experience than the equivalent browser
@@ -731,6 +760,33 @@ interface DescopeSso {
      * @return an [AuthenticationResponse] upon successful verification.
      */
     suspend fun exchange(code: String): AuthenticationResponse
+
+    /**
+     * Authenticates the user with SSO using a Custom Tab.
+     *
+     * This API is a convenience method that calls [start], presents the SSO webpage
+     * using a Custom Tab, and then finally calls [exchange].
+     *
+     *     val authResponse = Descope.sso.web(activity, "user@acme.com")
+     *
+     * - **Important:** The redirect URL must open the app using a deep link, and the
+     *   app must pass the incoming URI to [Descope.handleUri]. See the README
+     *   for more information.
+     *
+     * Note: This is an asynchronous operation that performs network requests before and
+     * after displaying the Custom Tab. It is thus recommended to switch the user interface
+     * to a loading state before calling this function, otherwise the user might accidentally
+     * interact with the app when the Custom Tab is not being displayed.
+     *
+     * @param context the Activity context used to launch the Custom Tab.
+     * @param emailOrTenantId an email address that belongs to a tenant or a tenant ID.
+     * @param redirectUrl optional redirect URL. If null, the default redirect URL in Descope console will be used.
+     * @param options additional behaviors to perform during authentication.
+     * @param customTabsIntent optional [CustomTabsIntent] to customize the Custom Tab.
+     * @return an [AuthenticationResponse] upon successful authentication.
+     * @throws DescopeException.customTabCancelled if the Custom Tab is closed or cancelled by the user.
+     */
+    suspend fun web(context: Context, emailOrTenantId: String, redirectUrl: String? = null, options: List<SignInOptions>? = null, customTabsIntent: CustomTabsIntent? = null): AuthenticationResponse
 }
 
 /**

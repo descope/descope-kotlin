@@ -86,7 +86,8 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
 
     /**
      * While the flow is running this is set to a closure with a weak reference to
-     * the [DescopeFlowCoordinator] to provide it with the resume URI.
+     * the [DescopeFlowCoordinator] to provide it with the resume URI. Web authentication
+     * sets it the same way when it opens a Custom Tab.
      */
     internal var resume: (Uri) -> Boolean = { false }
 
