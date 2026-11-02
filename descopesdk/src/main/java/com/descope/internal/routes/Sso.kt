@@ -8,7 +8,7 @@ import com.descope.sdk.DescopeSso
 import com.descope.types.AuthenticationResponse
 import com.descope.types.SignInOptions
 
-internal class Sso(override val client: DescopeClient): Route, DescopeSso {
+internal class Sso(override val client: DescopeClient, private val deepLinkReceiver: DeepLinkReceiver): Route, DescopeSso {
 
     override suspend fun start(emailOrTenantId: String, redirectUrl: String?, options: List<SignInOptions>?): String =
         client.ssoStart(emailOrTenantId, redirectUrl, options).url
@@ -20,7 +20,7 @@ internal class Sso(override val client: DescopeClient): Route, DescopeSso {
         log(Info, "Starting SSO web authentication")
         val url = start(emailOrTenantId, redirectUrl, options)
         log(Info, "Showing SSO web authentication", url)
-        val code = performWebAuthentication(context, url, customTabsIntent)
+        val code = performWebAuthentication(context, url, customTabsIntent, deepLinkReceiver)
         log(Info, "Finishing SSO web authentication")
         return exchange(code)
     }

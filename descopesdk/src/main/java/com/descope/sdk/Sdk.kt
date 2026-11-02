@@ -10,6 +10,7 @@ import com.descope.android.DescopeSystemInfo
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.others.ConsoleLogger
 import com.descope.internal.routes.Auth
+import com.descope.internal.routes.DeepLinkReceiver
 import com.descope.internal.routes.EnchantedLink
 import com.descope.internal.routes.Flow
 import com.descope.internal.routes.MagicLink
@@ -42,6 +43,8 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
 
     internal val config: DescopeConfig
     internal val client: DescopeClient
+    internal val deepLinkReceiver = DeepLinkReceiver()
+    internal var resume by deepLinkReceiver::resume
 
     init {
         if (Looper.getMainLooper().thread != Thread.currentThread()) {
@@ -59,8 +62,8 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
         totp = Totp(client)
         magicLink = MagicLink(client)
         enchantedLink = EnchantedLink(client)
-        oauth = OAuth(client)
-        sso = Sso(client)
+        oauth = OAuth(client, deepLinkReceiver)
+        sso = Sso(client, deepLinkReceiver)
         passkey = Passkey(client)
         password = Password(client)
         push = Push(client)
@@ -83,13 +86,6 @@ class DescopeSdk(context: Context, projectId: String, configure: DescopeConfig.(
     }
 
     // Internal
-
-    /**
-     * While the flow is running this is set to a closure with a weak reference to
-     * the [DescopeFlowCoordinator] to provide it with the resume URI. Web authentication
-     * sets it the same way when it opens a Custom Tab.
-     */
-    internal var resume: (Uri) -> Boolean = { false }
 
     private fun initDefaultManager(context: Context, config: DescopeConfig): DescopeSessionManager {
         val storage = SessionStorage(context.applicationContext, config.projectId, config.logger)

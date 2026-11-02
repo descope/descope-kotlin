@@ -1,5 +1,6 @@
 package com.descope.internal.routes
 
+import android.net.Uri
 import androidx.core.net.toUri
 import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.JwtServerResponse
@@ -20,6 +21,10 @@ internal interface Route {
     fun log(level: DescopeLogger.Level, message: String, vararg values: Any) {
         client.config.logger?.log(level, message, *values)
     }
+}
+
+internal class DeepLinkReceiver {
+    var resume: (Uri) -> Boolean = { false }
 }
 
 internal fun UserResponse.convert(): DescopeUser = DescopeUser(

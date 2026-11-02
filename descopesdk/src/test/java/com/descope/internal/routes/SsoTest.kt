@@ -12,7 +12,7 @@ class SsoTest {
         val uri = "https://mysite.com"
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
         val client = MockClient()
-        val sso = Sso(client)
+        val sso = Sso(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
             assertEquals("auth/saml/authorize", route)
             assertEquals(uri, params["redirectURL"])
@@ -29,7 +29,7 @@ class SsoTest {
     fun exchange() = runTest {
         val code = "code"
         val client = MockClient()
-        val sso = Sso(client)
+        val sso = Sso(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/saml/exchange", route)
             assertEquals(code, body["code"])

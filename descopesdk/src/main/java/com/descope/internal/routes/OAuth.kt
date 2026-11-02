@@ -24,7 +24,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import org.json.JSONObject
 
-internal class OAuth(override val client: DescopeClient) : Route, DescopeOAuth {
+internal class OAuth(override val client: DescopeClient, private val deepLinkReceiver: DeepLinkReceiver) : Route, DescopeOAuth {
 
     override suspend fun signUp(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
         client.oauthWebStart(provider, redirectUrl, options, OAuthMethod.SignUp).url
@@ -42,7 +42,7 @@ internal class OAuth(override val client: DescopeClient) : Route, DescopeOAuth {
         log(Info, "Starting OAuth web authentication")
         val url = signUpOrIn(provider, redirectUrl, options)
         log(Info, "Showing OAuth web authentication", url)
-        val code = performWebAuthentication(context, url, customTabsIntent)
+        val code = performWebAuthentication(context, url, customTabsIntent, deepLinkReceiver)
         log(Info, "Finishing OAuth web authentication")
         return exchange(code)
     }

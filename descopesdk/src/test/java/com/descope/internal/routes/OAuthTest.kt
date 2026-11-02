@@ -13,7 +13,7 @@ class OAuthTest {
         val uri = "https://mysite.com"
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
         val client = MockClient()
-        val oAuth = OAuth(client)
+        val oAuth = OAuth(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
             assertEquals("auth/oauth/authorize/signup", route)
             assertEquals(uri, params["redirectURL"])
@@ -31,7 +31,7 @@ class OAuthTest {
         val uri = "https://mysite.com"
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
         val client = MockClient()
-        val oAuth = OAuth(client)
+        val oAuth = OAuth(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
             assertEquals("auth/oauth/authorize/signin", route)
             assertEquals(uri, params["redirectURL"])
@@ -49,7 +49,7 @@ class OAuthTest {
         val uri = "https://mysite.com"
         val options = listOf(SignInOptions.CustomClaims(mapOf("a" to "b")), SignInOptions.Mfa("refreshJwt"))
         val client = MockClient()
-        val oAuth = OAuth(client)
+        val oAuth = OAuth(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, params: Map<String, String?> ->
             assertEquals("auth/oauth/authorize", route)
             assertEquals(uri, params["redirectURL"])
@@ -66,7 +66,7 @@ class OAuthTest {
     fun exchange() = runTest {
         val code = "code"
         val client = MockClient()
-        val oAuth = OAuth(client)
+        val oAuth = OAuth(client, DeepLinkReceiver())
         client.assert = { route: String, body: Map<String, Any?>, _: Map<String, String>, _: Map<String, String?> ->
             assertEquals("auth/oauth/exchange", route)
             assertEquals(code, body["code"])
