@@ -1,6 +1,7 @@
 package com.descope.internal.routes
 
 import android.content.Context
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -12,6 +13,7 @@ import com.descope.internal.http.DescopeClient
 import com.descope.internal.http.OAuthMethod
 import com.descope.internal.http.OAuthNativeStartServerResponse
 import com.descope.internal.others.with
+import com.descope.sdk.DescopeLogger.Level.Info
 import com.descope.sdk.DescopeOAuth
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
@@ -22,7 +24,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import org.json.JSONObject
 
-internal class OAuth(override val client: DescopeClient) : Route, DescopeOAuth {
+internal class OAuth(override val client: DescopeClient, private val deepLinkReceiver: DeepLinkReceiver) : Route, DescopeOAuth {
 
     override suspend fun signUp(provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?): String =
         client.oauthWebStart(provider, redirectUrl, options, OAuthMethod.SignUp).url
@@ -35,6 +37,15 @@ internal class OAuth(override val client: DescopeClient) : Route, DescopeOAuth {
 
     override suspend fun exchange(code: String): AuthenticationResponse =
         client.oauthWebExchange(code).convert()
+
+    override suspend fun web(context: Context, provider: OAuthProvider, redirectUrl: String?, options: List<SignInOptions>?, customTabsIntent: CustomTabsIntent?): AuthenticationResponse {
+        log(Info, "Starting OAuth web authentication")
+        val url = signUpOrIn(provider, redirectUrl, options)
+        log(Info, "Showing OAuth web authentication", url)
+        val code = performWebAuthentication(context, url, customTabsIntent, deepLinkReceiver)
+        log(Info, "Finishing OAuth web authentication")
+        return exchange(code)
+    }
 
     override suspend fun native(context: Context, provider: OAuthProvider, options: List<SignInOptions>?): AuthenticationResponse {
         val startResponse = client.oauthNativeStart(provider, options)

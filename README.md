@@ -437,7 +437,39 @@ sent over SMS, using the `refreshJwt` of their active session.
 
 Users can authenticate using their social logins, using the OAuth protocol.
 Configure your OAuth settings on the [Descope console](https://app.descope.com/settings/authentication/social).
-To start a flow call:
+
+The simplest way is to call `web`, which opens the provider in a Custom Tab,
+waits for the redirect back to the app, and exchanges the code:
+
+```kotlin
+try {
+    // If configured globally, the redirect URL is optional
+    val authResponse = Descope.oauth.web(activity, OAuthProvider.Github, redirectUrl = "<URL_FOR_APP_LINK>")
+    val session = DescopeSession(authResponse)
+    Descope.sessionManager.manageSession(session)
+} catch (e: DescopeException) {
+    if (e == DescopeException.customTabCancelled) {
+        // The user closed the Custom Tab
+    }
+    // Handle other errors here
+}
+```
+
+The redirect URL must open your app using a deep link. The manifest setup is the same
+as in [Enable App Links](#optional-setup-2-enable-app-links-for-magic-link-and-oauth-social),
+but the receiving Activity passes the incoming URI to `Descope.handleUri`:
+
+```kotlin
+class AuthRedirectActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        intent?.data?.let { Descope.handleUri(it) }
+        finish()
+    }
+}
+```
+
+To manage the redirect yourself instead, start the OAuth redirect chain:
 
 ```kotlin
 // Choose an oauth provider out of the supported providers
@@ -481,7 +513,22 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 Users can authenticate to a specific tenant using SAML or Single Sign On.
 Configure your SSO/SAML settings on the [Descope console](https://app.descope.com/settings/authentication/sso).
-To start a flow call:
+
+The simplest way is to call `web`, which works the same as `Descope.oauth.web`
+and requires the same deep link setup:
+
+```kotlin
+try {
+    // If configured globally, the redirect URL is optional
+    val authResponse = Descope.sso.web(activity, emailOrTenantId = "my-tenant-ID", redirectUrl = "<URL_FOR_APP_LINK>")
+    val session = DescopeSession(authResponse)
+    Descope.sessionManager.manageSession(session)
+} catch (e: DescopeException) {
+    // Handle errors here
+}
+```
+
+To manage the redirect yourself instead, start the SSO/SAML redirect chain:
 
 ```kotlin
 // Choose which tenant to log into

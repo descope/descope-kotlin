@@ -126,6 +126,7 @@ class DescopeException(
         val oauthNativeCancelled = DescopeException(code = "K120002", desc = "Sign in with Google cancelled")
         
         val customTabFailed = DescopeException(code = "K130001", desc = "Custom Tab failed to open")
+        val customTabCancelled = DescopeException(code = "K130002", desc = "Custom Tab cancelled")
 
         // Internal
 
