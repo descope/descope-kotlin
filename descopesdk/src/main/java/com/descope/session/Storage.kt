@@ -208,9 +208,17 @@ class KeystoreSharedPrefs(name: String, context: Context) : SessionStorage.Store
     }
 
     override fun saveItem(key: String, data: String) {
-        val secretKey = synchronized(keystoreLock) { loadKeystoreKey(alias) ?: createKeystoreKey(alias) }
-        val encrypted = encryptItem(secretKey, data, key).toBase64()
-        sharedPreferences.edit { putString(key, encrypted) }
+        val encrypted = try {
+            encryptItem(loadOrCreateKey(), data, key)
+        } catch (_: Exception) {
+            synchronized(keystoreLock) { deleteKeystoreKey(alias) }
+            encryptItem(loadOrCreateKey(), data, key)
+        }
+        sharedPreferences.edit { putString(key, encrypted.toBase64()) }
+    }
+
+    private fun loadOrCreateKey(): SecretKey = synchronized(keystoreLock) {
+        loadKeystoreKey(alias) ?: createKeystoreKey(alias)
     }
 
     override fun removeItem(key: String) = sharedPreferences.edit {
@@ -231,6 +239,11 @@ private val keystoreLock = Any()
 private fun loadKeystoreKey(alias: String): SecretKey? {
     val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
     return keyStore.getKey(alias, null) as? SecretKey
+}
+
+private fun deleteKeystoreKey(alias: String) {
+    val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+    keyStore.deleteEntry(alias)
 }
 
 private fun createKeystoreKey(alias: String): SecretKey {
