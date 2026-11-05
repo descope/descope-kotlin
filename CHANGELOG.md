@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/descope/descope-kotlin/compare/0.23.0...0.24.0) (2026-11-05)
+
+
+### Features
+
+* add OAuth and SSO web authentication via Custom Tabs ([#385](https://github.com/descope/descope-kotlin/issues/385)) ([7da000b](https://github.com/descope/descope-kotlin/commit/7da000bbb432ad3fe1aaf1a5d782fba7ec097fb0))
+
 ## [0.23.0](https://github.com/descope/descope-kotlin/compare/0.22.0...0.23.0) (2026-10-19)
 
 
