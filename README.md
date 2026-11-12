@@ -122,7 +122,7 @@ user session for an application.
 
 The session manager takes care of loading and saving the session as well
 as ensuring that it's refreshed when needed. For the default instances of
-the `DescopeSessionManager` class this means using the `EncryptedSharedPreferences`
+the `DescopeSessionManager` class this means using the Android Keystore
 for secure storage of the session and refreshing it a short while before it expires.
 
 Make sure you initialize Descope with your application context so that the
