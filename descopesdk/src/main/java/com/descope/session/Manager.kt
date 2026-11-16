@@ -34,7 +34,7 @@ import kotlin.concurrent.timer
  *
  * The session manager takes care of loading and saving the session as well
  * as ensuring that it's refreshed when needed. For the default instances of
- * the `DescopeSessionManager` class this means using the [EncryptedSharedPrefs] for secure
+ * the `DescopeSessionManager` class this means using the [KeystoreSharedPrefs] for secure
  * storage of the session and refreshing it a short while before it expires.
  *
  * Once the user completes a sign in flow successfully you should set the
@@ -304,7 +304,7 @@ class DescopeSessionManager internal constructor(
      *     val userResponse = Descope.auth.me(session.refreshJwt)
      *     Descope.sessionManager.updateUser(userResponse)
      *
-     * By default, the manager persists the updated session to the [EncryptedSharedPrefs]
+     * By default, the manager persists the updated session to the [KeystoreSharedPrefs]
      * before returning, but this can be overridden with a custom `DescopeSessionStorage` object.
      *
      * @param user the [DescopeUser] to update.
