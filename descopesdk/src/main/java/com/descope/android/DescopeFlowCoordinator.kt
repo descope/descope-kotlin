@@ -155,7 +155,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
         val session = currentSession
         if (session != null) {
-            handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false, flowOutput = jwtServerResponse?.flowOutput ?: emptyMap()))
+            handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false, flowOutput = jwtServerResponse?.flowOutput ?: emptyMap(), isExternalPasskey = jwtServerResponse?.externalPasskey ?: false))
             return
         }
         handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
