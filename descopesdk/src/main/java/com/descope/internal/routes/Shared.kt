@@ -68,6 +68,7 @@ internal fun JwtServerResponse.convert(): AuthenticationResponse {
         user = user.convert(),
         isFirstAuthentication = firstSeen,
         flowOutput = flowOutput,
+        isExternalPasskey = externalPasskey,
     )
 }
 

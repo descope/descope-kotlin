@@ -33,6 +33,31 @@ class JwtServerResponseTest {
     }
 
     @Test
+    fun externalPasskey_trueWhenPresent() {
+        val json = """
+            {
+                "sessionJwt": "session",
+                "refreshJwt": "refresh",
+                "externalPasskey": true
+            }
+        """.trimIndent()
+        val response = JwtServerResponse.fromJson(json, emptyList())
+        assertTrue(response.externalPasskey)
+    }
+
+    @Test
+    fun externalPasskey_falseWhenAbsent() {
+        val json = """
+            {
+                "sessionJwt": "session",
+                "refreshJwt": "refresh"
+            }
+        """.trimIndent()
+        val response = JwtServerResponse.fromJson(json, emptyList())
+        assertFalse(response.externalPasskey)
+    }
+
+    @Test
     fun flowOutput_populatedWhenPresent() {
         val json = """
             {
