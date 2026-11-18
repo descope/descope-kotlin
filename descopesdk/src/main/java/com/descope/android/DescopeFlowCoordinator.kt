@@ -332,7 +332,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
     }
 
     private fun handleLogout() {
-        if (ensureState(Ready)) return
+        if (!bridge.widget || ensureState(Ready)) return
         logger.info("Widget is logging out")
         stopTimer()
         state = Finished

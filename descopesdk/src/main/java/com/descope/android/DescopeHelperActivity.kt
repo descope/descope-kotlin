@@ -20,6 +20,8 @@ class DescopeHelperActivity : Activity() {
         super.onCreate(savedInstanceState)
         val chooserIntent: Intent? = intent?.let { IntentCompat.getParcelableExtra(it, FILE_CHOOSER_INTENT, Intent::class.java) }
         if (chooserIntent != null) {
+            // a recreated activity receives the pending result in onActivityResult
+            if (savedInstanceState != null) return
             try {
                 @Suppress("DEPRECATION")
                 startActivityForResult(chooserIntent, fileChooserRequestCode)
