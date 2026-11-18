@@ -43,6 +43,8 @@ import com.descope.session.DescopeSession
 import com.descope.session.Token
 import com.descope.types.AuthenticationResponse
 import com.descope.types.DescopeException
+import com.descope.types.DescopeUser
+import com.descope.types.RevokeType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,9 +62,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal var listener: DescopeFlowView.Listener? = null
     internal var state: DescopeFlowView.State = Initial
+    internal var onLogout: (() -> Unit)? = null
+    internal var onUserUpdated: ((DescopeUser) -> Unit)? = null
 
     private val bridge = FlowBridge(webView)
     private var flow: DescopeFlow? = null
+    private var requestKey = ""
     private var pendingDeepLinkType: String? = null
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val sdk: DescopeSdk?
@@ -71,17 +76,20 @@ class DescopeFlowCoordinator(val webView: WebView) {
         get() = sdk?.client?.config?.logger
     private val context: Context
         get() = webView.context
+    private val scope: CoroutineScope
+        get() = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
     private val currentSession: DescopeSession?
         get() = if (flow?.sessionProvider != null) flow?.sessionProvider?.invoke() else sdk?.sessionManager?.session?.takeIf { !it.refreshToken.isExpired }
 
     private val bridgeListener = object : FlowBridge.Listener {
         override fun onLoaded() = handleLoaded()
-        override fun onFound() = initialize()
-        override fun onReady(tag: String) = handleReady(tag)
-        override fun onRequest(request: FlowBridgeRequest) = handleRequest(request)
+        override fun onFound(key: String) = initialize(key)
+        override fun onReady(key: String, tag: String) = handleReady(key, tag)
+        override fun onRequest(key: String, request: FlowBridgeRequest) = handleRequest(key, request)
         override fun onNavigation(uri: Uri) = handleNavigation(uri)
-        override fun onSuccess(data: String?, url: String) = handleFinish(data, url)
-        override fun onError(error: DescopeException) = handleError(error)
+        override fun onSuccess(key: String, data: String?, url: String) = handleFinish(key, data, url)
+        override fun onError(key: String, error: DescopeException) = handleError(key, error)
+        override fun onLogout() = handleLogout()
     }
 
     init {
@@ -103,6 +111,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
         sdk?.resume = createResumeClosure(WeakReference(this))
         handleStarted()
         bridge.start()
+    }
+
+    internal fun startWidget(widget: DescopeUserProfileWidget) {
+        bridge.widget = true
+        startFlow(widget.flow)
     }
 
     internal fun resumeFromDeepLink(deepLink: Uri): Boolean {
@@ -141,7 +154,12 @@ class DescopeFlowCoordinator(val webView: WebView) {
         }
     }
 
-    private fun handleFinish(data: String?, url: String) {
+    private fun handleFinish(key: String, data: String?, url: String) {
+        if (bridge.widget) {
+            logger.info("Flow finished successfully in widget", key)
+            refreshUser()
+            return
+        }
         val jwtServerResponse = parseJwtServerResponse(data, url)
         if (jwtServerResponse != null) {
             try {
@@ -158,7 +176,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             handleSuccess(AuthenticationResponse(sessionToken = session.sessionToken, refreshToken = session.refreshToken, user = session.user, isFirstAuthentication = false, flowOutput = jwtServerResponse?.flowOutput ?: emptyMap()))
             return
         }
-        handleError(DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
+        handleError("", DescopeException.flowFailed.with(message = "No valid authentication tokens found"))
     }
 
     private fun parseJwtServerResponse(data: String?, url: String): JwtServerResponse? {
@@ -178,7 +196,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     // Initialize
 
-    private fun initialize() {
+    private fun initialize(key: String) {
         val flow = flow ?: return
 
         val useCustomSchemeFallback = shouldUseCustomSchemeUrl(context)
@@ -215,7 +233,7 @@ class DescopeFlowCoordinator(val webView: WebView) {
             clientInputs = flow.clientInputs.toJsonObject().toString()
         }
 
-        bridge.initialize(nativeOptions.toString(), refreshJwt, sessionJwt, clientInputs)
+        bridge.initialize(key, nativeOptions.toString(), refreshJwt, sessionJwt, clientInputs)
     }
 
     // Hooks
@@ -239,10 +257,16 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private fun handleLoaded() {
         if (state != Started) return
+        // the widget loads the user as soon as it's created so the tokens must already be in place
+        if (bridge.widget) updateJwts()
         executeHooks(Event.Loaded)
     }
 
-    private fun handleReady(tag: String) {
+    private fun handleReady(key: String, tag: String) {
+        if (key.isNotEmpty()) {
+            logger.info("Flow is ready in widget ($tag)", key)
+            return
+        }
         if (ensureState(Started)) return
         logger.info("Flow is ready ($tag)")
         startTimer()
@@ -251,7 +275,11 @@ class DescopeFlowCoordinator(val webView: WebView) {
         listener?.onReady()
     }
 
-    private fun handleError(e: DescopeException) {
+    private fun handleError(key: String, e: DescopeException) {
+        if (key.isNotEmpty()) {
+            logger.error("Flow failed in widget with [${e.code}] error", key, e)
+            return
+        }
         if (ensureState(Initial, Started, Ready, Failed)) return
 
         // we allow multiple failure events and swallow them here instead of showing a warning above,
@@ -283,13 +311,51 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     private fun sendResponse(response: FlowBridgeResponse) {
         if (ensureState(Started, Ready)) return // we get here in started state if the flow has no screens
-        bridge.postResponse(response)
+        bridge.postResponse(requestKey, response)
+    }
+
+    // Widget
+
+    private fun refreshUser() {
+        val sdk = sdk ?: return
+        val session = currentSession ?: return
+        val isManaged = flow?.sessionProvider == null
+        scope.launch(Dispatchers.Main) {
+            try {
+                val user = sdk.auth.me(session.refreshJwt)
+                if (isManaged) sdk.sessionManager.updateUser(user)
+                onUserUpdated?.invoke(user)
+            } catch (e: DescopeException) {
+                logger.error("Failed to refresh user in widget", e)
+            }
+        }
+    }
+
+    private fun handleLogout() {
+        if (ensureState(Ready)) return
+        logger.info("Widget is logging out")
+        stopTimer()
+        state = Finished
+        val sdk = sdk
+        val logger = logger
+        val session = currentSession
+        if (flow?.sessionProvider == null) sdk?.sessionManager?.clearSession()
+        onLogout?.invoke()
+        if (sdk == null || session == null) return
+        // revoking is best effort and shouldn't be cancelled if the view goes away
+        CoroutineScope(Job()).launch(Dispatchers.Main) {
+            try {
+                sdk.auth.revokeSessions(RevokeType.CurrentSession, session.refreshJwt)
+            } catch (e: DescopeException) {
+                logger.error("Failed to revoke session in widget", e)
+            }
+        }
     }
 
     // Native Operations
 
-    private fun handleRequest(request: FlowBridgeRequest) {
-        val scope = webView.findViewTreeLifecycleOwner()?.lifecycleScope ?: CoroutineScope(Job())
+    private fun handleRequest(key: String, request: FlowBridgeRequest) {
+        requestKey = key
         scope.launch(Dispatchers.Main) {
             when (request) {
                 is FlowBridgeRequest.OAuthNative -> handleOAuthNative(request)
@@ -410,10 +476,14 @@ class DescopeFlowCoordinator(val webView: WebView) {
 
     internal fun periodicRefreshJwtUpdate() {
         handler.post {
-            val session = currentSession
-            bridge.updateRefreshJwt(session?.refreshJwt ?: "")
-            bridge.updateSessionJwt(validSessionJwt(session))
+            updateJwts()
         }
+    }
+
+    private fun updateJwts() {
+        val session = currentSession
+        bridge.updateRefreshJwt(session?.refreshJwt ?: "")
+        bridge.updateSessionJwt(validSessionJwt(session))
     }
 }
 

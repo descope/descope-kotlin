@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import com.descope.android.CUSTOM_TAB_URL
 import com.descope.android.DescopeHelperActivity
+import com.descope.android.FILE_CHOOSER_INTENT
 import com.descope.types.DescopeException
 
 internal interface ActivityHelper {
@@ -15,10 +16,13 @@ internal interface ActivityHelper {
     fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)? = null)
     fun closeCustomTab(context: Context)
     fun onCustomTabCanceled()
+    fun openFileChooser(context: Context, chooserIntent: Intent, onResult: (Array<Uri>?) -> Unit)
+    fun onFileChooserResult(uris: Array<Uri>?)
 }
 
 internal val activityHelper = object : ActivityHelper {
     private var cancelCallback: (() -> Unit)? = null
+    private var fileChooserCallback: ((Array<Uri>?) -> Unit)? = null
     override var customTabsIntent: CustomTabsIntent? = null
 
     override fun openCustomTab(context: Context, customTabsIntent: CustomTabsIntent, url: Uri, onCancel: (() -> Unit)?) {
@@ -53,6 +57,24 @@ internal val activityHelper = object : ActivityHelper {
     override fun onCustomTabCanceled() {
         cancelCallback?.invoke()
         cancelCallback = null
+    }
+
+    override fun openFileChooser(context: Context, chooserIntent: Intent, onResult: (Array<Uri>?) -> Unit) {
+        // the web view expects every file chooser request to be answered
+        onFileChooserResult(null)
+        val intent = Intent(context, DescopeHelperActivity::class.java)
+        intent.putExtra(FILE_CHOOSER_INTENT, chooserIntent)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            throw DescopeException.browserError.with(message = "Failed to open file chooser from context", cause = e)
+        }
+        this.fileChooserCallback = onResult
+    }
+
+    override fun onFileChooserResult(uris: Array<Uri>?) {
+        fileChooserCallback?.invoke(uris)
+        fileChooserCallback = null
     }
 
     private fun isBrowserSupported(context: Context, uri: Uri): Boolean {
