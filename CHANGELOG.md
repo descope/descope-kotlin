@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/descope/descope-kotlin/compare/0.24.0...0.25.0) (2026-11-26)
+
+
+### Features
+
+* add isExternalPasskey to AuthenticationResponse ([#392](https://github.com/descope/descope-kotlin/issues/392)) ([ee43912](https://github.com/descope/descope-kotlin/commit/ee4391208958ee6fc512617db291d12b32cc27e0))
+
 ## [0.24.0](https://github.com/descope/descope-kotlin/compare/0.23.0...0.24.0) (2026-11-16)
 
 
