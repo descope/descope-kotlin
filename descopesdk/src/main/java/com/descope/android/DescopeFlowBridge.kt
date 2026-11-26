@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -16,6 +17,7 @@ import android.webkit.WebViewClient
 import com.descope.internal.http.REFRESH_COOKIE_NAME
 import com.descope.internal.http.SESSION_COOKIE_NAME
 import com.descope.internal.http.failureFromResponseCode
+import com.descope.internal.others.activityHelper
 import com.descope.internal.others.debug
 import com.descope.internal.others.error
 import com.descope.internal.others.info
@@ -40,15 +42,17 @@ internal class FlowBridge(val webView: WebView) {
 
     interface Listener {
         fun onLoaded()
-        fun onFound()
-        fun onReady(tag: String)
-        fun onRequest(request: FlowBridgeRequest)
+        fun onFound(key: String)
+        fun onReady(key: String, tag: String)
+        fun onRequest(key: String, request: FlowBridgeRequest)
         fun onNavigation(uri: Uri): Boolean
-        fun onSuccess(data: String?, url: String)
-        fun onError(error: DescopeException)
+        fun onSuccess(key: String, data: String?, url: String)
+        fun onError(key: String, error: DescopeException)
+        fun onLogout()
     }
 
     var flow: DescopeFlow? = null
+    var widget = false
     var listener: Listener? = null
     var logger: DescopeLogger? = null
     var attributes = FlowBridgeAttributes()
@@ -61,33 +65,34 @@ internal class FlowBridge(val webView: WebView) {
     // JavaScript Interface
 
     private val javascriptInterface = object {
-        @JavascriptInterface fun onFound(data: String) = bridgeOnFound(data)
-        @JavascriptInterface fun onReady(tag: String) = bridgeOnReady(tag)
-        @JavascriptInterface fun onSuccess(data: String?, url: String) = bridgeOnSuccess(data, url)
+        @JavascriptInterface fun onFound(key: String, data: String) = bridgeOnFound(key, data)
+        @JavascriptInterface fun onReady(key: String, tag: String) = bridgeOnReady(key, tag)
+        @JavascriptInterface fun onSuccess(key: String, data: String?, url: String) = bridgeOnSuccess(key, data, url)
         @JavascriptInterface fun onAbort(reason: String) = bridgeOnAbort(reason)
-        @JavascriptInterface fun onError(error: String) = bridgeOnError(error)
-        @JavascriptInterface fun native(response: String?) = bridgeOnNative(response)
+        @JavascriptInterface fun onError(key: String, error: String) = bridgeOnError(key, error)
+        @JavascriptInterface fun onLogout() = bridgeOnLogout()
+        @JavascriptInterface fun native(key: String, response: String?) = bridgeOnNative(key, response)
         @JavascriptInterface fun onLog(tag: String, message: String) = bridgeOnLog(tag, message)
     }
 
-    private fun bridgeOnFound(data: String) {
-        logger.info("Received found event")
+    private fun bridgeOnFound(key: String, data: String) {
+        logger.info("Received found event", key)
         val json = JSONObject(data)
         handler.post {
             attributes.refreshCookieName = json.stringOrEmptyAsNull("refreshCookieName")
-            listener?.onFound()
+            listener?.onFound(key)
         }
     }
 
-    private fun bridgeOnReady(tag: String) {
+    private fun bridgeOnReady(key: String, tag: String) {
         handler.post {
-            listener?.onReady(tag)
+            listener?.onReady(key, tag)
         }
     }
 
-    private fun bridgeOnSuccess(data: String?, url: String) {
+    private fun bridgeOnSuccess(key: String, data: String?, url: String) {
         handler.post {
-            listener?.onSuccess(data, url)
+            listener?.onSuccess(key, data, url)
         }
     }
 
@@ -100,11 +105,11 @@ internal class FlowBridge(val webView: WebView) {
             DescopeException.flowCancelled
         }
         handler.post {
-            listener?.onError(error)
+            listener?.onError("", error)
         }
     }
 
-    private fun bridgeOnError(error: String) {
+    private fun bridgeOnError(key: String, error: String) {
         val parsed = parseServerError(error)
         val exception = when {
             parsed == null -> DescopeException.flowFailed.with(message = error)
@@ -113,11 +118,18 @@ internal class FlowBridge(val webView: WebView) {
             else -> parsed
         }
         handler.post {
-            listener?.onError(exception)
+            listener?.onError(key, exception)
         }
     }
 
-    private fun bridgeOnNative(response: String?) {
+    private fun bridgeOnLogout() {
+        logger.info("Received logout event")
+        handler.post {
+            listener?.onLogout()
+        }
+    }
+
+    private fun bridgeOnNative(key: String, response: String?) {
         if (response == null) {
             logger.info("Skipping bridge call because response is null")
             return
@@ -125,9 +137,9 @@ internal class FlowBridge(val webView: WebView) {
         handler.post {
             try {
                 val request = FlowBridgeRequest.fromJson(response)
-                listener?.onRequest(request)
+                listener?.onRequest(key, request)
             } catch (e: DescopeException) {
-                listener?.onError(e)
+                listener?.onError(key, e)
             }
         }
     }
@@ -152,11 +164,28 @@ internal class FlowBridge(val webView: WebView) {
             val message = consoleMessage?.message() ?: return false
             return handleConsoleMessage(message, consoleMessage.messageLevel())
         }
+        override fun onShowFileChooser(webView: WebView?, filePathCallback: ValueCallback<Array<Uri>>?, fileChooserParams: FileChooserParams?): Boolean {
+            if (!widget || filePathCallback == null || fileChooserParams == null) return false
+            return handleFileChooser(filePathCallback, fileChooserParams)
+        }
     }
 
     private fun handleConsoleMessage(message: String, level: ConsoleMessage.MessageLevel): Boolean {
         if (level == ConsoleMessage.MessageLevel.ERROR) {
             logger?.error("WebView console.error", message)
+        }
+        return true
+    }
+
+    private fun handleFileChooser(filePathCallback: ValueCallback<Array<Uri>>, fileChooserParams: WebChromeClient.FileChooserParams): Boolean {
+        logger.info("Widget is opening a file chooser")
+        try {
+            activityHelper.openFileChooser(webView.context, fileChooserParams.createIntent()) { uris ->
+                filePathCallback.onReceiveValue(uris)
+            }
+        } catch (e: DescopeException) {
+            logger.error("Failed to open file chooser", e)
+            return false
         }
         return true
     }
@@ -194,7 +223,7 @@ internal class FlowBridge(val webView: WebView) {
 
         webView.evaluateJavascript(loggingScript, {})
 
-        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context))
+        val setupScript = makeSetupScript(DescopeSystemInfo.getInstance(webView.context), widget)
         webView.evaluateJavascript(setupScript, {})
 
         listener?.onLoaded()
@@ -215,7 +244,7 @@ internal class FlowBridge(val webView: WebView) {
             else -> "The URL failed to load${if (failure.isBlank()) "" else " ($failure)"}"
         }
         val exception = DescopeException.networkError.with(message = message)
-        listener?.onError(exception)
+        listener?.onError("", exception)
     }
 
     private fun handleReceivedHttpError(statusCode: Int) {
@@ -223,7 +252,7 @@ internal class FlowBridge(val webView: WebView) {
         if (statusCode >= 500 && scheduleRetryAfterError()) return
         val message = failureFromResponseCode(statusCode)
         val exception = DescopeException.networkError.with(message = message)
-        listener?.onError(exception)
+        listener?.onError("", exception)
     }
 
     private fun scheduleRetryAfterError(): Boolean {
@@ -268,20 +297,24 @@ internal class FlowBridge(val webView: WebView) {
 
     // Bridge API
 
-    fun initialize(nativeOptions: String, refreshJwt: String, sessionJwt: String, clientInputs: String) {
-        call("initialize", nativeOptions, refreshJwt, sessionJwt, clientInputs)
+    fun initialize(key: String, nativeOptions: String, refreshJwt: String, sessionJwt: String, clientInputs: String) {
+        call(key, "initialize", nativeOptions, refreshJwt, sessionJwt, clientInputs)
     }
 
     fun updateRefreshJwt(refreshJwt: String) {
-        call("updateRefreshJwt", refreshJwt)
+        call("", "updateRefreshJwt", refreshJwt)
     }
 
     fun updateSessionJwt(sessionJwt: String) {
-        call("updateSessionJwt", sessionJwt)
+        call("", "updateSessionJwt", sessionJwt)
     }
 
-    fun postResponse(response: FlowBridgeResponse) {
-        call("handleResponse", response.typeName, response.payload)
+    fun postResponse(key: String, response: FlowBridgeResponse) {
+        if (widget && response.typeName == "magicLink") {
+            call("", "handleMagicLink", response.payload)
+        } else {
+            call(key, "handleResponse", response.typeName, response.payload)
+        }
     }
 
     // Public Utilities
@@ -303,9 +336,10 @@ document.head.appendChild(element)
 
     // Private
 
-    private fun call(function: String, vararg params: String) {
+    private fun call(key: String, function: String, vararg params: String) {
         val escaped = params.joinToString(", ") { it.javaScriptLiteralString() }
-        val javascript = "window.descopeBridge.internal.$function($escaped)"
+        val target = if (key.isEmpty()) "internal" else "internal.flows[${key.javaScriptLiteralString()}]?"
+        val javascript = "window.descopeBridge.$target.$function($escaped)"
         webView.evaluateJavascript(javascript, {})
     }
 }
@@ -417,7 +451,7 @@ private const val loggingScript = """
 })();
 """
 
-private fun makeSetupScript(systemInfo: SystemInfo) = """
+private fun makeSetupScript(systemInfo: SystemInfo, widget: Boolean) = """
 
 window.descopeBridge = {
     hostInfo: {
@@ -442,6 +476,8 @@ window.descopeBridge = {
 
     internal: {
         component: null,
+
+        key: '',
 
         aborted: false,
 
@@ -470,7 +506,7 @@ window.descopeBridge = {
                 refreshCookieName: this.component.refreshCookieName || null,
             }
 
-            flow.onFound(JSON.stringify(attributes))
+            flow.onFound(this.key, JSON.stringify(attributes))
             return true
         },
 
@@ -484,7 +520,7 @@ window.descopeBridge = {
             this.updateClientInputs(clientInputs)
 
             if (this.component.flowStatus === 'error') {
-                flow.onError('The flow failed during initialization')
+                flow.onError(this.key, 'The flow failed during initialization')
             } else if (this.component.flowStatus === 'ready' || this.component.shadowRoot?.querySelector('descope-container')) {
                 this.postReady('immediate') // can only happen in old web-components without lazy init
             } else {
@@ -494,16 +530,16 @@ window.descopeBridge = {
             }
 
             this.component.addEventListener('bridge', (event) => {
-                flow.native(JSON.stringify(event.detail))
+                flow.native(this.key, JSON.stringify(event.detail))
             })
 
             this.component.addEventListener('error', (event) => {
-                flow.onError(JSON.stringify(event.detail))
+                flow.onError(this.key, JSON.stringify(event.detail))
             })
 
             this.component.addEventListener('success', (event) => {
                 const response = (event.detail && Object.keys(event.detail).length) ? JSON.stringify(event.detail) : null
-                flow.onSuccess(response, window.location.href)
+                flow.onSuccess(this.key, response, window.location.href)
             })
 
             // ensure we support old web-components without this function
@@ -514,11 +550,11 @@ window.descopeBridge = {
 
         postReady(tag) {
             if (!this.component.bridgeVersion) {
-                flow.onError('The flow is using an unsupported web component version')
+                flow.onError(this.key, 'The flow is using an unsupported web component version')
                 return
             }
             this.disableTouchInteractions()
-            flow.onReady(tag)
+            flow.onReady(this.key, tag)
         },
 
         updateConfigHeaders() {
@@ -571,16 +607,16 @@ window.descopeBridge = {
 
         updateRefreshJwt(refreshJwt) {
             if (refreshJwt) {
-                const storagePrefix = this.component.storagePrefix || ''
+                const storagePrefix = this.component?.storagePrefix || ''
                 const storageKey = storagePrefix + ${REFRESH_COOKIE_NAME.javaScriptLiteralString()}
                 window.localStorage.setItem(storageKey, refreshJwt)
             }
         },
 
         updateSessionJwt(sessionJwt) {
-            const storagePrefix = this.component.storagePrefix || ''
+            const storagePrefix = this.component?.storagePrefix || ''
             const storageKey = storagePrefix + ${SESSION_COOKIE_NAME.javaScriptLiteralString()}
-            if (sessionJwt && this.component.getAttribute('send-session-token') === 'true') {
+            if (sessionJwt && this.component?.getAttribute('send-session-token') === 'true') {
                 window.localStorage.setItem(storageKey, sessionJwt)
             } else {
                 window.localStorage.removeItem(storageKey)
@@ -605,6 +641,56 @@ window.descopeBridge = {
     }
 }
 
-window.descopeBridge.startFlow()
+${if (widget) widgetScript else "window.descopeBridge.startFlow()"}
 
+"""
+
+private const val widgetScript = """
+Object.assign(window.descopeBridge, {
+    registerWidget(widget) {
+        this.internal.component = widget
+
+        widget.addEventListener('ready', () => {
+            this.internal.disableTouchInteractions()
+            flow.onReady('', 'widget')
+        })
+
+        widget.addEventListener('error', (event) => {
+            const { code, description, message } = event.detail || {}
+            const error = code ? JSON.stringify({ errorCode: code, errorDescription: description, errorMessage: message }) : message
+            flow.onError('', error || 'The widget failed to load')
+        })
+
+        widget.addEventListener('widget-logout', () => {
+            flow.onLogout()
+        })
+    },
+
+    registerFlow(component) {
+        const key = 'flow' + (++this.internal.count)
+        this.internal.flows[key] = { __proto__: this.internal, component, key }
+        this.internal.flows[key].connect()
+        return key
+    },
+
+    unregisterFlow(key) {
+        delete this.internal.flows[key]
+    },
+})
+
+Object.assign(window.descopeBridge.internal, {
+    flows: {},
+
+    count: 0,
+
+    handleMagicLink(payload) {
+        const runIds = new URL(JSON.parse(payload).url).searchParams.get('descope-login-flow') || ''
+        const target = Object.values(this.flows).find(f => runIds.startsWith(f.component.getAttribute('flow-id') + '|#|'))
+        if (!target) {
+            console.debug('No flow found for magic link')
+            return
+        }
+        target.handleResponse('magicLink', payload)
+    },
+})
 """
